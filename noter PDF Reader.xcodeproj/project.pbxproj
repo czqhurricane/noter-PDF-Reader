@@ -7,19 +7,27 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		0262EB8D2DCB611400E9CBC8 /* noter_PDF_ReaderApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EB8C2DCB611400E9CBC8 /* noter_PDF_ReaderApp.swift */; };
 		0262EB8F2DCB611400E9CBC8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EB8E2DCB611400E9CBC8 /* ContentView.swift */; };
 		0262EB912DCB611800E9CBC8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0262EB902DCB611800E9CBC8 /* Assets.xcassets */; };
 		0262EB942DCB611800E9CBC8 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0262EB932DCB611800E9CBC8 /* Preview Assets.xcassets */; };
+		0262EBA22DCB662C00E9CBC8 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EBA12DCB662C00E9CBC8 /* AppDelegate.swift */; };
+		0262EBA52DCB666800E9CBC8 /* SceneDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EBA42DCB666800E9CBC8 /* SceneDelegate.swift */; };
+		0262EBA82DCB669A00E9CBC8 /* PathConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EBA72DCB669A00E9CBC8 /* PathConverter.swift */; };
+		0262EBAB2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EBAA2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift */; };
+		0262EBAE2DCB66EF00E9CBC8 /* PDFKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EBAD2DCB66EF00E9CBC8 /* PDFKitView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		0262EB892DCB611400E9CBC8 /* noter PDF Reader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "noter PDF Reader.app"; sourceTree = BUILT_PRODUCTS_DIR; };
-		0262EB8C2DCB611400E9CBC8 /* noter_PDF_ReaderApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = noter_PDF_ReaderApp.swift; sourceTree = "<group>"; };
 		0262EB8E2DCB611400E9CBC8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		0262EB902DCB611800E9CBC8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		0262EB932DCB611800E9CBC8 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
 		0262EB952DCB611800E9CBC8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		0262EBA12DCB662C00E9CBC8 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
+		0262EBA42DCB666800E9CBC8 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
+		0262EBA72DCB669A00E9CBC8 /* PathConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathConverter.swift; sourceTree = "<group>"; };
+		0262EBAA2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrowAnnotationView.swift; sourceTree = "<group>"; };
+		0262EBAD2DCB66EF00E9CBC8 /* PDFKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFKitView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -52,11 +60,15 @@
 		0262EB8B2DCB611400E9CBC8 /* noter PDF Reader */ = {
 			isa = PBXGroup;
 			children = (
-				0262EB8C2DCB611400E9CBC8 /* noter_PDF_ReaderApp.swift */,
 				0262EB8E2DCB611400E9CBC8 /* ContentView.swift */,
 				0262EB902DCB611800E9CBC8 /* Assets.xcassets */,
 				0262EB952DCB611800E9CBC8 /* Info.plist */,
 				0262EB922DCB611800E9CBC8 /* Preview Content */,
+				0262EBA12DCB662C00E9CBC8 /* AppDelegate.swift */,
+				0262EBA42DCB666800E9CBC8 /* SceneDelegate.swift */,
+				0262EBA72DCB669A00E9CBC8 /* PathConverter.swift */,
+				0262EBAA2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift */,
+				0262EBAD2DCB66EF00E9CBC8 /* PDFKitView.swift */,
 			);
 			path = "noter PDF Reader";
 			sourceTree = "<group>";
@@ -138,8 +150,12 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				0262EBAE2DCB66EF00E9CBC8 /* PDFKitView.swift in Sources */,
+				0262EBAB2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift in Sources */,
+				0262EBA22DCB662C00E9CBC8 /* AppDelegate.swift in Sources */,
 				0262EB8F2DCB611400E9CBC8 /* ContentView.swift in Sources */,
-				0262EB8D2DCB611400E9CBC8 /* noter_PDF_ReaderApp.swift in Sources */,
+				0262EBA52DCB666800E9CBC8 /* SceneDelegate.swift in Sources */,
+				0262EBA82DCB669A00E9CBC8 /* PathConverter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -272,7 +288,7 @@
 				DEVELOPMENT_TEAM = 59CRWBXQ6X;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = "noter PDF Reader/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
@@ -294,7 +310,7 @@
 				DEVELOPMENT_TEAM = 59CRWBXQ6X;
 				ENABLE_PREVIEWS = YES;
 				INFOPLIST_FILE = "noter PDF Reader/Info.plist";
-				IPHONEOS_DEPLOYMENT_TARGET = 14.0;
+				IPHONEOS_DEPLOYMENT_TARGET = 14.4;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/Frameworks",
