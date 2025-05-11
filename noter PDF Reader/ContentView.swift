@@ -73,6 +73,11 @@ struct ContentView: View {
                             .padding(8) // Add padding
                     }
                 }
+                ToolbarItem(placement: .bottomBar) {
+                    Button(action: shareLogs) {
+                        Image(systemName: "doc.text.magnifyingglass")
+                    }
+                }
             }.sheet(isPresented: Binding<Bool>(
                 get: { showLinkInput || showDocumentPicker },
                 set: {
@@ -144,6 +149,51 @@ struct ContentView: View {
         self.currentPage = result.page!
         self.xRatio = result.x!
         self.yRatio = result.y!
+    }
+
+    private func shareLogs() {
+        guard let docsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
+
+        let logFile = docsDir.appendingPathComponent("noterPDFReaderDebug.log")
+
+        // 创建一个临时文件（如果需要）
+        if !FileManager.default.fileExists(atPath: logFile.path) {
+            // 创建一个空的日志文件用于演示
+            try? "Debug logs will appear here.".write(to: logFile, atomically: true, encoding: .utf8)
+        }
+
+        // 使用 UIActivityViewController 来分享文件
+        let activityVC = UIActivityViewController(activityItems: [logFile], applicationActivities: nil)
+
+        // 设置完成回调
+        activityVC.completionWithItemsHandler = { activityType, completed, _, error in
+            if let error = error {
+                NSLog("❌ ContentView.swift -> ContentView.shareLog, 分享日志文件时出错: \(error.localizedDescription)")
+                return
+            }
+
+            if completed {
+                NSLog("✅ ContentView.swift -> ContentView.shareLogs, 日志文件分享成功，活动类型: \(String(describing: activityType))")
+            } else {
+                NSLog("✅ ContentView.swift -> ContentView.shareLogs, 用户取消了日志文件分享")
+            }
+        }
+
+        // 在 iPad 上设置弹出位置（如果适用）
+        if let popoverController = activityVC.popoverPresentationController {
+            popoverController.sourceView = UIApplication.shared.windows.first
+            popoverController.sourceRect = CGRect(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height / 2, width: 0, height: 0)
+            popoverController.permittedArrowDirections = []
+        }
+
+        // 显示分享界面
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let rootVC = windowScene.windows.first?.rootViewController
+        else {
+            return
+        }
+
+        rootVC.present(activityVC, animated: true)
     }
 }
 
