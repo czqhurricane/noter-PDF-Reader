@@ -18,25 +18,26 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         // 处理传入的URL
         if let urlContext = connectionOptions.urlContexts.first {
-            NSLog("SceneDelegate scene(_:willConnectTo:options:) 收到 URL 上下文: \(urlContext)")
+            NSLog("✅ SceneDelegate.swift -> SceneDelegate.scene(_:willConnectTo:options:), 收到 URL 上下文: \(urlContext)")
+
             handleIncomingURL(urlContext.url)
         }
     }
 
     func scene(_: UIScene, openURLContexts URLContexts: Set<UIOpenURLContext>) {
-        NSLog("SceneDelegate scene(_:openURLContexts:) 收到 URL 上下文: %@", URLContexts)
-        // NSLog("SceneDelegate scene(_:openURLContexts:) 收到 URL 上下文: \(URLContexts)")
+        NSLog("✅ SceneDelegate.swift -> SceneDelegate.scene(_:openURLContexts:), 收到 URL 上下文: %@", URLContexts)
+
         if let urlContext = URLContexts.first {
-            // NSLog("SceneDelegate handleIncomingURL 准备处理 URL: \(urlContext.url)")
             handleIncomingURL(urlContext.url)
         } else {
-            NSLog("SceneDelegate scene(_:openURLContexts:) 没有收到 URL 上下文")
+            NSLog("❌ SceneDelegate.swift -> SceneDelegate.scene, 没有收到 URL 上下文")
         }
     }
 
     private func handleIncomingURL(_ url: URL) {
         guard let scheme = url.scheme?.lowercased(), scheme == "noterpage" else {
-            NSLog("SceneDelegate handleIncomingURL 不支持的URL方案: \(url.scheme ?? "nil")")
+            NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 不支持的URL方案: \(url.scheme ?? "nil")")
+
             return
         }
 
@@ -51,8 +52,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "()"))
 
-        NSLog("SceneDelegate handleIncomingURL pdfPath: \(pdfPath)")
-        NSLog("SceneDelegate handleIncomingURL fragment: \(fragment)")
+        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, pdfPath: \(pdfPath), fragment: \(fragment)")
 
         var page: Int?
         var xRatio: Double?
@@ -69,28 +69,23 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             }
         }
 
-        NSLog("SceneDelegate handleIncomingURL 解析结果 - 路径: \(pdfPath), 页码: \(page ?? 0), Y: \(yRatio ?? 0), X: \(xRatio ?? 0)")
+        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 解析结果 - 路径: \(pdfPath), 页码: \(page ?? 0), Y: \(yRatio ?? 0), X: \(xRatio ?? 0)")
 
-        // 修改：使用延迟发送通知，确保 ContentView 已完成初始化
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            // 使用静态字符串常量作为通知名称
-            let notificationName = "OpenPDFNotification"
-            NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 正在发送通知: \(notificationName)")
+        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 正在发送通知: OpenPDFNotification")
 
-            // Post notification with extracted values
-            NotificationCenter.default.post(
-              name: NSNotification.Name(notificationName),
-              object: nil,
-              userInfo: [
+        // Post notification with extracted values
+        NotificationCenter.default.post(
+            name: NSNotification.Name("OpenPDFNotification"),
+            object: nil,
+            userInfo: [
                 "pdfPath": pdfPath,
                 "page": page ?? 1,
                 "xRatio": xRatio ?? 0.0,
                 "yRatio": yRatio ?? 0.0,
-              ]
-            )
+            ]
+        )
 
-            // 添加额外的日志确认通知已发送
-            NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 已发送通知: \(notificationName) 带参数 pdfPath=\(pdfPath) page = \(page ?? 0), xRatio = \(xRatio ?? 0) yRatio = \(yRatio ?? 0)")
-        }
+        // 添加额外的日志确认通知已发送
+        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 已发送通知: OpenPDFNotification 带参数 pdfPath=\(pdfPath) page = \(page ?? 0), xRatio = \(xRatio ?? 0) yRatio = \(yRatio ?? 0)")
     }
 }

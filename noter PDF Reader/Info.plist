@@ -97,12 +97,12 @@
     <true />
     <key>UISupportsDocumentBrowser</key>
     <true />
+    <key>NSUbiquitousContainerIsDocumentScopePublic</key>
+    <true />
     <key>NSUbiquitousContainers</key>
     <dict>
       <key>iCloud.com.czqhurricane.noter-PDF-Reader</key>
       <dict>
-        <key>NSUbiquitousContainerIsDocumentScopePublic</key>
-        <true />
         <key>NSUbiquitousContainerName</key>
         <string>
         PDF&#233;&#732;&#8230;&#232;&#175;&#187;&#229;&#8482;&#168;</string>

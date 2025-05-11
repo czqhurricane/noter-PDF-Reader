@@ -9,20 +9,38 @@ struct ContentView: View {
     @State private var currentPage: Int = 1
     @State private var xRatio: Double = 0.0
     @State private var yRatio: Double = 0.0
-    @State private var showDocumentPicker = false
+    @State private var showDirectoryPicker = false
     @State private var showLinkInput = false
     @State private var linkText: String = ""
     @State private var rootFolderURL: URL? = UserDefaults.standard.url(forKey: "RootFolder")
     @State private var isPDFLoaded = false
     @State private var viewPoint: CGPoint = .zero
+    @State private var pdfLoadError: String? = nil
+
+    // 目录访问管理器
+    @StateObject private var directoryManager = DirectoryAccessManager()
 
     var body: some View {
         NavigationView {
             VStack {
                 if let url = pdfURL {
                     ZStack {
-                        PDFKitView(url: url, page: currentPage, xRatio: xRatio, yRatio: yRatio,
-                                   isPDFLoaded: $isPDFLoaded, viewPoint: $viewPoint)
+                        PDFKitView(
+                            url: url,
+                            page: currentPage,
+                            xRatio: xRatio,
+                            yRatio: yRatio,
+                            isPDFLoaded: $isPDFLoaded,
+                            viewPoint: $viewPoint
+                        )
+                        .onAppear {
+                            pdfLoadError = nil
+                        }
+                        .onChange(of: isPDFLoaded) { loaded in
+                            if !loaded {
+                                pdfLoadError = "无法加载PDF文件，请检查文件路径和权限"
+                            }
+                        }
 
                         // if isPDFLoaded {
                         //     ArrowAnnotationView(
@@ -31,19 +49,22 @@ struct ContentView: View {
                         // }
                     }
                 } else {
-                    VStack {
+                    VStack(spacing: 20) {
                         Text("请先设置 PDF 根文件夹")
-                            .font(.title)
+                            .font(.headline)
                             .padding()
 
                         Button(action: {
-                            showDocumentPicker = true
+                            showDirectoryPicker = true
                         }) {
-                            Text("选择 PDF 根文件夹")
-                                .padding()
-                                .background(Color.blue)
-                                .foregroundColor(.white)
-                                .cornerRadius(8)
+                            HStack {
+                                Image(systemName: "folder")
+                                Text("选择 PDF 根文件夹")
+                            }
+                            .padding()
+                            .background(Color.blue)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
                         }
 
                         Button(action: {
@@ -55,14 +76,29 @@ struct ContentView: View {
                                 .foregroundColor(.white)
                                 .cornerRadius(8)
                         }
-                    }
+
+                        // 显示扫描进度
+                        ScanningProgressView(accessManager: directoryManager)
+
+                        if let rootURL = directoryManager.rootDirectoryURL {
+                            Text("已选择目录: \(rootURL.lastPathComponent)")
+                                .padding()
+                        }
+                    }.padding()
+                }
+
+                // 显示错误信息
+                if let error = pdfLoadError {
+                    Text(error)
+                        .foregroundColor(.red)
+                        .padding()
                 }
             }
             .navigationBarTitle("PDF阅读器", displayMode: .inline)
             .navigationBarTitleDisplayMode(.automatic) // Change to automatic
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { showDocumentPicker = true }) {
+                    Button(action: { showDirectoryPicker = true }) {
                         Image(systemName: "doc")
                             .padding(8) // Add padding
                     }
@@ -79,11 +115,11 @@ struct ContentView: View {
                     }
                 }
             }.sheet(isPresented: Binding<Bool>(
-                get: { showLinkInput || showDocumentPicker },
+                get: { showLinkInput || showDirectoryPicker },
                 set: {
                     if !$0 {
                         showLinkInput = false
-                        showDocumentPicker = false
+                        showDirectoryPicker = false
                     }
                 }
             )) {
@@ -94,18 +130,21 @@ struct ContentView: View {
                             showLinkInput = false
                         })
                     } else {
-                        DocumentPicker()
+                        DocumentPicker(accessManager: directoryManager)
                             .onAppear {
+                                // 恢复之前保存的书签
                                 NSLog("✅ ContentView.swift -> ContentView.body, 文件选择器 sheet 显示")
                             }
                             .onDisappear {
-                                showDocumentPicker = false
+                                showDirectoryPicker = false
+
                                 NSLog("❌ ContentView.swift -> ContentView.body, 文件选择器 sheet 不显示")
                             }
                     }
                 }
             }
             .onAppear {
+                directoryManager.restoreSavedBookmarks()
                 setupNotifications()
             }
             .navigationViewStyle(StackNavigationViewStyle())
@@ -113,12 +152,13 @@ struct ContentView: View {
     }
 
     private func setupNotifications() {
-        // 先移除可能存在的旧观察者，避免重复注册
-        NotificationCenter.default.removeObserver(self, name: NSNotification.Name("OpenPDFNotification"), object: nil)
-
         // 使用与 SceneDelegate 相同的通知名称
         let notificationName = "OpenPDFNotification"
-        NSLog("ContentView 正在注册通知观察者: \(notificationName)")
+
+        // 先移除可能存在的旧观察者，避免重复注册
+        NotificationCenter.default.removeObserver(self, name: NSNotification.Name(notificationName), object: nil)
+
+        NSLog("✅ ContentView.swift -> ContentView.setupNotifications, 正在注册通知观察者: \(notificationName)")
 
         NotificationCenter.default.addObserver(
             forName: NSNotification.Name(notificationName),
@@ -131,31 +171,57 @@ struct ContentView: View {
                   let xRatio = userInfo["xRatio"] as? Double,
                   let yRatio = userInfo["yRatio"] as? Double
             else {
+                NSLog("❌ ContentView.swift -> ContentView.setupNotifications, OpenPDFNotification 获取通知参数失败")
+
                 return
             }
 
-            self.convertedPdfPath = PathConverter.convertNoterPagePath(pdfPath)
-            self.pdfURL = URL(fileURLWithPath: self.convertedPdfPath)
+            self.convertedPdfPath = PathConverter.convertNoterPagePath(pdfPath, rootDirectoryURL: self.directoryManager.rootDirectoryURL)
+            // self.pdfURL = URL(fileURLWithPath: self.convertedPdfPath)
             self.currentPage = page
             self.xRatio = xRatio
             self.yRatio = yRatio
 
             NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenPDFNotification 通知参数 - 转换路径: \(self.convertedPdfPath), 页码: \(self.currentPage), Y: \(self.yRatio), X: \(self.xRatio)")
             NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenPDFNotification 通知参数 - 文件路径: \(String(describing: self.pdfURL)), 页码: \(self.currentPage), Y: \(self.yRatio), X: \(self.xRatio)")
+
+            openPDF(at: self.convertedPdfPath, currentPage: page, xRatio: xRatio, yRatio: yRatio)
         }
     }
 
-    private func processMetanoteLink(_ link: String){
+    private func processMetanoteLink(_ link: String) {
         guard let result = PathConverter.parseNoterPageLink(link) else {
             NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 无效的 Metanote 链接")
+
             return
         }
 
-        self.convertedPdfPath = PathConverter.convertNoterPagePath(result.pdfPath)
-        self.pdfURL = URL(fileURLWithPath: convertedPdfPath)
-        self.currentPage = result.page!
-        self.xRatio = result.x!
-        self.yRatio = result.y!
+        convertedPdfPath = PathConverter.convertNoterPagePath(result.pdfPath, rootDirectoryURL: directoryManager.rootDirectoryURL)
+        // self.pdfURL = URL(fileURLWithPath: self.convertedPdfPath)
+        currentPage = result.page!
+        xRatio = result.x!
+        yRatio = result.y!
+
+        NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 转换路径: \(convertedPdfPath), 页码: \(currentPage), Y: \(yRatio), X: \(xRatio)")
+        NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 文件路径: \(String(describing: pdfURL)), 页码: \(currentPage), Y: \(yRatio), X: \(xRatio)")
+
+        openPDF(at: convertedPdfPath, currentPage: result.page!, xRatio: result.x!, yRatio: result.y!)
+    }
+
+    // 打开PDF文件的方法
+    private func openPDF(at convertedPdfPath: String, currentPage: Int, xRatio: Double, yRatio: Double) {
+        if let secureURL = directoryManager.startAccessingFile(at: convertedPdfPath) {
+            pdfURL = secureURL
+            self.currentPage = currentPage
+            self.xRatio = xRatio
+            self.yRatio = yRatio
+
+            NSLog("✅ ContentView.swift -> ContentView.openPDF, 成功打开PDF文件: \(convertedPdfPath)")
+        } else {
+            pdfLoadError = "无法访问文件，请重新选择目录"
+
+            NSLog("❌ ContentView.swift -> ContentView.openPDF, 无法访问文件: \(convertedPdfPath)")
+        }
     }
 
     private func shareLogs() {
@@ -231,45 +297,6 @@ struct LinkInputView: View {
             .navigationBarItems(trailing: Button("取消") {
                 presentationMode.wrappedValue.dismiss()
             })
-        }
-    }
-}
-
-struct DocumentPicker: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let contentTypes = [UTType.folder]
-
-        let picker = UIDocumentPickerViewController(forOpeningContentTypes: contentTypes)
-
-        picker.allowsMultipleSelection = false
-        picker.delegate = context.coordinator
-
-        return picker
-    }
-
-    func updateUIViewController(_: UIDocumentPickerViewController, context _: Context) {}
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(self)
-    }
-
-    class Coordinator: NSObject, UIDocumentPickerDelegate {
-        var parent: DocumentPicker
-
-        init(_ parent: DocumentPicker) {
-            self.parent = parent
-        }
-
-        func documentPicker(_: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) {
-            guard let url = urls.first else { return }
-
-            // Access security-scoped resource
-            let didStartAccessing = url.startAccessingSecurityScopedResource()
-            defer { if didStartAccessing { url.stopAccessingSecurityScopedResource() } }
-
-            // Save folder URL to UserDefaults
-            UserDefaults.standard.set(url, forKey: "RootFolder")
-            NSLog("✅ ContentView.swift -> DocumentPicker.Coordinator.documentPicker, 选择 PDF 根文件夹：\(url.path)")
         }
     }
 }

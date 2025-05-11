@@ -7,17 +7,17 @@ enum PathConverter {
 
     private static let customPath = ""
 
-    static func convertNoterPagePath(_ path: String) -> String {
-        guard let rootFolderURL = UserDefaults.standard.url(forKey: "RootFolder") else {
+    static func convertNoterPagePath(_ path: String, rootDirectoryURL: URL?) -> String {
+        guard let rootURL = rootDirectoryURL else {
             return path.replacingOccurrences(of: originalPath, with: customPath)
         }
-        return path.replacingOccurrences(of: originalPath, with: rootFolderURL.path)
+        return path.replacingOccurrences(of: originalPath, with: rootURL.path)
     }
 
     static func parseNoterPageLink(_ url: String) -> (pdfPath: String, page: Int?, x: Double?, y: Double?)? {
-        guard let decodedString = url.removingPercentEncoding else { return nil}
+        guard let decodedString = url.removingPercentEncoding else { return nil }
         let cleanComponents = decodedString.components(separatedBy: ":")
-        guard cleanComponents.count > 1 else { return nil}
+        guard cleanComponents.count > 1 else { return nil }
         let fullPathFragment = cleanComponents[1...].joined(separator: ":")
         let pathParts = fullPathFragment.components(separatedBy: "#")
         let rawPath = pathParts.first ?? ""
@@ -26,8 +26,7 @@ enum PathConverter {
             .trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "()"))
 
-        NSLog("SceneDelegate handleIncomingURL pdfPath: \(pdfPath)")
-        NSLog("SceneDelegate handleIncomingURL fragment: \(fragment)")
+        NSLog("✅ PathConverter.swift -> PathConverter.parseNoterPageLink, pdfPath: \(pdfPath), fragment: \(fragment)")
 
         var page: Int?
         var xRatio: Double?
@@ -43,8 +42,8 @@ enum PathConverter {
                 xRatio = Double(nsFragment.substring(with: match.range(at: 3)))
             }
         }
+        NSLog("✅ PathConverter.swift -> PathConverter.parseNoterPageLink, 解析结果 - 路径: \(pdfPath), 页码: \(page ?? 0), Y: \(yRatio ?? 0), X: \(xRatio ?? 0)")
 
-        NSLog("SceneDelegate handleIncomingURL 解析结果 - 路径: \(pdfPath), 页码: \(page ?? 0), Y: \(yRatio ?? 0), X: \(xRatio ?? 0)")
         return (pdfPath, page, xRatio, yRatio)
     }
 }

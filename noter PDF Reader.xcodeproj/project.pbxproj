@@ -15,6 +15,8 @@
 		0262EBA82DCB669A00E9CBC8 /* PathConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EBA72DCB669A00E9CBC8 /* PathConverter.swift */; };
 		0262EBAB2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EBAA2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift */; };
 		0262EBAE2DCB66EF00E9CBC8 /* PDFKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EBAD2DCB66EF00E9CBC8 /* PDFKitView.swift */; };
+		02DD375E2DD1F8EF004892E9 /* DocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DD375D2DD1F8EF004892E9 /* DocumentPicker.swift */; };
+		02DD37612DD1F91B004892E9 /* DirectoryAccessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DD37602DD1F91B004892E9 /* DirectoryAccessManager.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -28,6 +30,8 @@
 		0262EBA72DCB669A00E9CBC8 /* PathConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathConverter.swift; sourceTree = "<group>"; };
 		0262EBAA2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrowAnnotationView.swift; sourceTree = "<group>"; };
 		0262EBAD2DCB66EF00E9CBC8 /* PDFKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFKitView.swift; sourceTree = "<group>"; };
+		02DD375D2DD1F8EF004892E9 /* DocumentPicker.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DocumentPicker.swift; sourceTree = "<group>"; };
+		02DD37602DD1F91B004892E9 /* DirectoryAccessManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DirectoryAccessManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -60,6 +64,8 @@
 		0262EB8B2DCB611400E9CBC8 /* noter PDF Reader */ = {
 			isa = PBXGroup;
 			children = (
+				02DD37602DD1F91B004892E9 /* DirectoryAccessManager.swift */,
+				02DD375D2DD1F8EF004892E9 /* DocumentPicker.swift */,
 				0262EB8E2DCB611400E9CBC8 /* ContentView.swift */,
 				0262EB902DCB611800E9CBC8 /* Assets.xcassets */,
 				0262EB952DCB611800E9CBC8 /* Info.plist */,
@@ -151,10 +157,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				0262EBAE2DCB66EF00E9CBC8 /* PDFKitView.swift in Sources */,
+				02DD37612DD1F91B004892E9 /* DirectoryAccessManager.swift in Sources */,
 				0262EBAB2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift in Sources */,
 				0262EBA22DCB662C00E9CBC8 /* AppDelegate.swift in Sources */,
 				0262EB8F2DCB611400E9CBC8 /* ContentView.swift in Sources */,
 				0262EBA52DCB666800E9CBC8 /* SceneDelegate.swift in Sources */,
+				02DD375E2DD1F8EF004892E9 /* DocumentPicker.swift in Sources */,
 				0262EBA82DCB669A00E9CBC8 /* PathConverter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
