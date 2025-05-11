@@ -59,6 +59,11 @@
       <string>UIInterfaceOrientationLandscapeLeft</string>
       <string>UIInterfaceOrientationLandscapeRight</string>
     </array>
+    <key>LSApplicationQueriesSchemes</key>
+    <array>
+      <string>NOTERPAGE</string>
+      <string>noterpage</string>
+    </array>
     <key>CFBundleURLTypes</key>
     <array>
       <dict>
