@@ -113,13 +113,20 @@ struct ContentView: View {
     }
 
     private func setupNotifications() {
+        // 先移除可能存在的旧观察者，避免重复注册
+        NotificationCenter.default.removeObserver(self, name: NSNotification.Name("OpenPDFNotification"), object: nil)
+
+        // 使用与 SceneDelegate 相同的通知名称
+        let notificationName = "OpenPDFNotification"
+        NSLog("ContentView 正在注册通知观察者: \(notificationName)")
+
         NotificationCenter.default.addObserver(
-            forName: NSNotification.Name("OpenPDFNotification"),
+            forName: NSNotification.Name(notificationName),
             object: nil,
             queue: .main
         ) { notification in
             guard let userInfo = notification.userInfo,
-                  let path = userInfo["path"] as? String,
+                  let pdfPath = userInfo["pdfPath"] as? String,
                   let page = userInfo["page"] as? Int,
                   let xRatio = userInfo["xRatio"] as? Double,
                   let yRatio = userInfo["yRatio"] as? Double
@@ -127,7 +134,7 @@ struct ContentView: View {
                 return
             }
 
-            self.convertedPdfPath = PathConverter.convertNoterPagePath(path)
+            self.convertedPdfPath = PathConverter.convertNoterPagePath(pdfPath)
             self.pdfURL = URL(fileURLWithPath: self.convertedPdfPath)
             self.currentPage = page
             self.xRatio = xRatio

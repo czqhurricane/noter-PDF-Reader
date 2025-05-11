@@ -70,16 +70,27 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         }
 
         NSLog("SceneDelegate handleIncomingURL 解析结果 - 路径: \(pdfPath), 页码: \(page ?? 0), Y: \(yRatio ?? 0), X: \(xRatio ?? 0)")
-        // Post notification with extracted values
-        NotificationCenter.default.post(
-            name: NSNotification.Name("OpenPDFNotification"),
-            object: nil,
-            userInfo: [
-                "path": pdfPath,
+
+        // 修改：使用延迟发送通知，确保 ContentView 已完成初始化
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            // 使用静态字符串常量作为通知名称
+            let notificationName = "OpenPDFNotification"
+            NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 正在发送通知: \(notificationName)")
+
+            // Post notification with extracted values
+            NotificationCenter.default.post(
+              name: NSNotification.Name(notificationName),
+              object: nil,
+              userInfo: [
+                "pdfPath": pdfPath,
                 "page": page ?? 1,
                 "xRatio": xRatio ?? 0.0,
                 "yRatio": yRatio ?? 0.0,
-            ]
-        )
+              ]
+            )
+
+            // 添加额外的日志确认通知已发送
+            NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 已发送通知: \(notificationName) 带参数 pdfPath=\(pdfPath) page = \(page ?? 0), xRatio = \(xRatio ?? 0) yRatio = \(yRatio ?? 0)")
+        }
     }
 }
