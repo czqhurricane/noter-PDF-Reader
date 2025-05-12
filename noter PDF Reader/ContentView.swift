@@ -297,6 +297,7 @@ struct LinkInputView: View {
 
                 Button("确定") {
                     onSubmit()
+                    linkText = ""
                     presentationMode.wrappedValue.dismiss()
                 }
                 .padding()
