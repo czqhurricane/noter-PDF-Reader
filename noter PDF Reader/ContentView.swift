@@ -179,6 +179,7 @@ struct ContentView: View {
                         object: nil,
                         userInfo: info
                     )
+
                     SceneDelegate.pendingPDFInfo = nil
 
                     NSLog("✅ ContentView.swift -> ContentView.body, 应用初始化完成后发送 OpenPDFNotification 通知")
@@ -350,6 +351,38 @@ struct LinkInputView: View {
             .navigationBarItems(trailing: Button("取消") {
                 presentationMode.wrappedValue.dismiss()
             })
+        }.onAppear {
+            // 添加通知观察者
+            setupURLNotificationObserver()
+
+            // 检查是否有待处理的 PDF 信息
+            if let info = SceneDelegate.decodedStringInfo {
+                // 使用通知中心发送URL
+                NotificationCenter.default.post(
+                    name: Notification.Name("ReceivedURLNotification"),
+                    object: nil,
+                    userInfo: info
+                )
+
+                SceneDelegate.decodedStringInfo = nil
+
+                NSLog("✅ ContentView.swift -> ContentView.body, 应用初始化完成后发送 ReceivedURLNotification 通知")
+            }
+        }
+    }
+
+    // 添加这个方法来设置通知观察者
+    private func setupURLNotificationObserver() {
+        NotificationCenter.default.addObserver(
+            forName: Notification.Name("ReceivedURLNotification"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            if let url = notification.userInfo?["decodedString"] as? String {
+                self.linkText = url
+
+                NSLog("✅ ContentView.swift -> LinkInputView.setupURLNotificationObserver, 已更新linkText为: \(url)")
+            }
         }
     }
 }

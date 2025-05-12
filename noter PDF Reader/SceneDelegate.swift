@@ -3,6 +3,7 @@ import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     static var pendingPDFInfo: [String: Any]? = nil
+    static var decodedStringInfo: [String: Any]? = nil
 
     var window: UIWindow?
 
@@ -30,9 +31,22 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         NSLog("✅ SceneDelegate.swift -> SceneDelegate.scene(_:openURLContexts:), 收到 URL 上下文: %@", URLContexts)
 
         if let urlContext = URLContexts.first {
-            handleIncomingURL(urlContext.url)
+            let receivedURL = urlContext.url
+
+            handleIncomingURL(receivedURL)
+
+            guard let decodedString = receivedURL.absoluteString.removingPercentEncoding else { return }
+
+            // 使用通知中心发送URL
+            NotificationCenter.default.post(
+                name: Notification.Name("ReceivedURLNotification"),
+                object: nil,
+                userInfo: ["decodedString": decodedString]
+            )
         } else {
             NSLog("❌ SceneDelegate.swift -> SceneDelegate.scene, 没有收到 URL 上下文")
+
+            return
         }
     }
 
@@ -74,10 +88,15 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 解析结果 - 路径: \(pdfPath), 页码: \(page ?? 0), Y: \(yRatio ?? 0), X: \(xRatio ?? 0)")
 
         SceneDelegate.pendingPDFInfo = [
-          "pdfPath": pdfPath,
+            "decodedString": decodedString,
+            "pdfPath": pdfPath,
             "page": page ?? 1,
             "xRatio": xRatio!,
-            "yRatio": yRatio!
+            "yRatio": yRatio!,
+        ]
+
+        SceneDelegate.decodedStringInfo = [
+            "decodedString": decodedString,
         ]
 
         NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 存储 PDF 信息，等待应用初始化完成")
@@ -85,15 +104,15 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 正在发送通知: OpenPDFNotification")
 
         NotificationCenter.default.post(
-              name: NSNotification.Name("OpenPDFNotification"),
-              object: nil,
-              userInfo: [
+            name: NSNotification.Name("OpenPDFNotification"),
+            object: nil,
+            userInfo: [
                 "pdfPath": pdfPath,
                 "page": page,
                 "xRatio": xRatio,
                 "yRatio": yRatio,
-              ]
-            )
+            ]
+        )
 
         // 添加额外的日志确认通知已发送
         NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 已发送通知: OpenPDFNotification 带参数 pdfPath=\(pdfPath) page = \(page ?? 0), xRatio = \(xRatio ?? 0) yRatio = \(yRatio ?? 0)")
