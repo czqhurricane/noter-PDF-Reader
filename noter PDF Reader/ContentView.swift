@@ -16,6 +16,7 @@ struct ContentView: View {
     @State private var isPDFLoaded = false
     @State private var viewPoint: CGPoint = .zero
     @State private var pdfLoadError: String? = nil
+    @State private var originalPathInput: String = UserDefaults.standard.string(forKey: "OriginalPath") ?? ""
 
     // 目录访问管理器
     @StateObject private var directoryManager = DirectoryAccessManager()
@@ -50,9 +51,32 @@ struct ContentView: View {
                     }
                 } else {
                     VStack(spacing: 20) {
-                        Text("请先设置 PDF 根文件夹")
-                            .font(.headline)
-                            .padding()
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            TextField("请输入原始路径", text: $originalPathInput)
+                                .fixedSize(horizontal: true, vertical: false)
+                        }
+
+                        Button {
+                            PathConverter.originalPath = originalPathInput
+                            UserDefaults.standard.set(originalPathInput, forKey: "OriginalPath")
+                        } label: {
+                            HStack {
+                                Image(systemName: "square.and.arrow.down")
+                                Text("保存路径")
+                            }
+                        }
+                        .padding()
+                        .background(Color.gray)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+
+                        Divider()
+                            .padding(.vertical, 8)
+
+                        if let rootURL = directoryManager.rootDirectoryURL {
+                            Text("已选择根文件夹: \(rootURL.lastPathComponent)")
+                                .padding()
+                        }
 
                         Button(action: {
                             showDirectoryPicker = true
@@ -62,27 +86,28 @@ struct ContentView: View {
                                 Text("选择 PDF 根文件夹")
                             }
                             .padding()
-                            .background(Color.blue)
+                            .background(Color.gray)
                             .foregroundColor(.white)
                             .cornerRadius(8)
-                        }
-
-                        Button(action: {
-                            showLinkInput = true
-                        }) {
-                            Text("输入Metanote链接")
-                                .padding()
-                                .background(Color.green)
-                                .foregroundColor(.white)
-                                .cornerRadius(8)
                         }
 
                         // 显示扫描进度
                         ScanningProgressView(accessManager: directoryManager)
 
-                        if let rootURL = directoryManager.rootDirectoryURL {
-                            Text("已选择目录: \(rootURL.lastPathComponent)")
-                                .padding()
+                        Divider()
+                            .padding(.vertical, 8)
+
+                        Button(action: {
+                            showLinkInput = true
+                        }) {
+                            HStack {
+                                Image(systemName: "link")
+                                Text("输入 NOTERPAGE 链接")
+                            }
+                            .padding()
+                            .background(Color.gray)
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
                         }
                     }.padding()
                 }
@@ -94,7 +119,7 @@ struct ContentView: View {
                         .padding()
                 }
             }
-            .navigationBarTitle("PDF阅读器", displayMode: .inline)
+            .navigationBarTitle("PDF 阅读器", displayMode: .inline)
             .navigationBarTitleDisplayMode(.automatic) // Change to automatic
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -150,9 +175,9 @@ struct ContentView: View {
                 // 检查是否有待处理的 PDF 信息
                 if let info = SceneDelegate.pendingPDFInfo {
                     NotificationCenter.default.post(
-                      name: NSNotification.Name("OpenPDFNotification"),
-                      object: nil,
-                      userInfo: info
+                        name: NSNotification.Name("OpenPDFNotification"),
+                        object: nil,
+                        userInfo: info
                     )
                     SceneDelegate.pendingPDFInfo = nil
 
@@ -188,6 +213,12 @@ struct ContentView: View {
                 return
             }
 
+            guard !PathConverter.originalPath.isEmpty else {
+                pdfLoadError = "请先保存需要替换的 PDF 原始路径"
+
+                return
+            }
+
             self.convertedPdfPath = PathConverter.convertNoterPagePath(pdfPath, rootDirectoryURL: self.directoryManager.rootDirectoryURL)
             // self.pdfURL = URL(fileURLWithPath: self.convertedPdfPath)
             self.currentPage = page
@@ -204,6 +235,12 @@ struct ContentView: View {
     private func processMetanoteLink(_ link: String) {
         guard let result = PathConverter.parseNoterPageLink(link) else {
             NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 无效的 Metanote 链接")
+
+            return
+        }
+
+        guard !PathConverter.originalPath.isEmpty else {
+            pdfLoadError = "请先保存需要替换的 PDF 原始路径"
 
             return
         }
@@ -291,13 +328,16 @@ struct LinkInputView: View {
     var body: some View {
         NavigationView {
             VStack {
-                TextField("请输入Metanote链接", text: $linkText)
+                TextEditor(text: $linkText)
+                    .frame(height: 120)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .stroke(Color.gray, lineWidth: 1)
+                    )
                     .padding()
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
 
                 Button("确定") {
                     onSubmit()
-                    linkText = ""
                     presentationMode.wrappedValue.dismiss()
                 }
                 .padding()

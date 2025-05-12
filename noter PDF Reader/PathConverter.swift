@@ -2,9 +2,8 @@ import Foundation
 import UIKit
 
 enum PathConverter {
-    // 原始iCloud路径
-    private static let originalPath = "/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents"
-
+    // 用户配置的原始路径
+    static var originalPath = UserDefaults.standard.string(forKey: "OriginalPath") ?? ""
     private static let customPath = ""
 
     static func convertNoterPagePath(_ path: String, rootDirectoryURL: URL?) -> String {
