@@ -99,7 +99,7 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: { showDirectoryPicker = true }) {
-                        Image(systemName: "doc")
+                        Image(systemName: "folder")
                             .padding(8) // Add padding
                     }
                 }
@@ -111,7 +111,7 @@ struct ContentView: View {
                 }
                 ToolbarItem(placement: .bottomBar) {
                     Button(action: shareLogs) {
-                        Image(systemName: "doc.text.magnifyingglass")
+                        Image(systemName: "archivebox")
                     }
                 }
             }.sheet(isPresented: Binding<Bool>(
