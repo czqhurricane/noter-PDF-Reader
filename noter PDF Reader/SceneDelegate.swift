@@ -81,5 +81,21 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         ]
 
         NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 存储 PDF 信息，等待应用初始化完成")
+
+        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 正在发送通知: OpenPDFNotification")
+
+        NotificationCenter.default.post(
+              name: NSNotification.Name("OpenPDFNotification"),
+              object: nil,
+              userInfo: [
+                "pdfPath": pdfPath,
+                "page": page,
+                "xRatio": xRatio,
+                "yRatio": yRatio,
+              ]
+            )
+
+        // 添加额外的日志确认通知已发送
+        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 已发送通知: OpenPDFNotification 带参数 pdfPath=\(pdfPath) page = \(page ?? 0), xRatio = \(xRatio ?? 0) yRatio = \(yRatio ?? 0)")
     }
 }

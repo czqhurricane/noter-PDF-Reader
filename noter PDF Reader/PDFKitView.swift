@@ -225,6 +225,9 @@ struct PDFKitView: UIViewRepresentable {
         var yRatio: Double { parent.yRatio }
         var parent: PDFKitView
 
+        // 添加计时器属性
+        private var arrowTimer: Timer?
+
         init(_ parent: PDFKitView) {
             self.parent = parent
 
@@ -300,7 +303,7 @@ struct PDFKitView: UIViewRepresentable {
             arrowLayer.position = position
 
             // 根据 PDF 缩放比例调整大小
-            let scale = 1 / pdfView.scaleFactor
+            let scale = 3 / pdfView.scaleFactor
             let rotation = CATransform3DMakeRotation(.pi / 2, 0, 0, 1) // Clockwise 90°
             let scaledRotation = CATransform3DConcat(
                 CATransform3DMakeScale(scale, scale, 1),
@@ -310,11 +313,27 @@ struct PDFKitView: UIViewRepresentable {
 
             // 确保图层可见
             arrowLayer.isHidden = false
+            arrowLayer.opacity = 1.0  // 添加这一行，确保每次都重置不透明度
             arrowLayer.zPosition = 999 // 确保在最上层
 
             CATransaction.commit()
 
             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.updateArrowPosition, 箭头位置更新完成")
+
+            // 取消之前的计时器（如果存在）
+            arrowTimer?.invalidate()
+
+            // 创建新的计时器，10秒后隐藏箭头
+            arrowTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
+                guard let self = self else { return }
+
+                CATransaction.begin()
+                CATransaction.setAnimationDuration(0.5) // 添加淡出动画
+                self.arrowLayer.opacity = 0
+                CATransaction.commit()
+
+                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.updateArrowPosition, 箭头已在10秒后隐藏")
+            }
         }
 
         // PDFViewDelegate方法
@@ -336,6 +355,11 @@ struct PDFKitView: UIViewRepresentable {
             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pdfViewDidLayoutSubviews, PDF 视图完成子视图布局")
 
             updateArrowPosition(pdfView: pdfView)
+        }
+
+        // 在析构函数中清理计时器
+        deinit {
+            arrowTimer?.invalidate()
         }
     }
 }
