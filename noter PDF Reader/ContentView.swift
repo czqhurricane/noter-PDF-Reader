@@ -146,6 +146,18 @@ struct ContentView: View {
             .onAppear {
                 directoryManager.restoreSavedBookmarks()
                 setupNotifications()
+
+                // 检查是否有待处理的 PDF 信息
+                if let info = SceneDelegate.pendingPDFInfo {
+                    NotificationCenter.default.post(
+                      name: NSNotification.Name("OpenPDFNotification"),
+                      object: nil,
+                      userInfo: info
+                    )
+                    SceneDelegate.pendingPDFInfo = nil
+
+                    NSLog("✅ ContentView.swift -> ContentView.body, 应用初始化完成后发送 OpenPDFNotification 通知")
+                }
             }
             .navigationViewStyle(StackNavigationViewStyle())
         }

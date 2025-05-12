@@ -2,6 +2,8 @@ import SwiftUI
 import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
+    static var pendingPDFInfo: [String: Any]? = nil
+
     var window: UIWindow?
 
     func scene(_ scene: UIScene, willConnectTo _: UISceneSession, options connectionOptions: UIScene.ConnectionOptions) {
@@ -71,21 +73,13 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
         NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 解析结果 - 路径: \(pdfPath), 页码: \(page ?? 0), Y: \(yRatio ?? 0), X: \(xRatio ?? 0)")
 
-        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 正在发送通知: OpenPDFNotification")
+        SceneDelegate.pendingPDFInfo = [
+          "pdfPath": pdfPath,
+            "page": page ?? 1,
+            "xRatio": xRatio!,
+            "yRatio": yRatio!
+        ]
 
-        // Post notification with extracted values
-        NotificationCenter.default.post(
-            name: NSNotification.Name("OpenPDFNotification"),
-            object: nil,
-            userInfo: [
-                "pdfPath": pdfPath,
-                "page": page ?? 1,
-                "xRatio": xRatio ?? 0.0,
-                "yRatio": yRatio ?? 0.0,
-            ]
-        )
-
-        // 添加额外的日志确认通知已发送
-        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 已发送通知: OpenPDFNotification 带参数 pdfPath=\(pdfPath) page = \(page ?? 0), xRatio = \(xRatio ?? 0) yRatio = \(yRatio ?? 0)")
+        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 存储 PDF 信息，等待应用初始化完成")
     }
 }
