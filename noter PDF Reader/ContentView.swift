@@ -23,7 +23,7 @@ struct ContentView: View {
 
     var body: some View {
         NavigationView {
-            VStack {
+            ScrollView(.vertical, showsIndicators: true) { VStack {
                 if let url = pdfURL {
                     ZStack {
                         PDFKitView(
@@ -34,6 +34,7 @@ struct ContentView: View {
                             isPDFLoaded: $isPDFLoaded,
                             viewPoint: $viewPoint
                         )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                         .onAppear {
                             pdfLoadError = nil
                         }
@@ -49,30 +50,10 @@ struct ContentView: View {
                         //     )
                         // }
                     }
+                    // 当显示PDF时，设置一个合适的最小高度
+                    .frame(minHeight: UIScreen.main.bounds.height * 0.9)
                 } else {
                     VStack(spacing: 20) {
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            TextField("请输入原始路径", text: $originalPathInput)
-                                .fixedSize(horizontal: true, vertical: false)
-                        }
-
-                        Button {
-                            PathConverter.originalPath = originalPathInput
-                            UserDefaults.standard.set(originalPathInput, forKey: "OriginalPath")
-                        } label: {
-                            HStack {
-                                Image(systemName: "square.and.arrow.down")
-                                Text("保存路径")
-                            }
-                        }
-                        .padding()
-                        .background(Color.gray)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-
-                        Divider()
-                            .padding(.vertical, 8)
-
                         if let rootURL = directoryManager.rootDirectoryURL {
                             Text("已选择根文件夹: \(rootURL.lastPathComponent)")
                                 .padding()
@@ -93,6 +74,28 @@ struct ContentView: View {
 
                         // 显示扫描进度
                         ScanningProgressView(accessManager: directoryManager)
+
+                        Divider()
+                            .padding(.vertical, 8)
+
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            TextField("请输入原始路径", text: $originalPathInput)
+                                .fixedSize(horizontal: true, vertical: false)
+                        }
+
+                        Button {
+                            PathConverter.originalPath = originalPathInput
+                            UserDefaults.standard.set(originalPathInput, forKey: "OriginalPath")
+                        } label: {
+                            HStack {
+                                Image(systemName: "square.and.arrow.down")
+                                Text("保存路径")
+                            }
+                        }
+                        .padding()
+                        .background(Color.gray)
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
 
                         Divider()
                             .padding(.vertical, 8)
@@ -118,6 +121,8 @@ struct ContentView: View {
                         .foregroundColor(.red)
                         .padding()
                 }
+            } // 确保内容填充整个屏幕宽度
+            .frame(maxWidth: .infinity)
             }
             .navigationBarTitle("PDF 阅读器", displayMode: .inline)
             .navigationBarTitleDisplayMode(.automatic) // Change to automatic
@@ -185,7 +190,17 @@ struct ContentView: View {
                     NSLog("✅ ContentView.swift -> ContentView.body, 应用初始化完成后发送 OpenPDFNotification 通知")
                 }
             }
-            .navigationViewStyle(StackNavigationViewStyle())
+        }
+        .navigationViewStyle(StackNavigationViewStyle())
+        .statusBar(hidden: false) // Force show status bar
+        .ignoresSafeArea(.all, edges: .all) // Use full screen space
+        .onAppear {
+            // Lock orientation to portrait initially
+            UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
+        }
+        .onDisappear {
+            // Reset orientation lock
+            UIDevice.current.setValue(UIInterfaceOrientation.unknown.rawValue, forKey: "orientation")
         }
     }
 
