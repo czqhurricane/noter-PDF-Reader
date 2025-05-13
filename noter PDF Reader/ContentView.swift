@@ -128,20 +128,20 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.automatic) // Change to automatic
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: shareLogs) {
+                        Image(systemName: "archivebox")
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showDirectoryPicker = true }) {
                         Image(systemName: "folder")
-                            .padding(8) // Add padding
+                          .padding(8) // Add padding
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showLinkInput = true }) {
                         Image(systemName: "link")
                             .padding(8) // Add padding
-                    }
-                }
-                ToolbarItem(placement: .bottomBar) {
-                    Button(action: shareLogs) {
-                        Image(systemName: "archivebox")
                     }
                 }
             }.sheet(isPresented: Binding<Bool>(
