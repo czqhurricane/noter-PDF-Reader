@@ -283,6 +283,7 @@ struct ContentView: View {
 
             NSLog("✅ ContentView.swift -> ContentView.openPDF, 成功打开PDF文件: \(convertedPdfPath)")
         } else {
+            pdfURL = nil
             pdfLoadError = "无法访问文件，请重新选择目录"
 
             NSLog("❌ ContentView.swift -> ContentView.openPDF, 无法访问文件: \(convertedPdfPath)")
