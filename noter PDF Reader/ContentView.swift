@@ -4,6 +4,7 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ContentView: View {
+    @State private var rawPdfPath: String = ""
     @State private var convertedPdfPath: String = ""
     @State private var pdfURL: URL? = nil
     @State private var currentPage: Int = 1
@@ -14,9 +15,12 @@ struct ContentView: View {
     @State private var linkText: String = ""
     @State private var rootFolderURL: URL? = UserDefaults.standard.url(forKey: "RootFolder")
     @State private var isPDFLoaded = false
-    @State private var viewPoint: CGPoint = .zero
+    @State private var viewPoint: CGPoint = .zero // 用于传递箭头图层坐标至 ArrowAnnotationView
     @State private var pdfLoadError: String? = nil
     @State private var originalPathInput: String = UserDefaults.standard.string(forKey: "OriginalPath") ?? ""
+    @State private var annotation: String = "" // 存储用户输入的注释
+    @State private var isLocationMode = false // 添加这个状态变量
+    @State private var forceRender = true
 
     // 目录访问管理器
     @StateObject private var directoryManager = DirectoryAccessManager()
@@ -31,8 +35,12 @@ struct ContentView: View {
                             page: currentPage,
                             xRatio: xRatio,
                             yRatio: yRatio,
+                            isLocationMode: isLocationMode, // 传递位置选择模式状态
+                            rawPdfPath: rawPdfPath,
                             isPDFLoaded: $isPDFLoaded,
-                            viewPoint: $viewPoint
+                            viewPoint: $viewPoint,
+                            annotation: $annotation,
+                            forceRender: $forceRender
                         )
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                         .onAppear {
@@ -41,6 +49,18 @@ struct ContentView: View {
                         .onChange(of: isPDFLoaded) { loaded in
                             if !loaded {
                                 pdfLoadError = "无法加载PDF文件，请检查文件路径和权限"
+                            }
+                        }
+
+                        if isLocationMode {
+                            VStack {
+                                Spacer()
+                                Text("请点击PDF上的位置来放置箭头")
+                                    .padding()
+                                    .background(Color.black.opacity(0.7))
+                                    .foregroundColor(.white)
+                                    .cornerRadius(8)
+                                    .padding(.bottom, 20)
                             }
                         }
 
@@ -132,10 +152,21 @@ struct ContentView: View {
                         Image(systemName: "archivebox")
                     }
                 }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Group {
+                        if let _ = pdfURL {
+                            Button(action: {
+                                isLocationMode.toggle() // 切换位置选择模式
+                            }) {
+                                Image(systemName: "location")
+                            }
+                        }
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showDirectoryPicker = true }) {
                         Image(systemName: "folder")
-                          .padding(8) // Add padding
+                            .padding(8) // Add padding
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -235,8 +266,8 @@ struct ContentView: View {
                 return
             }
 
+            self.rawPdfPath = pdfPath
             self.convertedPdfPath = PathConverter.convertNoterPagePath(pdfPath, rootDirectoryURL: self.directoryManager.rootDirectoryURL)
-            // self.pdfURL = URL(fileURLWithPath: self.convertedPdfPath)
             self.currentPage = page
             self.xRatio = xRatio
             self.yRatio = yRatio
@@ -261,8 +292,8 @@ struct ContentView: View {
             return
         }
 
-        convertedPdfPath = PathConverter.convertNoterPagePath(result.pdfPath, rootDirectoryURL: directoryManager.rootDirectoryURL)
-        // self.pdfURL = URL(fileURLWithPath: self.convertedPdfPath)
+        rawPdfPath = result.pdfPath
+        convertedPdfPath = PathConverter.convertNoterPagePath(rawPdfPath, rootDirectoryURL: directoryManager.rootDirectoryURL)
         currentPage = result.page!
         xRatio = result.x!
         yRatio = result.y!
@@ -280,6 +311,7 @@ struct ContentView: View {
             self.currentPage = currentPage
             self.xRatio = xRatio
             self.yRatio = yRatio
+            forceRender = true
 
             NSLog("✅ ContentView.swift -> ContentView.openPDF, 成功打开PDF文件: \(convertedPdfPath)")
         } else {

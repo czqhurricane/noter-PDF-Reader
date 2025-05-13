@@ -6,9 +6,13 @@ struct PDFKitView: UIViewRepresentable {
     var page: Int
     var xRatio: Double
     var yRatio: Double
+    var isLocationMode: Bool // 添加这个属性来控制是否处于位置选择模式
+    var rawPdfPath: String
 
     @Binding var isPDFLoaded: Bool
     @Binding var viewPoint: CGPoint
+    @Binding var annotation: String // 绑定到ContentView的注释状态
+    @Binding var forceRender: Bool
 
     func makeUIView(context: Context) -> PDFView {
         NSLog("✅ PDFKitView.swift -> PDFKitView.makeUIView, url : \(String(describing: url))")
@@ -34,6 +38,11 @@ struct PDFKitView: UIViewRepresentable {
         pdfView.displayMode = .singlePage
         pdfView.displayDirection = .vertical
         pdfView.usePageViewController(true)
+
+        // 根据isLocationMode状态决定是否添加手势识别器
+        let tapRecognizer = UITapGestureRecognizer(target: context.coordinator,
+                                                   action: #selector(Coordinator.handleTap(_:)))
+        pdfView.addGestureRecognizer(tapRecognizer)
 
         // 尝试多种方式加载文档
         var document: PDFDocument? = nil
@@ -98,6 +107,18 @@ struct PDFKitView: UIViewRepresentable {
 
     func updateUIView(_ pdfView: PDFView, context: Context) {
         context.coordinator.parent = self
+        context.coordinator.isLocationMode = isLocationMode // 更新协调器中的状态
+
+        let currentState = (url: url, page: page, xRatio: xRatio, yRatio: yRatio, forceRender: forceRender)
+
+        if context.coordinator.previousState == nil ||
+             context.coordinator.previousState! != currentState
+        {
+            self.forceRender = false
+            context.coordinator.previousState = (url: url, page: page, xRatio: xRatio, yRatio: yRatio, forceRender: false)
+        } else {
+            return
+        }
 
         // 如果文档已加载，则不重新加载
         if pdfView.document != nil {
@@ -224,6 +245,9 @@ struct PDFKitView: UIViewRepresentable {
         var xRatio: Double { parent.xRatio }
         var yRatio: Double { parent.yRatio }
         var parent: PDFKitView
+        var isLocationMode: Bool = false // 添加这个属性
+        var currentOutlineString = "" // 新增属性存储当前大纲路径
+        var previousState: (url: URL, page: Int, xRatio: Double, yRatio: Double, forceRender: Bool)?
 
         // 添加计时器属性
         private var arrowTimer: Timer?
@@ -313,7 +337,7 @@ struct PDFKitView: UIViewRepresentable {
 
             // 确保图层可见
             arrowLayer.isHidden = false
-            arrowLayer.opacity = 1.0  // 添加这一行，确保每次都重置不透明度
+            arrowLayer.opacity = 1.0 // 添加这一行，确保每次都重置不透明度
             arrowLayer.zPosition = 999 // 确保在最上层
 
             CATransaction.commit()
@@ -360,6 +384,120 @@ struct PDFKitView: UIViewRepresentable {
         // 在析构函数中清理计时器
         deinit {
             arrowTimer?.invalidate()
+        }
+
+        private func showAnnotationDialog(pdfView: PDFView, selectedText: String) {
+            if let rootViewController = pdfView.window?.rootViewController {
+                let alert = UIAlertController(title: "添加注释", message: nil, preferredStyle: .alert)
+
+                alert.addTextField { textField in
+                    textField.placeholder = "输入您的注释"
+                    textField.text = selectedText
+                }
+
+                let confirmAction = UIAlertAction(title: "确认", style: .default) { _ in
+                    if let text = alert.textFields?.first?.text {
+                        DispatchQueue.main.async {
+                            // 获取PDF路径、页码、坐标和大纲路径
+                            let pdfPath = self.parent.rawPdfPath
+                            let pageNumber = (pdfView.currentPage?.pageRef?.pageNumber ?? 0) + 1 // PDF页码从1开始
+                            let xRatio = self.parent.xRatio
+                            let yRatio = self.parent.yRatio
+                            let outlineString = self.currentOutlineString
+
+                            // 格式化注释内容
+                            let formattedAnnotation = "[[NOTERPAGE:\(pdfPath)#(\(pageNumber) \(yRatio) . \(xRatio))][\(text) < \(outlineString)]]"
+
+                            self.parent.annotation = formattedAnnotation
+
+                            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 保存注释: \(formattedAnnotation)")
+                        }
+                    }
+                }
+
+                let cancelAction = UIAlertAction(title: "取消", style: .cancel) {
+                    _ in NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 注释输入已取消")
+                }
+
+                alert.addAction(confirmAction)
+                alert.addAction(cancelAction)
+
+                rootViewController.present(alert, animated: true)
+            }
+        }
+
+        @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
+            guard let pdfView = recognizer.view as? PDFView else { return }
+
+            // Then check location mode
+            guard isLocationMode else {
+                return
+            }
+
+            let location = recognizer.location(in: pdfView)
+            guard let page = pdfView.currentPage else { return }
+
+            // Convert tap location to PDF page coordinates
+            let pdfPoint = pdfView.convert(location, to: page)
+            let pageBounds = page.bounds(for: .mediaBox)
+
+            // Calculate ratios
+            let xRatio = Double(pdfPoint.x / pageBounds.width)
+            let yRatio = Double(1 - (pdfPoint.y / pageBounds.height)) // Flip Y axis
+
+            // Update position and show arrow
+            parent.xRatio = xRatio
+            parent.yRatio = yRatio
+            updateArrowPosition(pdfView: pdfView)
+
+            // Log outline hierarchy
+            if let document = pdfView.document {
+                var hierarchy: [String] = []
+
+                func logOutlineHierarchy(_ outline: PDFOutline) {
+                    if let destination = outline.destination, destination.page == page {
+                        let reversedHierarchy = Array(hierarchy.reversed())
+                        let fileName = document.documentURL?.lastPathComponent ?? "unknown.pdf"
+                        let outlineString = (reversedHierarchy + [outline.label ?? "", fileName])
+                            .filter { !$0.isEmpty }
+                            .joined(separator: " < ")
+
+                        NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.handleTap.logOutlineHierarchy, 当前页面大纲层级: \(outlineString)")
+                        currentOutlineString = outlineString // 存储当前大纲路径
+                    }
+
+                    hierarchy.append(outline.label ?? "")
+                    for i in 0 ..< outline.numberOfChildren {
+                        if let child = outline.child(at: i) {
+                            logOutlineHierarchy(child)
+                        }
+                    }
+                    hierarchy.removeLast()
+                }
+
+                if let root = document.outlineRoot {
+                    logOutlineHierarchy(root)
+                } else {
+                    NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.handleTap, 当前 PDF 文档没有大纲目录")
+                }
+            }
+
+            // Reset auto-hide timer
+            arrowTimer?.invalidate()
+            arrowTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { _ in
+                CATransaction.begin()
+                CATransaction.setAnimationDuration(0.5)
+                self.arrowLayer.opacity = 0
+                CATransaction.commit()
+            }
+
+            // Check for text selection first
+            if let selectedText = pdfView.currentSelection?.string, !selectedText.isEmpty {
+                showAnnotationDialog(pdfView: pdfView, selectedText: selectedText)
+            } else {
+                // Show annotation dialog
+                showAnnotationDialog(pdfView: pdfView, selectedText: "")
+            }
         }
     }
 }
