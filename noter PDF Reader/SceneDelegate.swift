@@ -91,8 +91,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             "decodedString": decodedString,
             "pdfPath": pdfPath,
             "page": page ?? 1,
-            "xRatio": xRatio!,
-            "yRatio": yRatio!,
+            "xRatio": xRatio ?? 0.0,
+            "yRatio": yRatio ?? 0.0,
         ]
 
         SceneDelegate.decodedStringInfo = [
@@ -108,9 +108,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             object: nil,
             userInfo: [
                 "pdfPath": pdfPath,
-                "page": page,
-                "xRatio": xRatio,
-                "yRatio": yRatio,
+                "page": page ?? 0,
+                "xRatio": xRatio ?? 0.0,
+                "yRatio": yRatio ?? 0.0,
             ]
         )
 
