@@ -456,9 +456,10 @@ struct PDFKitView: UIViewRepresentable {
 
                 func logOutlineHierarchy(_ outline: PDFOutline) {
                     if let destination = outline.destination, destination.page == page {
-                        let reversedHierarchy = Array(hierarchy.reversed())
+                        let fullHierarchy = hierarchy + [outline.label ?? ""]
+                        let reversedHierarchy = Array(fullHierarchy.reversed())
                         let fileName = document.documentURL?.lastPathComponent ?? "unknown.pdf"
-                        let outlineString = (reversedHierarchy + [outline.label ?? "", fileName])
+                        let outlineString = (reversedHierarchy + [fileName])
                             .filter { !$0.isEmpty }
                             .joined(separator: " < ")
 
