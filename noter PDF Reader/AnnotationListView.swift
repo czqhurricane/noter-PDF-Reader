@@ -14,6 +14,10 @@ struct AnnotationListView: View {
                         Text(extractedAnnotation(annotation))
                             .font(.body)
                             .lineLimit(2)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                extractAndHandleNOTERPAGE(from: annotation)
+                            }
                             .contextMenu {
                                 Button(action: {
                                     UIPasteboard.general.string = annotation
@@ -90,10 +94,53 @@ struct AnnotationListView: View {
         selectedAnnotations.removeAll()
     }
 
+    private func extractAndHandleNOTERPAGE(from annotation: String) {
+        // Extract the NOTERPAGE portion from the annotation string
+        let components = annotation.components(separatedBy: ")][")
+        guard components.count > 1 else { return }
+
+        let noterpagePart = components[0]
+            .replacingOccurrences(of: "[[NOTERPAGE:", with: "NOTERPAGE:")
+
+        // Close the annotation list and pass the NOTERPAGE link
+        presentationMode.wrappedValue.dismiss()
+
+        processAnnotationLink(noterpagePart)
+    }
+
     private func copySelectedAnnotations() {
         let selectedTexts = annotations.filter { selectedAnnotations.contains($0) }
         if !selectedTexts.isEmpty {
             UIPasteboard.general.string = selectedTexts.joined(separator: "\n\n")
         }
+    }
+
+    private func processAnnotationLink(_ link: String) {
+        guard let result = PathConverter.parseNoterPageLink(link) else {
+            NSLog("❌ AnnotationListView.swift -> AnnotationListView.processAnnotationLink, 无效的 Metanote 链接")
+
+            return
+        }
+
+        let rawPdfPath = result.pdfPath
+        let convertedPdfPath = PathConverter.convertNoterPagePath(rawPdfPath, rootDirectoryURL: nil)
+        let pdfURL = URL(fileURLWithPath: convertedPdfPath)
+        let currentPage = result.page ?? 0
+        let xRatio = result.x ?? 0.0
+        let yRatio = result.y ?? 0.0
+
+        NSLog("✅ ContentView.swift -> ContentView.processAnnotationLink, 转换路径: \(convertedPdfPath), 页码: \(currentPage), yRatio: \(yRatio), xRatio: \(xRatio)")
+        NSLog("✅ ContentView.swift -> ContentView.processAnnotationLink, 文件路径: \(String(describing: pdfURL)), 页码: \(currentPage), yRatio: \(yRatio), xRatio: \(xRatio)")
+
+        NotificationCenter.default.post(
+          name: NSNotification.Name("OpenPDFNotification"),
+          object: nil,
+          userInfo: [
+            "pdfPath": rawPdfPath,
+            "page": currentPage,
+            "xRatio": xRatio,
+            "yRatio": yRatio,
+          ]
+        )
     }
 }
