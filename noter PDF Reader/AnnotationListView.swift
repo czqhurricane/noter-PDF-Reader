@@ -41,7 +41,21 @@ struct AnnotationListView: View {
             .toolbar {
                 ToolbarItem(placement: .bottomBar) {
                     if editMode.isEditing {
-                        Button("删除", action: deleteSelectedAnnotations)
+                        HStack(spacing: 20) {
+                            Button(action: copySelectedAnnotations) {
+                                HStack {
+                                    Image(systemName: "doc.on.doc")
+                                    Text("复制")
+                                }
+                            }
+                            Spacer()
+                            Button(action: deleteSelectedAnnotations) {
+                                HStack {
+                                    Image(systemName: "trash")
+                                    Text("删除")
+                                }
+                            }
+                        }.padding(.horizontal)
                     }
                 }
             }
@@ -74,5 +88,12 @@ struct AnnotationListView: View {
         annotations.removeAll { selectedAnnotations.contains($0) }
         UserDefaults.standard.set(annotations, forKey: "SavedAnnotations")
         selectedAnnotations.removeAll()
+    }
+
+    private func copySelectedAnnotations() {
+        let selectedTexts = annotations.filter { selectedAnnotations.contains($0) }
+        if !selectedTexts.isEmpty {
+            UIPasteboard.general.string = selectedTexts.joined(separator: "\n\n")
+        }
     }
 }
