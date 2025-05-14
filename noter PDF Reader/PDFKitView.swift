@@ -409,6 +409,11 @@ struct PDFKitView: UIViewRepresentable {
                             let formattedAnnotation = "[[NOTERPAGE:\(pdfPath)#(\(pageNumber) \(yRatio) . \(xRatio))][\(text) < \(outlineString)]]"
 
                             self.parent.annotation = formattedAnnotation
+                            
+                            // 持久化保存到UserDefaults
+                            var annotations = UserDefaults.standard.stringArray(forKey: "SavedAnnotations") ?? []
+                            annotations.append(formattedAnnotation)
+                            UserDefaults.standard.set(annotations, forKey: "SavedAnnotations")
 
                             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 保存注释: \(formattedAnnotation)")
                         }

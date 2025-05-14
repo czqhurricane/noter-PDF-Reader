@@ -21,6 +21,7 @@ struct ContentView: View {
     @State private var annotation: String = "" // 存储用户输入的注释
     @State private var isLocationMode = false // 添加这个状态变量
     @State private var forceRender = true
+    @State private var showAnnotations = false
 
     // 目录访问管理器
     @StateObject private var directoryManager = DirectoryAccessManager()
@@ -145,7 +146,7 @@ struct ContentView: View {
             .frame(maxWidth: .infinity)
             }
             .navigationBarTitle("PDF 阅读器", displayMode: .inline)
-            .navigationBarTitleDisplayMode(.automatic) // Change to automatic
+            .navigationBarTitleDisplayMode(.automatic)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: shareLogs) {
@@ -153,6 +154,11 @@ struct ContentView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { showAnnotations = true }) {
+                        Image(systemName: "list.bullet")
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Group {
                         if let _ = pdfURL {
                             Button(action: {
@@ -223,7 +229,10 @@ struct ContentView: View {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        .statusBar(hidden: false) // Force show status bar
+        .statusBar(hidden: false)
+        .sheet(isPresented: $showAnnotations) {
+            AnnotationListView()
+        }
         .ignoresSafeArea(.all, edges: .all) // Use full screen space
         .onAppear {
             // Lock orientation to portrait initially

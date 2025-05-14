@@ -16,6 +16,7 @@
 		0262EBAB2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EBAA2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift */; };
 		0262EBAE2DCB66EF00E9CBC8 /* PDFKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EBAD2DCB66EF00E9CBC8 /* PDFKitView.swift */; };
 		02C684AF2DD46F8E00576619 /* LinkInputView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02C684AE2DD46F8E00576619 /* LinkInputView.swift */; };
+		02C684B22DD487C900576619 /* AnnotationListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02C684B12DD487C900576619 /* AnnotationListView.swift */; };
 		02DD375E2DD1F8EF004892E9 /* DocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DD375D2DD1F8EF004892E9 /* DocumentPicker.swift */; };
 		02DD37612DD1F91B004892E9 /* DirectoryAccessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DD37602DD1F91B004892E9 /* DirectoryAccessManager.swift */; };
 /* End PBXBuildFile section */
@@ -32,6 +33,7 @@
 		0262EBAA2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrowAnnotationView.swift; sourceTree = "<group>"; };
 		0262EBAD2DCB66EF00E9CBC8 /* PDFKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFKitView.swift; sourceTree = "<group>"; };
 		02C684AE2DD46F8E00576619 /* LinkInputView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LinkInputView.swift; sourceTree = "<group>"; };
+		02C684B12DD487C900576619 /* AnnotationListView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AnnotationListView.swift; sourceTree = "<group>"; };
 		02DD375D2DD1F8EF004892E9 /* DocumentPicker.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DocumentPicker.swift; sourceTree = "<group>"; };
 		02DD37602DD1F91B004892E9 /* DirectoryAccessManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DirectoryAccessManager.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -70,6 +72,7 @@
 				02DD37602DD1F91B004892E9 /* DirectoryAccessManager.swift */,
 				02DD375D2DD1F8EF004892E9 /* DocumentPicker.swift */,
 				0262EB8E2DCB611400E9CBC8 /* ContentView.swift */,
+				02C684B12DD487C900576619 /* AnnotationListView.swift */,
 				0262EB902DCB611800E9CBC8 /* Assets.xcassets */,
 				0262EB952DCB611800E9CBC8 /* Info.plist */,
 				0262EB922DCB611800E9CBC8 /* Preview Content */,
@@ -164,6 +167,7 @@
 				0262EBAB2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift in Sources */,
 				0262EBA22DCB662C00E9CBC8 /* AppDelegate.swift in Sources */,
 				02C684AF2DD46F8E00576619 /* LinkInputView.swift in Sources */,
+				02C684B22DD487C900576619 /* AnnotationListView.swift in Sources */,
 				0262EB8F2DCB611400E9CBC8 /* ContentView.swift in Sources */,
 				0262EBA52DCB666800E9CBC8 /* SceneDelegate.swift in Sources */,
 				02DD375E2DD1F8EF004892E9 /* DocumentPicker.swift in Sources */,
