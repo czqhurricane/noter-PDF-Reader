@@ -251,6 +251,8 @@ struct PDFKitView: UIViewRepresentable {
 
         // 添加计时器属性
         private var arrowTimer: Timer?
+        private var lastTapXRatio: Double = 0
+        private var lastTapYRatio: Double = 0
 
         init(_ parent: PDFKitView) {
             self.parent = parent
@@ -368,7 +370,7 @@ struct PDFKitView: UIViewRepresentable {
         func pdfViewDidEndPageChange(_ pdfView: PDFView) {
             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pdfViewDidEndPageChange, PDF 页面切换完成")
 
-            updateArrowPosition(pdfView: pdfView)
+            // updateArrowPosition(pdfView: pdfView)
         }
 
         func pdfViewDidEndDisplayingPage(_: PDFView, page: PDFPage) {
@@ -378,7 +380,7 @@ struct PDFKitView: UIViewRepresentable {
         func pdfViewDidLayoutSubviews(_ pdfView: PDFView) {
             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pdfViewDidLayoutSubviews, PDF 视图完成子视图布局")
 
-            updateArrowPosition(pdfView: pdfView)
+            // updateArrowPosition(pdfView: pdfView)
         }
 
         // 在析构函数中清理计时器
@@ -401,8 +403,9 @@ struct PDFKitView: UIViewRepresentable {
                             // 获取PDF路径、页码、坐标和大纲路径
                             let pdfPath = self.parent.rawPdfPath
                             let pageNumber = (pdfView.currentPage?.pageRef?.pageNumber ?? 0)
-                            let xRatio = self.parent.xRatio
-                            let yRatio = self.parent.yRatio
+                            // 使用存储的值
+                            let xRatio = self.lastTapXRatio
+                            let yRatio = self.lastTapYRatio
                             let outlineString = self.currentOutlineString
 
                             // 格式化注释内容
@@ -415,6 +418,7 @@ struct PDFKitView: UIViewRepresentable {
                             annotations.append(formattedAnnotation)
                             UserDefaults.standard.set(annotations, forKey: "SavedAnnotations")
 
+                            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 新建注释使用的比例 - xRatio: \(xRatio), yRatio: \(yRatio)")
                             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 保存注释: \(formattedAnnotation)")
                         }
                     }
@@ -450,9 +454,18 @@ struct PDFKitView: UIViewRepresentable {
             let xRatio = Double(pdfPoint.x / pageBounds.width)
             let yRatio = Double(1 - (pdfPoint.y / pageBounds.height)) // Flip Y axis
 
+            // 保存到存储属性
+            lastTapXRatio = xRatio
+            lastTapYRatio = yRatio
+
             // Update position and show arrow
             parent.xRatio = xRatio
             parent.yRatio = yRatio
+
+            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.handleTap, handleTap 计算的比例 - xRatio: \(xRatio), yRatio: \(yRatio)")
+            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.handleTap, handleTap 更新后的 self 中的计算属性 - xRatio: \(self.xRatio), yRatio: \(self.yRatio)")
+            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.handleTap, handleTap 更新后的 parent 中的计算属性 - xRatio: \(parent.xRatio), yRatio: \(parent.yRatio)")
+
             updateArrowPosition(pdfView: pdfView)
 
             // Log outline hierarchy
