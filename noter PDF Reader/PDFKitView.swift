@@ -400,26 +400,29 @@ struct PDFKitView: UIViewRepresentable {
                 let confirmAction = UIAlertAction(title: "确认", style: .default) { _ in
                     if let text = alert.textFields?.first?.text {
                         DispatchQueue.main.async {
-                            // 获取PDF路径、页码、坐标和大纲路径
-                            let pdfPath = self.parent.rawPdfPath
-                            let pageNumber = (pdfView.currentPage?.pageRef?.pageNumber ?? 0)
-                            // 使用存储的值
-                            let xRatio = self.lastTapXRatio
-                            let yRatio = self.lastTapYRatio
-                            let outlineString = self.currentOutlineString
+                            if let document = pdfView.document {
+                                let fileName = document.documentURL?.lastPathComponent ?? "unknown.pdf"
+                                // 获取PDF路径、页码、坐标和大纲路径
+                                let pdfPath = self.parent.rawPdfPath
+                                let pageNumber = (pdfView.currentPage?.pageRef?.pageNumber ?? 0)
+                                // 使用存储的值
+                                let xRatio = self.lastTapXRatio
+                                let yRatio = self.lastTapYRatio
+                                let outlineString = self.currentOutlineString
 
-                            // 格式化注释内容
-                            let formattedAnnotation = "[[NOTERPAGE:\(pdfPath)#(\(pageNumber) \(yRatio) . \(xRatio))][\(text) < \(outlineString)]]"
+                                // 格式化注释内容
+                                let formattedAnnotation = "[[NOTERPAGE:\(pdfPath)#(\(pageNumber) \(yRatio) . \(xRatio))][\(text) < \(self.currentOutlineString.isEmpty ? fileName : self.currentOutlineString)]]"
 
-                            self.parent.annotation = formattedAnnotation
+                                self.parent.annotation = formattedAnnotation
 
-                            // 持久化保存到UserDefaults
-                            var annotations = UserDefaults.standard.stringArray(forKey: "SavedAnnotations") ?? []
-                            annotations.append(formattedAnnotation)
-                            UserDefaults.standard.set(annotations, forKey: "SavedAnnotations")
+                                // 持久化保存到UserDefaults
+                                var annotations = UserDefaults.standard.stringArray(forKey: "SavedAnnotations") ?? []
+                                annotations.append(formattedAnnotation)
+                                UserDefaults.standard.set(annotations, forKey: "SavedAnnotations")
 
-                            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 新建注释使用的比例 - xRatio: \(xRatio), yRatio: \(yRatio)")
-                            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 保存注释: \(formattedAnnotation)")
+                                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 新建注释使用的比例 - xRatio: \(xRatio), yRatio: \(yRatio)")
+                                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 保存注释: \(formattedAnnotation)")
+                            }
                         }
                     }
                 }
