@@ -281,8 +281,8 @@ struct ContentView: View {
             self.xRatio = xRatio
             self.yRatio = yRatio
 
-            NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenPDFNotification 通知参数 - 转换路径: \(self.convertedPdfPath), 页码: \(self.currentPage), Y: \(self.yRatio), X: \(self.xRatio)")
-            NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenPDFNotification 通知参数 - 文件路径: \(String(describing: self.pdfURL)), 页码: \(self.currentPage), Y: \(self.yRatio), X: \(self.xRatio)")
+            NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenPDFNotification 通知参数 - 转换路径: \(self.convertedPdfPath), 页码: \(self.currentPage), yRatio: \(self.yRatio), xRatio: \(self.xRatio)")
+            NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenPDFNotification 通知参数 - 文件路径: \(String(describing: self.pdfURL)), 页码: \(self.currentPage), yRatio: \(self.yRatio), xRatio: \(self.xRatio)")
 
             openPDF(at: self.convertedPdfPath, currentPage: page, xRatio: xRatio, yRatio: yRatio)
         }
@@ -307,8 +307,8 @@ struct ContentView: View {
         xRatio = result.x!
         yRatio = result.y!
 
-        NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 转换路径: \(convertedPdfPath), 页码: \(currentPage), Y: \(yRatio), X: \(xRatio)")
-        NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 文件路径: \(String(describing: pdfURL)), 页码: \(currentPage), Y: \(yRatio), X: \(xRatio)")
+        NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 转换路径: \(convertedPdfPath), 页码: \(currentPage), yRatio: \(yRatio), xRatio: \(xRatio)")
+        NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 文件路径: \(String(describing: pdfURL)), 页码: \(currentPage), yRatio: \(yRatio), xRatio: \(xRatio)")
 
         openPDF(at: convertedPdfPath, currentPage: result.page!, xRatio: result.x!, yRatio: result.y!)
     }
