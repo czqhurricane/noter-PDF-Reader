@@ -112,9 +112,9 @@ struct PDFKitView: UIViewRepresentable {
         let currentState = (url: url, page: page, xRatio: xRatio, yRatio: yRatio, forceRender: forceRender)
 
         if context.coordinator.previousState == nil ||
-             context.coordinator.previousState! != currentState
+            context.coordinator.previousState! != currentState
         {
-            self.forceRender = false
+            forceRender = false
             context.coordinator.previousState = (url: url, page: page, xRatio: xRatio, yRatio: yRatio, forceRender: false)
         } else {
             return
@@ -367,7 +367,7 @@ struct PDFKitView: UIViewRepresentable {
             // 处理PDF内部链接点击
         }
 
-        func pdfViewDidEndPageChange(_ pdfView: PDFView) {
+        func pdfViewDidEndPageChange(_: PDFView) {
             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pdfViewDidEndPageChange, PDF 页面切换完成")
 
             // updateArrowPosition(pdfView: pdfView)
@@ -377,7 +377,7 @@ struct PDFKitView: UIViewRepresentable {
             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pdfViewDidEndDisplayingPage, PDF 页面显示结束: \(page)")
         }
 
-        func pdfViewDidLayoutSubviews(_ pdfView: PDFView) {
+        func pdfViewDidLayoutSubviews(_: PDFView) {
             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pdfViewDidLayoutSubviews, PDF 视图完成子视图布局")
 
             // updateArrowPosition(pdfView: pdfView)
