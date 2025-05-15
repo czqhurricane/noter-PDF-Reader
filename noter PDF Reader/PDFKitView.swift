@@ -400,7 +400,7 @@ struct PDFKitView: UIViewRepresentable {
                         DispatchQueue.main.async {
                             // 获取PDF路径、页码、坐标和大纲路径
                             let pdfPath = self.parent.rawPdfPath
-                            let pageNumber = (pdfView.currentPage?.pageRef?.pageNumber ?? 0) + 1 // PDF页码从1开始
+                            let pageNumber = (pdfView.currentPage?.pageRef?.pageNumber ?? 0)
                             let xRatio = self.parent.xRatio
                             let yRatio = self.parent.yRatio
                             let outlineString = self.currentOutlineString
@@ -409,7 +409,7 @@ struct PDFKitView: UIViewRepresentable {
                             let formattedAnnotation = "[[NOTERPAGE:\(pdfPath)#(\(pageNumber) \(yRatio) . \(xRatio))][\(text) < \(outlineString)]]"
 
                             self.parent.annotation = formattedAnnotation
-                            
+
                             // 持久化保存到UserDefaults
                             var annotations = UserDefaults.standard.stringArray(forKey: "SavedAnnotations") ?? []
                             annotations.append(formattedAnnotation)
