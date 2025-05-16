@@ -7,8 +7,10 @@ struct AnnotationListView: View {
     @State private var selectedAnnotations = Set<String>()
 
     var body: some View {
+       // ... existing code ...
         NavigationView {
-            List(selection: $selectedAnnotations) {
+            VStack {
+                List(selection: $selectedAnnotations) {
                 ForEach(annotations, id: \.self) { annotation in
                     VStack(alignment: .leading) {
                         Text(extractedAnnotation(annotation))
@@ -31,39 +33,53 @@ struct AnnotationListView: View {
                 }
                 .onDelete(perform: deleteAnnotations)
             }
-            .navigationBarTitle("保存的注释", displayMode: .inline)
-            .navigationBarItems(
-                leading: EditButton(),
-                trailing: Button("收起") {
-                    presentationMode.wrappedValue.dismiss()
+                .navigationBarTitle("保存的注释", displayMode: .inline)
+                .navigationBarItems(
+                    leading: EditButton(),
+                    trailing: Button("收起") {
+                        presentationMode.wrappedValue.dismiss()
+                    }
+                )
+                .environment(\.editMode, $editMode)
+
+                // 自定义底部工具栏
+                if editMode.isEditing {
+                    HStack(spacing: 20) {
+                        Button(action: copySelectedAnnotations) {
+                            VStack(spacing: 4) {
+                                Image(systemName: "doc.on.doc")
+                                    .font(.system(size: 20))
+                                Text("复制")
+                                    .font(.caption)
+                            }
+                            .frame(minWidth: 80)
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
+
+                        Spacer()
+
+                        Button(action: deleteSelectedAnnotations) {
+                            VStack(spacing: 4) {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 20))
+                                Text("删除")
+                                    .font(.caption)
+                            }
+                            .frame(minWidth: 80)
+                        }
+                        .buttonStyle(BorderlessButtonStyle())
+                        .foregroundColor(.red)
+                    }
+                    .padding()
+                    .background(Color(UIColor.systemBackground))
+                    .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: -1)
                 }
-            )
-            .environment(\.editMode, $editMode)
+            }
             .onAppear {
                 loadAnnotations()
             }
-            .toolbar {
-                ToolbarItem(placement: .bottomBar) {
-                    if editMode.isEditing {
-                        HStack(spacing: 20) {
-                            Button(action: copySelectedAnnotations) {
-                                HStack {
-                                    Image(systemName: "doc.on.doc")
-                                    Text("复制")
-                                }
-                            }
-                            Spacer()
-                            Button(action: deleteSelectedAnnotations) {
-                                HStack {
-                                    Image(systemName: "trash")
-                                    Text("删除")
-                                }
-                            }
-                        }.padding(.horizontal)
-                    }
-                }
-            }
         }
+// ... existing code ...
     }
 
     private func loadAnnotations() {
@@ -110,9 +126,18 @@ struct AnnotationListView: View {
 
     private func copySelectedAnnotations() {
         let selectedTexts = annotations.filter { selectedAnnotations.contains($0) }
+
         if !selectedTexts.isEmpty {
-            UIPasteboard.general.string = selectedTexts.joined(separator: "\n\n")
+            DispatchQueue.main.async {
+                UIPasteboard.general.string = selectedTexts.joined(separator: "\n\n")
+
+                // 添加触觉反馈
+                let generator = UINotificationFeedbackGenerator()
+                generator.notificationOccurred(.success)
+            }
         }
+
+        NSLog("✅ AnnotationListView.swift -> AnnotationListView.copySelectedAnnotations, selectedTexts: \(selectedTexts)")
     }
 
     private func processAnnotationLink(_ link: String) {
