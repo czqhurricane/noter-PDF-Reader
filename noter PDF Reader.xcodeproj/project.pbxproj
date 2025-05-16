@@ -149,7 +149,6 @@
 			);
 			mainGroup = 0262EB802DCB611400E9CBC8;
 			packageReferences = (
-				022A7C972DD68A3400CAA334 /* XCRemoteSwiftPackageReference "swift-lispkit" */,
 			);
 			productRefGroup = 0262EB8A2DCB611400E9CBC8 /* Products */;
 			projectDirPath = "";
@@ -379,17 +378,6 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		022A7C972DD68A3400CAA334 /* XCRemoteSwiftPackageReference "swift-lispkit" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/objecthub/swift-lispkit.git";
-			requirement = {
-				kind = exactVersion;
-				version = 1.9.2;
-			};
-		};
-/* End XCRemoteSwiftPackageReference section */
 	};
 	rootObject = 0262EB812DCB611400E9CBC8 /* Project object */;
 }

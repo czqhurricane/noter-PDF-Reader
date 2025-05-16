@@ -411,7 +411,7 @@ struct PDFKitView: UIViewRepresentable {
                                 let outlineString = self.currentOutlineString
 
                                 // 格式化注释内容
-                                let formattedAnnotation = "[[NOTERPAGE:\(pdfPath)#(\(pageNumber) \(yRatio) . \(xRatio))][\(text) < \(self.currentOutlineString.isEmpty ? fileName : self.currentOutlineString)]]"
+                                let formattedAnnotation = "[[NOTERPAGE:\(pdfPath)#(\(pageNumber) \(yRatio) . \(xRatio))][\(text) < \(outlineString.isEmpty ? fileName : outlineString)]]"
 
                                 self.parent.annotation = formattedAnnotation
 

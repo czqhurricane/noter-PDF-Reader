@@ -7,32 +7,31 @@ struct AnnotationListView: View {
     @State private var selectedAnnotations = Set<String>()
 
     var body: some View {
-       // ... existing code ...
         NavigationView {
             VStack {
                 List(selection: $selectedAnnotations) {
-                ForEach(annotations, id: \.self) { annotation in
-                    VStack(alignment: .leading) {
-                        Text(extractedAnnotation(annotation))
-                            .font(.body)
-                            .lineLimit(2)
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                extractAndHandleNOTERPAGE(from: annotation)
-                            }
-                            .contextMenu {
-                                Button(action: {
-                                    UIPasteboard.general.string = annotation
-                                }) {
-                                    Text("复制")
-                                    Image(systemName: "doc.on.doc")
+                    ForEach(annotations, id: \.self) { annotation in
+                        VStack(alignment: .leading) {
+                            Text(extractedAnnotation(annotation))
+                                .font(.body)
+                                .lineLimit(2)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    extractAndHandleNOTERPAGE(from: annotation)
                                 }
-                            }
+                                .contextMenu {
+                                    Button(action: {
+                                        UIPasteboard.general.string = annotation
+                                    }) {
+                                        Text("拷贝")
+                                        Image(systemName: "doc.on.doc")
+                                    }
+                                }
+                        }
+                        .padding(.vertical, 8)
                     }
-                    .padding(.vertical, 8)
+                    .onDelete(perform: deleteAnnotations)
                 }
-                .onDelete(perform: deleteAnnotations)
-            }
                 .navigationBarTitle("保存的注释", displayMode: .inline)
                 .navigationBarItems(
                     leading: EditButton(),
@@ -49,7 +48,7 @@ struct AnnotationListView: View {
                             VStack(spacing: 4) {
                                 Image(systemName: "doc.on.doc")
                                     .font(.system(size: 20))
-                                Text("复制")
+                                Text("拷贝")
                                     .font(.caption)
                             }
                             .frame(minWidth: 80)
@@ -79,7 +78,6 @@ struct AnnotationListView: View {
                 loadAnnotations()
             }
         }
-// ... existing code ...
     }
 
     private func loadAnnotations() {
@@ -128,12 +126,49 @@ struct AnnotationListView: View {
         let selectedTexts = annotations.filter { selectedAnnotations.contains($0) }
 
         if !selectedTexts.isEmpty {
+            // 在主线程上执行剪贴板操作
             DispatchQueue.main.async {
                 UIPasteboard.general.string = selectedTexts.joined(separator: "\n\n")
 
-                // 添加触觉反馈
-                let generator = UINotificationFeedbackGenerator()
-                generator.notificationOccurred(.success)
+                // 使用 UIImpactFeedbackGenerator 替代 UINotificationFeedbackGenerator
+                let generator = UIImpactFeedbackGenerator(style: .medium)
+                generator.prepare() // 提前准备生成器
+                generator.impactOccurred() // 触发反馈
+
+                // 备选方案：如果上面的方法不起作用，尝试这个
+                // let selectionGenerator = UISelectionFeedbackGenerator()
+                // selectionGenerator.prepare()
+                // selectionGenerator.selectionChanged()
+
+                // 显示一个临时提示，提供视觉反馈
+                let keyWindow = UIApplication.shared.windows.first { $0.isKeyWindow }
+                if let keyWindow = keyWindow {
+                    let toastLabel = UILabel()
+                    toastLabel.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+                    toastLabel.textColor = UIColor.white
+                    toastLabel.textAlignment = .center
+                    toastLabel.font = UIFont.systemFont(ofSize: 14)
+                    toastLabel.text = "已拷贝 \(selectedTexts.count) 条注释"
+                    toastLabel.alpha = 1.0
+                    toastLabel.layer.cornerRadius = 10
+                    toastLabel.clipsToBounds = true
+
+                    keyWindow.addSubview(toastLabel)
+                    toastLabel.translatesAutoresizingMaskIntoConstraints = false
+                    NSLayoutConstraint.activate([
+                        toastLabel.centerXAnchor.constraint(equalTo: keyWindow.centerXAnchor),
+                        toastLabel.bottomAnchor.constraint(equalTo: keyWindow.safeAreaLayoutGuide.bottomAnchor, constant: -100),
+                        toastLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 150),
+                        toastLabel.heightAnchor.constraint(equalToConstant: 40),
+                    ])
+
+                    // 2秒后淡出
+                    UIView.animate(withDuration: 0.5, delay: 2.0, options: .curveEaseOut, animations: {
+                        toastLabel.alpha = 0.0
+                    }, completion: { _ in
+                        toastLabel.removeFromSuperview()
+                    })
+                }
             }
         }
 
@@ -158,14 +193,14 @@ struct AnnotationListView: View {
         NSLog("✅ ContentView.swift -> ContentView.processAnnotationLink, 文件路径: \(String(describing: pdfURL)), 页码: \(currentPage), yRatio: \(yRatio), xRatio: \(xRatio)")
 
         NotificationCenter.default.post(
-          name: NSNotification.Name("OpenPDFNotification"),
-          object: nil,
-          userInfo: [
-            "pdfPath": rawPdfPath,
-            "page": currentPage,
-            "xRatio": xRatio,
-            "yRatio": yRatio,
-          ]
+            name: NSNotification.Name("OpenPDFNotification"),
+            object: nil,
+            userInfo: [
+                "pdfPath": rawPdfPath,
+                "page": currentPage,
+                "xRatio": xRatio,
+                "yRatio": yRatio,
+            ]
         )
     }
 }
