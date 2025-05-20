@@ -246,15 +246,20 @@ struct ContentView: View {
 
     private func setupNotifications() {
         // 使用与 SceneDelegate 相同的通知名称
-        let notificationName = "OpenPDFNotification"
+        let openPDFNotification = NSNotification.Name("OpenPDFNotification")
+
+        // 添加通知名称常量
+        let loadAnnotationsDatabaseNotification = NSNotification.Name("LoadAnnotationsDatabase")
 
         // 先移除可能存在的旧观察者，避免重复注册
-        NotificationCenter.default.removeObserver(self, name: NSNotification.Name(notificationName), object: nil)
+        NotificationCenter.default.removeObserver(self, name: openPDFNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: loadAnnotationsDatabaseNotification, object: nil)
 
-        NSLog("✅ ContentView.swift -> ContentView.setupNotifications, 正在注册通知观察者: \(notificationName)")
+        NSLog("✅ ContentView.swift -> ContentView.setupNotifications, 正在注册通知观察者: \(openPDFNotification)")
+        NSLog("✅ ContentView.swift -> ContentView.setupNotifications, 正在注册通知观察者: \(loadAnnotationsDatabaseNotification)")
 
         NotificationCenter.default.addObserver(
-            forName: NSNotification.Name(notificationName),
+            forName: openPDFNotification,
             object: nil,
             queue: .main
         ) { notification in
@@ -285,6 +290,25 @@ struct ContentView: View {
             NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenPDFNotification 通知参数 - 文件路径: \(String(describing: self.pdfURL)), 页码: \(self.currentPage), yRatio: \(self.yRatio), xRatio: \(self.xRatio)")
 
             openPDF(at: self.convertedPdfPath, currentPage: page, xRatio: xRatio, yRatio: yRatio)
+        }
+
+        // 监听数据库加载通知
+        NotificationCenter.default.addObserver(
+            forName: loadAnnotationsDatabaseNotification,
+            object: nil,
+            queue: .main
+        ) { notification in
+            guard let userInfo = notification.userInfo,
+                  let dataBasePath = userInfo["dataBasePath"] as? String
+            else {
+                NSLog("❌ ContentView.swift -> ContentView.setupNotifications, 通知中缺少数据库路径")
+
+                return
+            }
+
+            NSLog("✅ ContentView.swift -> ContentView.setupNotifications, 收到加载数据库通知: \(dataBasePath)")
+
+            AnnotationListViewModel.shared.loadAnnotationsFromDatabase(dataBasePath)
         }
     }
 

@@ -16,6 +16,25 @@ class DirectoryAccessManager: ObservableObject {
         scanningProgress = 0
         errorMessage = nil
 
+        // 检查是否存在pdf-annotations.db文件
+        let dataBasePath = url.appendingPathComponent("pdf-annotations.db").path
+
+        if FileManager.default.fileExists(atPath: dataBasePath) {
+            NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 在目录中找到数据库文件: \(dataBasePath)")
+
+            // 保存当前目录路径到UserDefaults
+            UserDefaults.standard.set(url.absoluteString, forKey: "LastSelectedDirectory")
+
+            // 发送通知，通知加载数据库
+            NotificationCenter.default.post(
+              name: NSNotification.Name("LoadAnnotationsDatabase"),
+              object: nil,
+              userInfo: ["dataBasePath": dataBasePath]
+            )
+        } else {
+            NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 在目录中未找到数据库文件")
+        }
+
         // 获取永久访问权限
         let shouldStopAccessing = url.startAccessingSecurityScopedResource()
 

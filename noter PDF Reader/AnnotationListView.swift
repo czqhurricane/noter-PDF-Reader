@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct AnnotationListView: View {
+    // 使用共享的 ViewModel 实例
+    @ObservedObject private var viewModel = AnnotationListViewModel.shared
     @State private var annotations: [String] = []
     @Environment(\.presentationMode) var presentationMode
     @State private var editMode = EditMode.inactive
@@ -9,8 +11,14 @@ struct AnnotationListView: View {
     var body: some View {
         NavigationView {
             VStack {
-                List(selection: $selectedAnnotations) {
-                    ForEach(annotations, id: \.self) { annotation in
+                if viewModel.isLoading {
+                    ProgressView("加载注释中...")
+                } else if viewModel.annotations.isEmpty {
+                    Text("没有找到注释")
+                        .foregroundColor(.gray)
+                        .padding()
+                } else { List(selection: $selectedAnnotations) {
+                    ForEach(viewModel.annotations, id: \.self) { annotation in
                         VStack(alignment: .leading) {
                             Text(extractedAnnotation(annotation))
                                 .font(.body)
@@ -31,15 +39,15 @@ struct AnnotationListView: View {
                         .padding(.vertical, 8)
                     }
                     .onDelete(perform: deleteAnnotations)
+                }.navigationBarTitle("保存的注释", displayMode: .inline)
+                    .navigationBarItems(
+                        leading: EditButton(),
+                        trailing: Button("收起") {
+                            presentationMode.wrappedValue.dismiss()
+                        }
+                    )
+                    .environment(\.editMode, $editMode)
                 }
-                .navigationBarTitle("保存的注释", displayMode: .inline)
-                .navigationBarItems(
-                    leading: EditButton(),
-                    trailing: Button("收起") {
-                        presentationMode.wrappedValue.dismiss()
-                    }
-                )
-                .environment(\.editMode, $editMode)
 
                 // 自定义底部工具栏
                 if editMode.isEditing {
@@ -74,16 +82,9 @@ struct AnnotationListView: View {
                     .shadow(color: Color.black.opacity(0.1), radius: 2, x: 0, y: -1)
                 }
             }
-            .onAppear {
-                loadAnnotations()
-            }
+        }.onAppear {
+            loadAnnotationsFromLastSelectedDirectory()
         }
-    }
-
-    private func loadAnnotations() {
-        annotations = UserDefaults.standard.stringArray(forKey: "SavedAnnotations") ?? []
-
-        NSLog("✅ AnnotationListView.swift -> AnnotationListView.loadAnnotations, 从 UserDefaults 加载\(annotations.count)个注释")
     }
 
     private func extractedAnnotation(_ text: String) -> String {
@@ -123,7 +124,7 @@ struct AnnotationListView: View {
     }
 
     private func copySelectedAnnotations() {
-        let selectedTexts = annotations.filter { selectedAnnotations.contains($0) }
+        let selectedTexts = viewModel.annotations.filter { selectedAnnotations.contains($0) }
 
         if !selectedTexts.isEmpty {
             // 在主线程上执行剪贴板操作
@@ -202,5 +203,25 @@ struct AnnotationListView: View {
                 "yRatio": yRatio,
             ]
         )
+    }
+
+    // 检查上次选择的目录并加载数据库
+    private func loadAnnotationsFromLastSelectedDirectory() {
+        if let savedDatabasePath = UserDefaults.standard.string(forKey: "LastSelectedDirectory"),
+           let url = URL(string: savedDatabasePath)
+        {
+            let dataBasePath = url.appendingPathComponent("pdf-annotations.db").path
+
+            if FileManager.default.fileExists(atPath: dataBasePath) {
+                // 发送通知加载数据库
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("LoadAnnotationsDatabase"),
+                    object: nil,
+                    userInfo: ["dataBasePath": dataBasePath]
+                )
+
+                NSLog("✅ SceneDelegate.swift -> AnnotationListView.loadAnnotationsFromLastSelectedDirectory, 在上次选择的目录中找到数据库文件: \(dataBasePath)")
+            }
+        }
     }
 }
