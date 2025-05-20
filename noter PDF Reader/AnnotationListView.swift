@@ -9,12 +9,26 @@ struct AnnotationListView: View {
     @State private var selectedAnnotations = Set<String>()
     // 创建一个映射，用于存储格式化注释和原始注释ID之间的关系
     @State private var annotationIdMap: [String: String] = [:]
+    @State private var searchText = "" // 添加搜索文本状态
     // 添加 directoryManager 属性
     private let directoryManager = DirectoryAccessManager.shared
 
+    // 添加过滤后的注释列表计算属性
+    private var filteredAnnotations: [String] {
+        if searchText.isEmpty {
+            return viewModel.annotations
+        } else {
+            return viewModel.annotations.filter { $0.lowercased().contains(searchText.lowercased()) }
+        }
+    }
+
     var body: some View {
         NavigationView {
-            VStack {
+            VStack(spacing: 0) {
+                // 搜索框
+                SearchBar(text: $searchText, placeholder: "搜索注释")
+                    .padding(.vertical, 8)
+
                 if viewModel.isLoading {
                     ProgressView("加载注释中...")
                 } else if viewModel.annotations.isEmpty {
@@ -22,7 +36,7 @@ struct AnnotationListView: View {
                         .foregroundColor(.gray)
                         .padding()
                 } else { List(selection: $selectedAnnotations) {
-                    ForEach(viewModel.annotations, id: \.self) { annotation in
+                    ForEach(filteredAnnotations, id: \.self) { annotation in
                         VStack(alignment: .leading) {
                             Text(extractedAnnotation(annotation))
                                 .font(.body)
@@ -328,5 +342,49 @@ struct AnnotationListView: View {
 
             NSLog("✅ SceneDelegate.swift -> AnnotationListView.loadAnnotationsFromLastSelectedDirectory, 在上次选择的目录中找到数据库文件: \(dataBasePath)")
         }
+    }
+}
+
+// 添加 SearchBar 组件
+struct SearchBar: UIViewRepresentable {
+    @Binding var text: String
+    var placeholder: String
+
+    class Coordinator: NSObject, UISearchBarDelegate {
+        @Binding var text: String
+
+        init(text: Binding<String>) {
+            _text = text
+        }
+
+        func searchBar(_: UISearchBar, textDidChange searchText: String) {
+            text = searchText
+        }
+
+        func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+            searchBar.resignFirstResponder()
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        return Coordinator(text: $text)
+    }
+
+    func makeUIView(context: Context) -> UISearchBar {
+        let searchBar = UISearchBar(frame: .zero)
+        searchBar.delegate = context.coordinator
+        searchBar.placeholder = placeholder
+        searchBar.searchBarStyle = .minimal
+        searchBar.autocapitalizationType = .none
+        searchBar.autocorrectionType = .no
+        searchBar.spellCheckingType = .no
+        searchBar.returnKeyType = .done
+        searchBar.enablesReturnKeyAutomatically = false
+        searchBar.backgroundImage = UIImage()
+        return searchBar
+    }
+
+    func updateUIView(_ uiView: UISearchBar, context _: Context) {
+        uiView.text = text
     }
 }
