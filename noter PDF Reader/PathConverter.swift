@@ -4,20 +4,29 @@ import UIKit
 enum PathConverter {
     // 用户配置的原始路径
     static var originalPath = UserDefaults.standard.string(forKey: "OriginalPath") ?? ""
+
     private static let customPath = ""
     // 缓存最后一次成功的根目录路径
     private static var lastSuccessfulRootPath: String? = UserDefaults.standard.string(forKey: "LastSuccessfulRootPath")
 
     static func convertNoterPagePath(_ path: String, rootDirectoryURL: URL?) -> String {
+        // 确保每次调用时都处理原始路径，移除结尾的斜杠
+        var processedOriginalPath = originalPath
+        if processedOriginalPath.hasSuffix("/") {
+            processedOriginalPath.removeLast()
+        }
         if let rootURL = rootDirectoryURL {
             // 更新缓存
             lastSuccessfulRootPath = rootURL.path
             UserDefaults.standard.set(rootURL.path, forKey: "LastSuccessfulRootPath")
-            return path.replacingOccurrences(of: originalPath, with: rootURL.path)
-        } else if let cachedPath = lastSuccessfulRootPath {
 
+            NSLog("✅ PathConverter.swift -> PathConverter.convertNoterPagePath, 原始路径：\(originalPath)")
+
+            return path.replacingOccurrences(of: processedOriginalPath, with: rootURL.path)
+        } else if let cachedPath = lastSuccessfulRootPath {
             NSLog("❌ PathConverter.swift -> PathConverter.convertNoterPagePath, 使用缓存的根目录路径：\(cachedPath)")
-            return path.replacingOccurrences(of: originalPath, with: cachedPath)
+
+            return path.replacingOccurrences(of: processedOriginalPath, with: cachedPath)
         } else {
             NSLog("❌ PathConverter.swift -> PathConverter.convertNoterPagePath, 无可用根目录，返回原始路径")
 
