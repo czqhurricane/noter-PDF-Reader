@@ -7,6 +7,10 @@ struct AnnotationListView: View {
     @Environment(\.presentationMode) var presentationMode
     @State private var editMode = EditMode.inactive
     @State private var selectedAnnotations = Set<String>()
+    // 创建一个映射，用于存储格式化注释和原始注释ID之间的关系
+    @State private var annotationIdMap: [String: String] = [:]
+    // 添加 directoryManager 属性
+    private let directoryManager = DirectoryAccessManager.shared
 
     var body: some View {
         NavigationView {
@@ -33,6 +37,16 @@ struct AnnotationListView: View {
                                     }) {
                                         Text("拷贝")
                                         Image(systemName: "doc.on.doc")
+                                    }
+
+                                    Button(action: {
+                                        // 获取注释ID并删除
+                                        if let id = getAnnotationId(for: annotation) {
+                                            viewModel.deleteAnnotation(withId: id)
+                                        }
+                                    }) {
+                                        Text("删除")
+                                        Image(systemName: "trash")
                                     }
                                 }
                         }
@@ -84,6 +98,12 @@ struct AnnotationListView: View {
             }
         }.onAppear {
             loadAnnotationsFromLastSelectedDirectory()
+            // 构建注释ID映射
+            updateAnnotationIdMap()
+        }
+        .onChange(of: viewModel.annotationData) { _ in
+            // 当注释数据更新时，更新ID映射
+            updateAnnotationIdMap()
         }
     }
 
@@ -98,15 +118,95 @@ struct AnnotationListView: View {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    private func deleteAnnotations(at offsets: IndexSet) {
-        annotations.remove(atOffsets: offsets)
-        UserDefaults.standard.set(annotations, forKey: "SavedAnnotations")
+    // 更新注释ID映射
+    private func updateAnnotationIdMap() {
+        annotationIdMap.removeAll()
+
+        for (index, annotation) in viewModel.annotationData.enumerated() {
+            if index < viewModel.annotations.count {
+                let formattedAnnotation = viewModel.annotations[index]
+                annotationIdMap[formattedAnnotation] = annotation.id
+            }
+        }
+        NSLog("✅ AnnotationListView.swift -> AnnotationListView.updateAnnotationIdMap, \(viewModel.annotationData)")
+        NSLog("✅ AnnotationListView.swift -> AnnotationListView.updateAnnotationIdMap, 已更新注释ID映射，共 \(annotationIdMap.count) 条")
     }
 
+    // 获取注释的ID
+    private func getAnnotationId(for annotation: String) -> String? {
+        return annotationIdMap[annotation]
+    }
+
+    // 删除选中的注释
     private func deleteSelectedAnnotations() {
-        annotations.removeAll { selectedAnnotations.contains($0) }
-        UserDefaults.standard.set(annotations, forKey: "SavedAnnotations")
-        selectedAnnotations.removeAll()
+        // 获取选中注释的ID
+        let selectedIds = selectedAnnotations.compactMap { getAnnotationId(for: $0) }
+
+        if !selectedIds.isEmpty {
+            // 删除选中的注释
+            if viewModel.deleteAnnotations(withIds: selectedIds) {
+                // 清除选择
+                selectedAnnotations.removeAll()
+
+                // 显示删除成功提示
+                showToast(message: "已删除 \(selectedIds.count) 条注释")
+            } else {
+                // 显示删除失败提示
+                showToast(message: "删除失败，请重试")
+            }
+        }
+    }
+
+    // 显示提示信息
+    private func showToast(message: String) {
+        let keyWindow = UIApplication.shared.windows.first { $0.isKeyWindow }
+        if let keyWindow = keyWindow {
+            let toastLabel = UILabel()
+            toastLabel.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+            toastLabel.textColor = UIColor.white
+            toastLabel.textAlignment = .center
+            toastLabel.font = UIFont.systemFont(ofSize: 14)
+            toastLabel.text = message
+            toastLabel.alpha = 1.0
+            toastLabel.layer.cornerRadius = 10
+            toastLabel.clipsToBounds = true
+
+            keyWindow.addSubview(toastLabel)
+            toastLabel.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                toastLabel.centerXAnchor.constraint(equalTo: keyWindow.centerXAnchor),
+                toastLabel.bottomAnchor.constraint(equalTo: keyWindow.safeAreaLayoutGuide.bottomAnchor, constant: -100),
+                toastLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 150),
+                toastLabel.heightAnchor.constraint(equalToConstant: 40),
+            ])
+
+            // 2秒后淡出
+            UIView.animate(withDuration: 0.5, delay: 2.0, options: .curveEaseOut, animations: {
+                toastLabel.alpha = 0.0
+            }, completion: { _ in
+                toastLabel.removeFromSuperview()
+            })
+        }
+    }
+
+    // 修改 deleteAnnotations 方法，使用 ID 删除
+    private func deleteAnnotations(at offsets: IndexSet) {
+        // 获取要删除的注释
+        let annotationsToDelete = offsets.map { viewModel.annotations[$0] }
+
+        // 获取注释ID
+        let idsToDelete = annotationsToDelete.compactMap { getAnnotationId(for: $0) }
+
+        if !idsToDelete.isEmpty {
+            // 删除注释
+            if viewModel.deleteAnnotations(withIds: idsToDelete) {
+                // 显示删除成功提示
+                showToast(message: "已删除 \(idsToDelete.count) 条注释")
+            } else {
+                // 显示删除失败提示
+                showToast(message: "删除失败，请重试")
+            }
+        }
     }
 
     private func extractAndHandleNOTERPAGE(from annotation: String) {
@@ -212,16 +312,21 @@ struct AnnotationListView: View {
         {
             let dataBasePath = url.appendingPathComponent("pdf-annotations.db").path
 
-            if FileManager.default.fileExists(atPath: dataBasePath) {
-                // 发送通知加载数据库
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("LoadAnnotationsDatabase"),
-                    object: nil,
-                    userInfo: ["dataBasePath": dataBasePath]
-                )
+            // 打开数据库
+            guard DatabaseManager.shared.openDatabase(with: directoryManager, at: dataBasePath) else {
+                NSLog("❌ AnnotationListView.swift -> AnnotationListView.loadAnnotationsFromLastSelectedDirectory, 无法打开数据库: \(dataBasePath)")
 
-                NSLog("✅ SceneDelegate.swift -> AnnotationListView.loadAnnotationsFromLastSelectedDirectory, 在上次选择的目录中找到数据库文件: \(dataBasePath)")
+                return
             }
+
+            // 发送通知加载数据库
+            NotificationCenter.default.post(
+                name: NSNotification.Name("LoadAnnotationsDatabase"),
+                object: nil,
+                userInfo: ["dataBasePath": dataBasePath]
+            )
+
+            NSLog("✅ SceneDelegate.swift -> AnnotationListView.loadAnnotationsFromLastSelectedDirectory, 在上次选择的目录中找到数据库文件: \(dataBasePath)")
         }
     }
 }

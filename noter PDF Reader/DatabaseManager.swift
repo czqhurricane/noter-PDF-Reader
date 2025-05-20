@@ -1,5 +1,5 @@
-import Foundation
 import FMDB
+import Foundation
 
 class DatabaseManager {
     static let shared = DatabaseManager()
@@ -11,21 +11,31 @@ class DatabaseManager {
         dbQueue = nil
     }
 
-    // 打开数据库
-    func openDatabase(at path: String) -> Bool {
+    // 在 DatabaseManager 中
+    func openDatabase(with directoryManager: DirectoryAccessManager, at path: String) -> Bool {
         NSLog("✅ DatabaseManager.swift -> DatabaseManager.openDatabase, 尝试打开数据库: \(path)")
 
         // 关闭之前可能打开的数据库
         closeDatabase()
 
-        // 创建数据库队列，确保线程安全
-        if let newQueue = FMDatabaseQueue(path: path) {
+        // 首先检查是否有访问权限
+        guard let accessibleURL = directoryManager.startAccessingFile(at: path) else {
+            NSLog("❌ DatabaseManager.swift -> DatabaseManager.openDatabase, 无法访问数据库文件: \(path)")
+
+            return false
+        }
+
+        // 使用获取到访问权限的URL路径
+        if let newQueue = FMDatabaseQueue(path: accessibleURL.path)
+        {
             dbQueue = newQueue
 
             NSLog("✅ DatabaseManager.swift -> DatabaseManager.openDatabase, 成功打开数据库: \(path)")
 
             return true
         } else {
+            directoryManager.stopAccessingFile(at: accessibleURL)
+
             NSLog("❌ DatabaseManager.swift -> DatabaseManager.openDatabase, 无法打开数据库: \(path)")
 
             return false
@@ -152,17 +162,16 @@ class DatabaseManager {
 
         var success = false
 
-            // 处理字符串参数
-    let safeId = annotation.id.hasPrefix("\"") ? annotation.id : "\"\(annotation.id)\""
-    let safeFile = annotation.file.hasPrefix("\"") ? annotation.file : "\"\(annotation.file)\""
-    let safeType = annotation.type
-    let safeColor = annotation.color
-    let safeContents = annotation.contents.hasPrefix("\"") ? annotation.contents : "\"\(annotation.contents.replacingOccurrences(of: "\"", with: "\\\""))\""
-    let safeSubject = annotation.subject
-    let safeCreated = annotation.created
-    let safeModified = annotation.modified
-    let safeOutlines = annotation.outlines.hasPrefix("\"") ? annotation.outlines : "\"\(annotation.outlines.replacingOccurrences(of: "\"", with: "\\\""))\""
-
+        // 处理字符串参数
+        let safeId = annotation.id.hasPrefix("\"") ? annotation.id : "\"\(annotation.id)\""
+        let safeFile = annotation.file.hasPrefix("\"") ? annotation.file : "\"\(annotation.file)\""
+        let safeType = annotation.type
+        let safeColor = annotation.color
+        let safeContents = annotation.contents.hasPrefix("\"") ? annotation.contents : "\"\(annotation.contents.replacingOccurrences(of: "\"", with: "\\\""))\""
+        let safeSubject = annotation.subject
+        let safeCreated = annotation.created
+        let safeModified = annotation.modified
+        let safeOutlines = annotation.outlines.hasPrefix("\"") ? annotation.outlines : "\"\(annotation.outlines.replacingOccurrences(of: "\"", with: "\\\""))\""
 
         queue.inDatabase { db in
             let insertSQL = """
@@ -171,20 +180,20 @@ class DatabaseManager {
             """
 
             success = db.executeUpdate(
-              insertSQL,
-              withArgumentsIn: [
-                safeId,
-                safeFile,
-                annotation.page,
-                annotation.edges,
-                safeType,
-                safeColor,
-                safeContents,
-                safeSubject,
-                safeCreated,
-                safeModified,
-                safeOutlines
-              ]
+                insertSQL,
+                withArgumentsIn: [
+                    safeId,
+                    safeFile,
+                    annotation.page,
+                    annotation.edges,
+                    safeType,
+                    safeColor,
+                    safeContents,
+                    safeSubject,
+                    safeCreated,
+                    safeModified,
+                    safeOutlines,
+                ]
             )
 
             if success {
@@ -226,7 +235,7 @@ class DatabaseManager {
                     annotation.subject,
                     annotation.modified,
                     annotation.outlines,
-                    annotation.id
+                    annotation.id,
                 ]
             )
 
@@ -243,7 +252,6 @@ class DatabaseManager {
     // 删除注释
     func deleteAnnotation(id: String) -> Bool {
         guard let queue = dbQueue else {
-
             NSLog("❌ DatabaseManager.swift -> DatabaseManager.deleteAnnotation, 数据库队列未初始化")
 
             return false
@@ -257,9 +265,50 @@ class DatabaseManager {
             success = db.executeUpdate(deleteSQL, withArgumentsIn: [id])
 
             if success {
-                NSLog("✅ DatabaseManager.swift -> DatabaseManager.deleteAnnotation, 成功删除注释")
+                NSLog("✅ DatabaseManager.swift -> DatabaseManager.deleteAnnotation, 成功删除注释 ID：\(id)")
             } else {
-                NSLog("❌ DatabaseManager.swift -> DatabaseManager.deleteAnnotation, 删除注释失败: \(db.lastErrorMessage())")
+                NSLog("❌ DatabaseManager.swift -> DatabaseManager.deleteAnnotation, 删除注释失败 ID：\(id)，错误: \(db.lastErrorMessage())")
+            }
+        }
+
+        return success
+    }
+
+    // 批量删除注释
+    func deleteAnnotations(withIds ids: [String]) -> Bool {
+        guard let queue = dbQueue else {
+            NSLog("❌ DatabaseManager.swift -> DatabaseManager.deleteAnnotations, 数据库队列未初始化")
+
+            return false
+        }
+
+        var success = true
+
+        queue.inDatabase { db in
+            // 开始事务
+            db.beginTransaction()
+
+            for id in ids {
+                let deleteSQL = "DELETE FROM annotations WHERE id = ?"
+                let result = db.executeUpdate(deleteSQL, withArgumentsIn: [id])
+
+                if !result {
+                    success = false
+
+                    NSLog("❌ DatabaseManager.swift -> DatabaseManager.deleteAnnotations, 删除注释失败 ID: \(id), 错误: \(db.lastErrorMessage())")
+                    break
+                }
+            }
+
+            // 根据操作结果提交或回滚事务
+            if success {
+                db.commit()
+
+                NSLog("✅ DatabaseManager.swift -> DatabaseManager.deleteAnnotations, 成功删除 \(ids.count) 条注释")
+            } else {
+                db.rollback()
+
+                NSLog("❌ DatabaseManager.swift -> DatabaseManager.deleteAnnotations, 批量删除注释失败，已回滚")
             }
         }
 
@@ -267,8 +316,8 @@ class DatabaseManager {
     }
 }
 
-// 数据模型
-struct AnnotationData {
+// 添加 Equatable 协议
+struct AnnotationData: Equatable {
     let id: String
     let file: String
     let page: Int
@@ -280,4 +329,19 @@ struct AnnotationData {
     let created: String
     let modified: String
     let outlines: String
+
+    // 实现 Equatable 协议的 == 方法
+    static func == (lhs: AnnotationData, rhs: AnnotationData) -> Bool {
+        return lhs.id == rhs.id &&
+            lhs.file == rhs.file &&
+            lhs.page == rhs.page &&
+            lhs.edges == rhs.edges &&
+            lhs.type == rhs.type &&
+            lhs.color == rhs.color &&
+            lhs.contents == rhs.contents &&
+            lhs.subject == rhs.subject &&
+            lhs.created == rhs.created &&
+            lhs.modified == rhs.modified &&
+            lhs.outlines == rhs.outlines
+    }
 }

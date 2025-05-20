@@ -7,6 +7,9 @@ class DirectoryAccessManager: ObservableObject {
     @Published var scanningProgress: Double = 0
     @Published var errorMessage: String?
 
+    // 添加单例实例
+    static let shared = DirectoryAccessManager()
+
     // 存储所有文件和目录的书签数据
     private var bookmarks: [String: Data] = [:]
 
@@ -16,14 +19,14 @@ class DirectoryAccessManager: ObservableObject {
         scanningProgress = 0
         errorMessage = nil
 
+        // 保存当前目录路径到UserDefaults
+        UserDefaults.standard.set(url.absoluteString, forKey: "LastSelectedDirectory")
+
         // 检查是否存在pdf-annotations.db文件
         let dataBasePath = url.appendingPathComponent("pdf-annotations.db").path
 
         if FileManager.default.fileExists(atPath: dataBasePath) {
             NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 在目录中找到数据库文件: \(dataBasePath)")
-
-            // 保存当前目录路径到UserDefaults
-            UserDefaults.standard.set(url.absoluteString, forKey: "LastSelectedDirectory")
 
             // 发送通知，通知加载数据库
             NotificationCenter.default.post(
@@ -219,6 +222,37 @@ class DirectoryAccessManager: ObservableObject {
     // 检查是否有特定路径的访问权限
     func hasAccessTo(path: String) -> Bool {
         return bookmarks[path] != nil
+    }
+
+    // 检查是否有对指定路径的访问权限
+    func hasAccessToFile(at path: String) -> Bool {
+        // 检查文件是否存在
+        let fileManager = FileManager.default
+
+        guard fileManager.fileExists(atPath: path) else {
+            NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.hasAccessToFile, 文件不存在: \(path)")
+
+            return false
+        }
+
+        // 尝试获取访问权限
+        guard let accessibleURL = startAccessingFile(at: path) else {
+            NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.hasAccessToFile, 无法获取文件访问权限: \(path)")
+
+            return false
+        }
+
+        // 检查是否可读
+        let isReadable = fileManager.isReadableFile(atPath: accessibleURL.path)
+
+        // 停止访问文件
+        stopAccessingFile(at: accessibleURL)
+
+        if !isReadable {
+            NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.hasAccessToFile, 文件不可读: \(path)")
+        }
+
+        return isReadable
     }
 
     // 检查是否有特定路径的父目录的访问权限

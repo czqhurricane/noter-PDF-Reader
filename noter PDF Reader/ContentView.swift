@@ -24,7 +24,7 @@ struct ContentView: View {
     @State private var showAnnotations = false
 
     // 目录访问管理器
-    @StateObject private var directoryManager = DirectoryAccessManager()
+    @StateObject private var directoryManager = DirectoryAccessManager.shared
 
     var body: some View {
         NavigationView {

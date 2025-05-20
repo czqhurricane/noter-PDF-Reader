@@ -249,6 +249,9 @@ struct PDFKitView: UIViewRepresentable {
         var currentOutlineString = "" // 新增属性存储当前大纲路径
         var previousState: (url: URL, page: Int, xRatio: Double, yRatio: Double, forceRender: Bool)?
 
+        // 添加 directoryManager 属性
+        let directoryManager = DirectoryAccessManager.shared
+
         // 添加计时器属性
         private var arrowTimer: Timer?
         private var lastTapXRatio: Double = 0
@@ -447,23 +450,22 @@ struct PDFKitView: UIViewRepresentable {
                                 {
                                     let dataBasePath = url.appendingPathComponent("pdf-annotations.db").path
 
-                                    if FileManager.default.fileExists(atPath: dataBasePath) {
-                                        if DatabaseManager.shared.openDatabase(at: dataBasePath) {
-                                            // 添加注释
-                                            if DatabaseManager.shared.addAnnotation(annotation) {
-                                                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, confirmAction，成功添加注释: \(text)")
-
-                                            } else {
-                                                NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, confirmAction, 添加注释失败")
-                                            }
-
-                                            // 关闭数据库
-                                            DatabaseManager.shared.closeDatabase()
-                                        } else {
-                                            NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 无法打开数据库: \(dataBasePath)")
-                                        }
-                                        NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 在上次选择的目录中找到数据库文件: \(dataBasePath)")
+                                    // 打开数据库
+                                    guard DatabaseManager.shared.openDatabase(with: self.directoryManager, at: dataBasePath) else {
+                                        NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 无法打开数据库: \(dataBasePath)")
+                                        return
                                     }
+
+                                    // 添加注释
+                                    if DatabaseManager.shared.addAnnotation(annotation) {
+                                        NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, confirmAction，成功添加注释: \(text)")
+
+                                    } else {
+                                        NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, confirmAction, 添加注释失败")
+                                    }
+
+                                    // 关闭数据库
+                                    DatabaseManager.shared.closeDatabase()
                                 }
 
                                 NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 新建注释使用的比例 - xRatio: \(xRatio), yRatio: \(yRatio)")
