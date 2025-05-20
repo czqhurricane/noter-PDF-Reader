@@ -409,16 +409,62 @@ struct PDFKitView: UIViewRepresentable {
                                 let xRatio = self.lastTapXRatio
                                 let yRatio = self.lastTapYRatio
                                 let outlineString = self.currentOutlineString
+                                // 获取当前时间戳并格式化为 (high low) 形式
+                                let currentTimeInterval = Date().timeIntervalSince1970
+                                // 将秒数分解为 HIGH 和 LOW 部分
+                                let seconds = Int64(floor(currentTimeInterval))
+                                let high = Int32(seconds >> 16)
+                                let low = Int32(seconds & 0xFFFF)
+                                let formattedTimestamp = "(\(high) \(low))"
+                                // 生成唯一ID
+                                let annotationId = pdfPath + "#" + String(Int(currentTimeInterval))
+                                // 格式化坐标
+                                let edges = "(\(xRatio) \(yRatio))"
+
+                                // 创建注释数据对象
+                                let annotation = AnnotationData(
+                                    id: annotationId,
+                                    file: pdfPath,
+                                    page: pageNumber,
+                                    edges: edges,
+                                    type: "text",
+                                    color: "",
+                                    contents: text,
+                                    subject: "",
+                                    created: formattedTimestamp,
+                                    modified: formattedTimestamp,
+                                    outlines: outlineString
+                                )
 
                                 // 格式化注释内容
                                 let formattedAnnotation = "[[NOTERPAGE:\(pdfPath)#(\(pageNumber) \(yRatio) . \(xRatio))][\(text) < \(outlineString.isEmpty ? fileName : outlineString)]]"
 
                                 self.parent.annotation = formattedAnnotation
 
-                                // 持久化保存到UserDefaults
-                                var annotations = UserDefaults.standard.stringArray(forKey: "SavedAnnotations") ?? []
-                                annotations.append(formattedAnnotation)
-                                UserDefaults.standard.set(annotations, forKey: "SavedAnnotations")
+                                // 持久化保存到数据库
+                                if let savedDatabasePath = UserDefaults.standard.string(forKey: "LastSelectedDirectory"),
+                                   let url = URL(string: savedDatabasePath)
+                                {
+                                    let dataBasePath = url.appendingPathComponent("pdf-annotations.db").path
+
+                                    if FileManager.default.fileExists(atPath: dataBasePath) {
+                                        if DatabaseManager.shared.openDatabase(at: dataBasePath) {
+                                            // 添加注释
+                                            if DatabaseManager.shared.addAnnotation(annotation) {
+                                                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, confirmAction，成功添加注释: \(text)")
+
+                                            } else {
+                                                NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, confirmAction, 添加注释失败")
+                                            }
+
+                                            // 关闭数据库
+                                            DatabaseManager.shared.closeDatabase()
+                                        } else {
+                                            NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 无法打开数据库: \(dataBasePath)")
+                                        }
+                                        NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 在上次选择的目录中找到数据库文件: \(dataBasePath)")
+                                    }
+                                }
 
                                 NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 新建注释使用的比例 - xRatio: \(xRatio), yRatio: \(yRatio)")
                                 NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 保存注释: \(formattedAnnotation)")
@@ -479,8 +525,7 @@ struct PDFKitView: UIViewRepresentable {
                     if let destination = outline.destination, destination.page == page {
                         let fullHierarchy = hierarchy + [outline.label ?? ""]
                         let reversedHierarchy = Array(fullHierarchy.reversed())
-                        let fileName = document.documentURL?.lastPathComponent ?? "unknown.pdf"
-                        let outlineString = (reversedHierarchy + [fileName])
+                        let outlineString = reversedHierarchy
                             .filter { !$0.isEmpty }
                             .joined(separator: " < ")
 

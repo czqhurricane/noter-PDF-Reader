@@ -152,6 +152,18 @@ class DatabaseManager {
 
         var success = false
 
+            // 处理字符串参数
+    let safeId = annotation.id.hasPrefix("\"") ? annotation.id : "\"\(annotation.id)\""
+    let safeFile = annotation.file.hasPrefix("\"") ? annotation.file : "\"\(annotation.file)\""
+    let safeType = annotation.type
+    let safeColor = annotation.color
+    let safeContents = annotation.contents.hasPrefix("\"") ? annotation.contents : "\"\(annotation.contents.replacingOccurrences(of: "\"", with: "\\\""))\""
+    let safeSubject = annotation.subject
+    let safeCreated = annotation.created
+    let safeModified = annotation.modified
+    let safeOutlines = annotation.outlines.hasPrefix("\"") ? annotation.outlines : "\"\(annotation.outlines.replacingOccurrences(of: "\"", with: "\\\""))\""
+
+
         queue.inDatabase { db in
             let insertSQL = """
             INSERT INTO annotations (id, file, page, edges, type, color, contents, subject, created, modified, outlines)
@@ -159,20 +171,20 @@ class DatabaseManager {
             """
 
             success = db.executeUpdate(
-                insertSQL,
-                withArgumentsIn: [
-                    annotation.id,
-                    annotation.file,
-                    annotation.page,
-                    annotation.edges,
-                    annotation.type,
-                    annotation.color,
-                    annotation.contents,
-                    annotation.subject,
-                    annotation.created,
-                    annotation.modified,
-                    annotation.outlines
-                ]
+              insertSQL,
+              withArgumentsIn: [
+                safeId,
+                safeFile,
+                annotation.page,
+                annotation.edges,
+                safeType,
+                safeColor,
+                safeContents,
+                safeSubject,
+                safeCreated,
+                safeModified,
+                safeOutlines
+              ]
             )
 
             if success {
