@@ -121,7 +121,7 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         // 如果文档已加载，则不重新加载
-        if pdfView.document != nil {
+        if let document = pdfView.document, document.documentURL == url {
             NSLog("✅ PDFKitView.swift -> PDFKitView.updateUIView, 文档已加载，跳转到指定页面")
 
             navigateToPage(pdfView, context: context)
