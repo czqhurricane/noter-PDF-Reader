@@ -25,6 +25,7 @@ struct ContentView: View {
 
     // 目录访问管理器
     @StateObject private var directoryManager = DirectoryAccessManager.shared
+    @StateObject var annotationListViewModel = AnnotationListViewModel()
 
     var body: some View {
         NavigationView {
@@ -230,7 +231,8 @@ struct ContentView: View {
         .navigationViewStyle(StackNavigationViewStyle())
         .statusBar(hidden: false)
         .sheet(isPresented: $showAnnotations) {
-            AnnotationListView()
+            // 传递同一个 ViewModel 实例到 AnnotationListView
+            AnnotationListViewWrapper(viewModel: annotationListViewModel)
         }
         .ignoresSafeArea(.all, edges: .all) // Use full screen space
         .onAppear {
@@ -307,7 +309,7 @@ struct ContentView: View {
 
             NSLog("✅ ContentView.swift -> ContentView.setupNotifications, 收到加载数据库通知: \(dataBasePath)")
 
-            AnnotationListViewModel.shared.loadAnnotationsFromDatabase(dataBasePath)
+            annotationListViewModel.loadAnnotationsFromDatabase(dataBasePath)
         }
     }
 
@@ -397,5 +399,15 @@ struct ContentView: View {
         }
 
         rootVC.present(activityVC, animated: true)
+    }
+}
+
+// 包装器视图，用于传递 ViewModel
+struct AnnotationListViewWrapper: View {
+    @ObservedObject var viewModel: AnnotationListViewModel
+
+    var body: some View {
+        AnnotationListView()
+          .environmentObject(viewModel)
     }
 }

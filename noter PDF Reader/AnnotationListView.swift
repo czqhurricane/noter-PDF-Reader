@@ -2,9 +2,8 @@ import SwiftUI
 
 struct AnnotationListView: View {
     @Environment(\.presentationMode) var presentationMode
-
-    // 使用共享的 ViewModel 实例
-    @ObservedObject private var annotationListViewModel = AnnotationListViewModel.shared
+    // 使用 @EnvironmentObject 接收传递的 ViewModel
+    @EnvironmentObject var annotationListViewModel: AnnotationListViewModel
 
     @State private var currentEditMode: EditMode = .inactive
     @State private var selectedAnnotations = Set<String>()
@@ -16,31 +15,27 @@ struct AnnotationListView: View {
     // 添加 directoryManager 属性
     private let directoryManager = DirectoryAccessManager.shared
 
-    // 添加过滤后的注释列表计算属性
-    private var filteredAnnotations: [String] {
-        if searchText.isEmpty {
-            return annotationListViewModel.annotations
-        } else {
-            return annotationListViewModel.annotations.filter { $0.lowercased().contains(searchText.lowercased()) }
-        }
-    }
-
     var body: some View {
         NavigationView {
             VStack(spacing: 0) {
                 // 搜索框
-                SearchBar(text: $searchText, placeholder: "搜索注释")
-                    .padding(.vertical, 8)
+                SearchBar(text: $annotationListViewModel.searchText,
+                          placeholder: "搜索注释",
+                          onTextChanged: {
+                              // 当文本变化时调用 updateSearchResults 方法
+                              annotationListViewModel.updateSearchResults()
+                          })
+                          .padding(.vertical, 8)
 
                 if annotationListViewModel.isLoading {
                     ProgressView("加载注释中...")
-                } else if annotationListViewModel.annotations.isEmpty {
+                } else if annotationListViewModel.filteredFormattedAnnotations.isEmpty {
                     Text("没有找到注释")
                         .foregroundColor(.gray)
                         .padding()
                 } else {
                     List(selection: $selectedAnnotations) {
-                        ForEach(filteredAnnotations, id: \.self) { annotation in
+                        ForEach(annotationListViewModel.filteredFormattedAnnotations, id: \.self) { annotation in
                             VStack(alignment: .leading) {
                                 Text(extractedAnnotation(annotation))
                                     .font(.body)
@@ -119,7 +114,7 @@ struct AnnotationListView: View {
             // 构建注释ID映射
             updateAnnotationIdMap()
         }
-        .onChange(of: annotationListViewModel.annotationData) { _ in
+        .onChange(of: annotationListViewModel.annotationDatas) { _ in
             // 当注释数据更新时，更新ID映射
             updateAnnotationIdMap()
         }
@@ -140,9 +135,9 @@ struct AnnotationListView: View {
     private func updateAnnotationIdMap() {
         annotationIdMap.removeAll()
 
-        for (index, annotation) in annotationListViewModel.annotationData.enumerated() {
-            if index < annotationListViewModel.annotations.count {
-                let formattedAnnotation = annotationListViewModel.annotations[index]
+        for (index, annotation) in annotationListViewModel.annotationDatas.enumerated() {
+            if index < annotationListViewModel.formattedAnnotations.count {
+                let formattedAnnotation = annotationListViewModel.formattedAnnotations[index]
                 annotationIdMap[formattedAnnotation] = annotation.id
             }
         }
@@ -158,7 +153,7 @@ struct AnnotationListView: View {
     // 修改 slideToDeleteAnnotation 方法，使用 ID 删除
     private func slideToDeleteAnnotation(at offsets: IndexSet) {
         // 获取要删除的注释
-        let annotationsToDelete = offsets.map { annotationListViewModel.annotations[$0] }
+        let annotationsToDelete = offsets.map { annotationListViewModel.filteredFormattedAnnotations[$0] }
 
         // 获取注释ID
         let idsToDelete = annotationsToDelete.compactMap { getAnnotationId(for: $0) }
@@ -179,6 +174,8 @@ struct AnnotationListView: View {
     private func deleteSelectedAnnotations() {
         // 获取选中注释的ID
         let selectedIds = selectedAnnotations.compactMap { getAnnotationId(for: $0) }
+
+        NSLog("✅ AnnotationListView.swift -> AnnotationListView.deleteSelectedAnnotations, \(selectedIds)")
 
         if !selectedIds.isEmpty {
             // 删除选中的注释
@@ -242,7 +239,7 @@ struct AnnotationListView: View {
     }
 
     private func copySelectedAnnotations() {
-        let selectedTexts = annotationListViewModel.annotations.filter { selectedAnnotations.contains($0) }
+        let selectedTexts = annotationListViewModel.filteredFormattedAnnotations.filter { selectedAnnotations.contains($0) }
 
         if !selectedTexts.isEmpty {
             // 在主线程上执行剪贴板操作
@@ -321,16 +318,22 @@ struct AnnotationListView: View {
 struct SearchBar: UIViewRepresentable {
     @Binding var text: String
     var placeholder: String
+    // 添加一个闭包属性，用于在文本变化时调用
+    var onTextChanged: (() -> Void)?
 
     class Coordinator: NSObject, UISearchBarDelegate {
         @Binding var text: String
+        var onTextChanged: (() -> Void)?
 
-        init(text: Binding<String>) {
+        init(text: Binding<String>, onTextChanged: (() -> Void)?) {
             _text = text
+            self.onTextChanged = onTextChanged
         }
 
         func searchBar(_: UISearchBar, textDidChange searchText: String) {
             text = searchText
+            // 调用文本变化回调
+            onTextChanged?()
         }
 
         func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
@@ -339,7 +342,7 @@ struct SearchBar: UIViewRepresentable {
     }
 
     func makeCoordinator() -> Coordinator {
-        return Coordinator(text: $text)
+        return Coordinator(text: $text, onTextChanged: onTextChanged)
     }
 
     func makeUIView(context: Context) -> UISearchBar {
