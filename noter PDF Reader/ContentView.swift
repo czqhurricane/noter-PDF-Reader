@@ -199,7 +199,6 @@ struct ContentView: View {
                     } else {
                         DocumentPicker(accessManager: directoryManager)
                             .onAppear {
-                                // 恢复之前保存的书签
                                 NSLog("✅ ContentView.swift -> ContentView.body, 文件选择器 sheet 显示")
                             }
                             .onDisappear {

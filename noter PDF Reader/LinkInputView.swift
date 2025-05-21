@@ -43,7 +43,8 @@ struct LinkInputView: View {
         ) { notification in
             if let url = notification.userInfo?["decodedString"] as? String {
                 self.linkText = url
-                NSLog("Updated linkText to: \(url)")
+                
+                NSLog("✅ LinkInputView.swift -> LinkInputView.setupURLNotificationObserver, Updated linkText to: \(url)")
             }
         }
     }

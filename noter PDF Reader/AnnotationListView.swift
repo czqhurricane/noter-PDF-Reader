@@ -1,24 +1,27 @@
 import SwiftUI
 
 struct AnnotationListView: View {
-    // 使用共享的 ViewModel 实例
-    @ObservedObject private var viewModel = AnnotationListViewModel.shared
-    @State private var annotations: [String] = []
     @Environment(\.presentationMode) var presentationMode
-    @State private var editMode = EditMode.inactive
+
+    // 使用共享的 ViewModel 实例
+    @ObservedObject private var annotationListViewModel = AnnotationListViewModel.shared
+
+    @State private var currentEditMode: EditMode = .inactive
     @State private var selectedAnnotations = Set<String>()
     // 创建一个映射，用于存储格式化注释和原始注释ID之间的关系
     @State private var annotationIdMap: [String: String] = [:]
-    @State private var searchText = "" // 添加搜索文本状态
+    // 添加搜索文本状态
+    @State private var searchText = ""
+
     // 添加 directoryManager 属性
     private let directoryManager = DirectoryAccessManager.shared
 
     // 添加过滤后的注释列表计算属性
     private var filteredAnnotations: [String] {
         if searchText.isEmpty {
-            return viewModel.annotations
+            return annotationListViewModel.annotations
         } else {
-            return viewModel.annotations.filter { $0.lowercased().contains(searchText.lowercased()) }
+            return annotationListViewModel.annotations.filter { $0.lowercased().contains(searchText.lowercased()) }
         }
     }
 
@@ -29,56 +32,57 @@ struct AnnotationListView: View {
                 SearchBar(text: $searchText, placeholder: "搜索注释")
                     .padding(.vertical, 8)
 
-                if viewModel.isLoading {
+                if annotationListViewModel.isLoading {
                     ProgressView("加载注释中...")
-                } else if viewModel.annotations.isEmpty {
+                } else if annotationListViewModel.annotations.isEmpty {
                     Text("没有找到注释")
                         .foregroundColor(.gray)
                         .padding()
-                } else { List(selection: $selectedAnnotations) {
-                    ForEach(filteredAnnotations, id: \.self) { annotation in
-                        VStack(alignment: .leading) {
-                            Text(extractedAnnotation(annotation))
-                                .font(.body)
-                                .lineLimit(2)
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    extractAndHandleNOTERPAGE(from: annotation)
-                                }
-                                .contextMenu {
-                                    Button(action: {
-                                        UIPasteboard.general.string = annotation
-                                    }) {
-                                        Text("拷贝")
-                                        Image(systemName: "doc.on.doc")
+                } else {
+                    List(selection: $selectedAnnotations) {
+                        ForEach(filteredAnnotations, id: \.self) { annotation in
+                            VStack(alignment: .leading) {
+                                Text(extractedAnnotation(annotation))
+                                    .font(.body)
+                                    .lineLimit(2)
+                                    .contentShape(Rectangle())
+                                    .onTapGesture {
+                                        extractAndHandleNOTERPAGE(from: annotation)
                                     }
-
-                                    Button(action: {
-                                        // 获取注释ID并删除
-                                        if let id = getAnnotationId(for: annotation) {
-                                            viewModel.deleteAnnotation(withId: id)
+                                    .contextMenu {
+                                        Button(action: {
+                                            UIPasteboard.general.string = annotation
+                                        }) {
+                                            Text("拷贝")
+                                            Image(systemName: "doc.on.doc")
                                         }
-                                    }) {
-                                        Text("删除")
-                                        Image(systemName: "trash")
+
+                                        Button(action: {
+                                            // 获取注释ID并删除
+                                            if let id = getAnnotationId(for: annotation) {
+                                                annotationListViewModel.deleteAnnotation(withId: id)
+                                            }
+                                        }) {
+                                            Text("删除")
+                                            Image(systemName: "trash")
+                                        }
                                     }
-                                }
+                            }
+                            .padding(.vertical, 8)
                         }
-                        .padding(.vertical, 8)
-                    }
-                    .onDelete(perform: deleteAnnotations)
-                }.navigationBarTitle("保存的注释", displayMode: .inline)
-                    .navigationBarItems(
-                        leading: EditButton(),
-                        trailing: Button("收起") {
-                            presentationMode.wrappedValue.dismiss()
-                        }
-                    )
-                    .environment(\.editMode, $editMode)
+                        .onDelete(perform: slideToDeleteAnnotation)
+                    }.navigationBarTitle("保存的注释", displayMode: .inline)
+                        .navigationBarItems(
+                            leading: EditButton(),
+                            trailing: Button("收起") {
+                                presentationMode.wrappedValue.dismiss()
+                            }
+                        )
+                        .environment(\.editMode, $currentEditMode)
                 }
 
                 // 自定义底部工具栏
-                if editMode.isEditing {
+                if currentEditMode.isEditing {
                     HStack(spacing: 20) {
                         Button(action: copySelectedAnnotations) {
                             VStack(spacing: 4) {
@@ -115,7 +119,7 @@ struct AnnotationListView: View {
             // 构建注释ID映射
             updateAnnotationIdMap()
         }
-        .onChange(of: viewModel.annotationData) { _ in
+        .onChange(of: annotationListViewModel.annotationData) { _ in
             // 当注释数据更新时，更新ID映射
             updateAnnotationIdMap()
         }
@@ -136,19 +140,39 @@ struct AnnotationListView: View {
     private func updateAnnotationIdMap() {
         annotationIdMap.removeAll()
 
-        for (index, annotation) in viewModel.annotationData.enumerated() {
-            if index < viewModel.annotations.count {
-                let formattedAnnotation = viewModel.annotations[index]
+        for (index, annotation) in annotationListViewModel.annotationData.enumerated() {
+            if index < annotationListViewModel.annotations.count {
+                let formattedAnnotation = annotationListViewModel.annotations[index]
                 annotationIdMap[formattedAnnotation] = annotation.id
             }
         }
-        NSLog("✅ AnnotationListView.swift -> AnnotationListView.updateAnnotationIdMap, \(viewModel.annotationData)")
+
         NSLog("✅ AnnotationListView.swift -> AnnotationListView.updateAnnotationIdMap, 已更新注释ID映射，共 \(annotationIdMap.count) 条")
     }
 
     // 获取注释的ID
     private func getAnnotationId(for annotation: String) -> String? {
         return annotationIdMap[annotation]
+    }
+
+    // 修改 slideToDeleteAnnotation 方法，使用 ID 删除
+    private func slideToDeleteAnnotation(at offsets: IndexSet) {
+        // 获取要删除的注释
+        let annotationsToDelete = offsets.map { annotationListViewModel.annotations[$0] }
+
+        // 获取注释ID
+        let idsToDelete = annotationsToDelete.compactMap { getAnnotationId(for: $0) }
+
+        if !idsToDelete.isEmpty {
+            // 删除注释
+            if annotationListViewModel.deleteAnnotations(withIds: idsToDelete) {
+                // 显示删除成功提示
+                showToast(message: "已删除 \(idsToDelete.count) 条注释")
+            } else {
+                // 显示删除失败提示
+                showToast(message: "删除失败，请重试")
+            }
+        }
     }
 
     // 删除选中的注释
@@ -158,7 +182,7 @@ struct AnnotationListView: View {
 
         if !selectedIds.isEmpty {
             // 删除选中的注释
-            if viewModel.deleteAnnotations(withIds: selectedIds) {
+            if annotationListViewModel.deleteAnnotations(withIds: selectedIds) {
                 // 清除选择
                 selectedAnnotations.removeAll()
 
@@ -203,26 +227,6 @@ struct AnnotationListView: View {
         }
     }
 
-    // 修改 deleteAnnotations 方法，使用 ID 删除
-    private func deleteAnnotations(at offsets: IndexSet) {
-        // 获取要删除的注释
-        let annotationsToDelete = offsets.map { viewModel.annotations[$0] }
-
-        // 获取注释ID
-        let idsToDelete = annotationsToDelete.compactMap { getAnnotationId(for: $0) }
-
-        if !idsToDelete.isEmpty {
-            // 删除注释
-            if viewModel.deleteAnnotations(withIds: idsToDelete) {
-                // 显示删除成功提示
-                showToast(message: "已删除 \(idsToDelete.count) 条注释")
-            } else {
-                // 显示删除失败提示
-                showToast(message: "删除失败，请重试")
-            }
-        }
-    }
-
     private func extractAndHandleNOTERPAGE(from annotation: String) {
         // Extract the NOTERPAGE portion from the annotation string
         let components = annotation.components(separatedBy: ")][")
@@ -238,7 +242,7 @@ struct AnnotationListView: View {
     }
 
     private func copySelectedAnnotations() {
-        let selectedTexts = viewModel.annotations.filter { selectedAnnotations.contains($0) }
+        let selectedTexts = annotationListViewModel.annotations.filter { selectedAnnotations.contains($0) }
 
         if !selectedTexts.isEmpty {
             // 在主线程上执行剪贴板操作
@@ -250,40 +254,8 @@ struct AnnotationListView: View {
                 generator.prepare() // 提前准备生成器
                 generator.impactOccurred() // 触发反馈
 
-                // 备选方案：如果上面的方法不起作用，尝试这个
-                // let selectionGenerator = UISelectionFeedbackGenerator()
-                // selectionGenerator.prepare()
-                // selectionGenerator.selectionChanged()
-
                 // 显示一个临时提示，提供视觉反馈
-                let keyWindow = UIApplication.shared.windows.first { $0.isKeyWindow }
-                if let keyWindow = keyWindow {
-                    let toastLabel = UILabel()
-                    toastLabel.backgroundColor = UIColor.black.withAlphaComponent(0.7)
-                    toastLabel.textColor = UIColor.white
-                    toastLabel.textAlignment = .center
-                    toastLabel.font = UIFont.systemFont(ofSize: 14)
-                    toastLabel.text = "已拷贝 \(selectedTexts.count) 条注释"
-                    toastLabel.alpha = 1.0
-                    toastLabel.layer.cornerRadius = 10
-                    toastLabel.clipsToBounds = true
-
-                    keyWindow.addSubview(toastLabel)
-                    toastLabel.translatesAutoresizingMaskIntoConstraints = false
-                    NSLayoutConstraint.activate([
-                        toastLabel.centerXAnchor.constraint(equalTo: keyWindow.centerXAnchor),
-                        toastLabel.bottomAnchor.constraint(equalTo: keyWindow.safeAreaLayoutGuide.bottomAnchor, constant: -100),
-                        toastLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 150),
-                        toastLabel.heightAnchor.constraint(equalToConstant: 40),
-                    ])
-
-                    // 2秒后淡出
-                    UIView.animate(withDuration: 0.5, delay: 2.0, options: .curveEaseOut, animations: {
-                        toastLabel.alpha = 0.0
-                    }, completion: { _ in
-                        toastLabel.removeFromSuperview()
-                    })
-                }
+                showToast(message: "已拷贝 \(selectedTexts.count) 条注释")
             }
         }
 
@@ -372,6 +344,7 @@ struct SearchBar: UIViewRepresentable {
 
     func makeUIView(context: Context) -> UISearchBar {
         let searchBar = UISearchBar(frame: .zero)
+
         searchBar.delegate = context.coordinator
         searchBar.placeholder = placeholder
         searchBar.searchBarStyle = .minimal
@@ -381,6 +354,7 @@ struct SearchBar: UIViewRepresentable {
         searchBar.returnKeyType = .done
         searchBar.enablesReturnKeyAutomatically = false
         searchBar.backgroundImage = UIImage()
+
         return searchBar
     }
 

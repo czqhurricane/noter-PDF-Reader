@@ -26,8 +26,7 @@ class DatabaseManager {
         }
 
         // 使用获取到访问权限的URL路径
-        if let newQueue = FMDatabaseQueue(path: accessibleURL.path)
-        {
+        if let newQueue = FMDatabaseQueue(path: accessibleURL.path) {
             dbQueue = newQueue
 
             NSLog("✅ DatabaseManager.swift -> DatabaseManager.openDatabase, 成功打开数据库: \(path)")
@@ -145,9 +144,14 @@ class DatabaseManager {
         let file = annotation.file.replacingOccurrences(of: "\"", with: "")
         let contents = annotation.contents.replacingOccurrences(of: "\"", with: "")
         let outlines = annotation.outlines.replacingOccurrences(of: "\"", with: "")
+        let formattedAnnotation: String
 
         // 构建NOTERPAGE格式
-        let formattedAnnotation = "[[NOTERPAGE:\(file)#(\(annotation.page) \(yRatio) . \(xRatio))][\(contents) < \(outlines) < \(fileName)]]"
+        if outlines.isEmpty {
+            formattedAnnotation = "[[NOTERPAGE:\(file)#(\(annotation.page) \(yRatio) . \(xRatio))][\(contents) < \(fileName)]]"
+        } else {
+            formattedAnnotation = "[[NOTERPAGE:\(file)#(\(annotation.page) \(yRatio) . \(xRatio))][\(contents) < \(outlines) < \(fileName)]]"
+        }
 
         return formattedAnnotation
     }
