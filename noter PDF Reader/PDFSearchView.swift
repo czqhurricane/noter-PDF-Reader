@@ -52,9 +52,12 @@ struct PDFSearchView: View {
                                     .foregroundColor(.blue)
                                     .frame(width: 80, alignment: .leading)
 
-                                Text(result.text)
-                                    .lineLimit(2)
-                                    .foregroundColor(.primary)
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(getContextString(from: result))
+                                        .lineLimit(3)
+                                        .foregroundColor(.primary)
+                                        .font(.system(size: 14))
+                                }
                             }
                             .padding(.vertical, 4)
                         }
@@ -76,12 +79,12 @@ struct PDFSearchView: View {
                 }
             }
         }
-          .onAppear {
-              // 视图出现时执行搜索，恢复之前的搜索结果
-              if !searchText.isEmpty {
-                  performSearch()
-              }
-          }
+        .onAppear {
+            // 视图出现时执行搜索，恢复之前的搜索结果
+            if !searchText.isEmpty {
+                performSearch()
+            }
+        }
         .navigationTitle("PDF搜索")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -116,3 +119,33 @@ struct PDFSearchView: View {
         }
     }
 }
+
+// 添加一个帮助方法来获取上下文
+private func getContextString(from result: PDFSearchResult) -> String {
+    // Since selection is not optional in PDFSearchResult, we don't need to check it
+    guard let page = result.selection.pages.first,
+          let text = result.selection.string else {
+        return result.text
+    }
+
+    // 获取整页文本
+    let pageText = page.string ?? ""
+
+    // 找到搜索文本在页面中的位置
+    guard let range = pageText.range(of: text) else {
+        return result.text
+    }
+
+    // 计算上下文范围（前后50个字符）
+    let contextStart = pageText.index(range.lowerBound, offsetBy: -50, limitedBy: pageText.startIndex) ?? pageText.startIndex
+    let contextEnd = pageText.index(range.upperBound, offsetBy: 50, limitedBy: pageText.endIndex) ?? pageText.endIndex
+
+    // 获取上下文文本
+    let prefix = String(pageText[contextStart..<range.lowerBound])
+    let match = String(pageText[range])
+    let suffix = String(pageText[range.upperBound..<contextEnd])
+
+    // 组合上下文，使用 ... 表示截断
+    return "\(contextStart > pageText.startIndex ? "..." : "")\(prefix)\(match)\(suffix)\(contextEnd < pageText.endIndex ? "..." : "")"
+}
+
