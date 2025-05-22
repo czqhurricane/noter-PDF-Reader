@@ -1,7 +1,7 @@
 import PDFKit
 import UIKit
 
-class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITableViewDelegate {
+class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UIAdaptivePresentationControllerDelegate {
     var pdfView: PDFView?
     private var outlineItems: [PDFOutline] = []
     private let tableView = UITableView()
@@ -31,6 +31,9 @@ class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITable
         ])
 
         loadOutlineItems()
+
+        // 设置presentation controller的代理为self
+        presentationController?.delegate = self
     }
 
     private func loadOutlineItems() {
@@ -112,5 +115,18 @@ class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITable
         )
 
         NSLog("✅ PDFOutlineViewController.swift -> PDFOutlineViewController.dismissOutline, 发送通知 UpdateShowOutlines")
+    }
+
+    // 实现UIAdaptivePresentationControllerDelegate方法
+    func presentationControllerDidDismiss(_ presentationController: UIPresentationController) {
+        // 用户手动下拉关闭sheet时触发
+        NSLog("✅ PDFOutlineViewController.swift -> presentationControllerDidDismiss, 用户手动下拉关闭了大纲视图")
+
+        // 发送通知更新ShowOutlines状态
+        NotificationCenter.default.post(
+          name: Notification.Name("UpdateShowOutlines"),
+          object: nil,
+          userInfo: ["showOutlines": false]
+        )
     }
 }
