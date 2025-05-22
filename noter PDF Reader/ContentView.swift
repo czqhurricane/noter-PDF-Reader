@@ -11,6 +11,7 @@ struct ContentView: View {
     @State private var xRatio: Double = 0.0
     @State private var yRatio: Double = 0.0
     @State private var showDirectoryPicker = false
+    @State private var showPDFPicker = false
     @State private var showLinkInput = false
     @State private var linkText: String = ""
     @State private var rootFolderURL: URL? = UserDefaults.standard.url(forKey: "RootFolder")
@@ -213,7 +214,7 @@ struct ContentView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showDirectoryPicker = true }) {
+                    Button(action: { showPDFPicker = true }) {
                         Image(systemName: "folder")
                             .padding(8)
                     }
@@ -225,11 +226,12 @@ struct ContentView: View {
                     }
                 }
             }.sheet(isPresented: Binding<Bool>(
-                get: { showLinkInput || showDirectoryPicker },
+                get: { showLinkInput || showDirectoryPicker || showPDFPicker },
                 set: {
                     if !$0 {
                         showLinkInput = false
                         showDirectoryPicker = false
+                        showPDFPicker = false
                     }
                 }
             )) {
@@ -239,7 +241,7 @@ struct ContentView: View {
                             processMetanoteLink(linkText)
                             showLinkInput = false
                         })
-                    } else {
+                    } else if showDirectoryPicker {
                         DocumentPicker(accessManager: directoryManager)
                             .onAppear {
                                 NSLog("✅ ContentView.swift -> ContentView.body, 文件选择器 sheet 显示")
@@ -249,6 +251,16 @@ struct ContentView: View {
 
                                 NSLog("❌ ContentView.swift -> ContentView.body, 文件选择器 sheet 不显示")
                             }
+                    } else {
+                        PDFPicker(accessManager: directoryManager)
+                          .onAppear {
+                              NSLog("✅ ContentView.swift -> ContentView.body, PDF 选择器 sheet 显示")
+                          }
+                          .onDisappear {
+                              showPDFPicker = false
+
+                              NSLog("❌ ContentView.swift -> ContentView.body, PDF 选择器 sheet 不显示")
+                          }
                     }
                 }
             }
@@ -392,9 +404,9 @@ struct ContentView: View {
         }
 
         NotificationCenter.default.addObserver(
-          forName: Notification.Name("OpenSelectedPDF"),
-          object: nil,
-          queue: .main
+            forName: Notification.Name("OpenSelectedPDF"),
+            object: nil,
+            queue: .main
         ) { notification in
             guard let userInfo = notification.userInfo,
                   let pdfPath = userInfo["pdfPath"] as? String,

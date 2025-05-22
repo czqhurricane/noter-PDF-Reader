@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		025107892DDFA95F009BE1EA /* PDFPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025107882DDFA95E009BE1EA /* PDFPicker.swift */; };
 		025FCAAA2DDE6F3D00102A44 /* PDFOutlineViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025FCAA92DDE6F3D00102A44 /* PDFOutlineViewController.swift */; };
 		025FCAAE2DDF174E00102A44 /* PDFSearchResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025FCAAC2DDF174D00102A44 /* PDFSearchResult.swift */; };
 		025FCAAF2DDF174E00102A44 /* PDFSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025FCAAD2DDF174E00102A44 /* PDFSearchView.swift */; };
@@ -29,6 +30,7 @@
 
 /* Begin PBXFileReference section */
 		022A7C872DD65E8D00CAA334 /* noter PDF Reader.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "noter PDF Reader.entitlements"; sourceTree = "<group>"; };
+		025107882DDFA95E009BE1EA /* PDFPicker.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PDFPicker.swift; sourceTree = "<group>"; };
 		025FCAA92DDE6F3D00102A44 /* PDFOutlineViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PDFOutlineViewController.swift; sourceTree = "<group>"; };
 		025FCAAC2DDF174D00102A44 /* PDFSearchResult.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PDFSearchResult.swift; sourceTree = "<group>"; };
 		025FCAAD2DDF174E00102A44 /* PDFSearchView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PDFSearchView.swift; sourceTree = "<group>"; };
@@ -89,6 +91,7 @@
 		0262EB8B2DCB611400E9CBC8 /* noter PDF Reader */ = {
 			isa = PBXGroup;
 			children = (
+				025107882DDFA95E009BE1EA /* PDFPicker.swift */,
 				025FCAAC2DDF174D00102A44 /* PDFSearchResult.swift */,
 				025FCAAD2DDF174E00102A44 /* PDFSearchView.swift */,
 				025FCAA92DDE6F3D00102A44 /* PDFOutlineViewController.swift */,
@@ -197,6 +200,7 @@
 			files = (
 				0262EBAE2DCB66EF00E9CBC8 /* PDFKitView.swift in Sources */,
 				029B41A62DDB846800EE0236 /* DatabaseManager.swift in Sources */,
+				025107892DDFA95F009BE1EA /* PDFPicker.swift in Sources */,
 				02DD37612DD1F91B004892E9 /* DirectoryAccessManager.swift in Sources */,
 				029B41B62DDBC1EA00EE0236 /* AnnotationListViewModel.swift in Sources */,
 				025FCAAF2DDF174E00102A44 /* PDFSearchView.swift in Sources */,
