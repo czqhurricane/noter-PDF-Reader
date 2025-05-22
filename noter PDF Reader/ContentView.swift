@@ -32,6 +32,9 @@ struct ContentView: View {
     @StateObject private var directoryManager = DirectoryAccessManager.shared
     @StateObject var annotationListViewModel = AnnotationListViewModel()
 
+    // 添加搜索状态管理
+    @AppStorage("lastSearchText") private var lastSearchText: String = ""
+
     // Helper view for displaying the PDF
     @ViewBuilder
     private var pdfDisplaySection: some View {
@@ -287,6 +290,9 @@ struct ContentView: View {
                         PDFSearchView(pdfDocument: $pdfDocument) { result in
                             // 更新选中的搜索结果
                             selectedSearchSelection = result.selection
+
+                            // 保存最后选择的搜索结果页码
+                            UserDefaults.standard.set(result.page, forKey: "lastSearchPage")
                         }
                     }
                 }

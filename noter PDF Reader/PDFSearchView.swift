@@ -4,7 +4,9 @@ import SwiftUI
 struct PDFSearchView: View {
     @Environment(\.presentationMode) private var presentationMode
     @Binding var pdfDocument: PDFDocument?
-    @State private var searchText: String = ""
+    // 将状态变量改为 AppStorage 以保持状态
+    @AppStorage("lastSearchText") private var searchText: String = ""
+    // 使用 UserDefaults 来保存搜索结果
     @State private var searchResults: [PDFSearchResult] = []
     @State private var isSearching: Bool = false
 
@@ -22,7 +24,6 @@ struct PDFSearchView: View {
                     .onChange(of: searchText) { _ in
                         performSearch()
                     }
-
                 if !searchText.isEmpty {
                     Button(action: {
                         searchText = ""
@@ -75,6 +76,12 @@ struct PDFSearchView: View {
                 }
             }
         }
+          .onAppear {
+              // 视图出现时执行搜索，恢复之前的搜索结果
+              if !searchText.isEmpty {
+                  performSearch()
+              }
+          }
         .navigationTitle("PDF搜索")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -102,6 +109,9 @@ struct PDFSearchView: View {
             DispatchQueue.main.async {
                 self.searchResults = searchResults.map { PDFSearchResult(selection: $0) }
                 self.isSearching = false
+
+                // 保存最后一次搜索时间
+                UserDefaults.standard.set(Date(), forKey: "lastSearchTime")
             }
         }
     }
