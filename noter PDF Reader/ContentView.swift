@@ -142,7 +142,7 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity) // 确保内容填充整个屏幕宽度
             }
-            .navigationBarTitle("PDF 阅读器", displayMode: .inline)
+            .navigationBarTitle("", displayMode: .inline)
             .navigationBarTitleDisplayMode(.automatic)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -151,8 +151,10 @@ struct ContentView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: { showAnnotations = true }) {
-                        Image(systemName: "list.bullet")
+                    Button(action: {
+                        showAnnotations = true // 显示保存的注释
+                    }) {
+                        Image(systemName: "note.text")
                     }
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -172,7 +174,7 @@ struct ContentView: View {
                             Button(action: {
                                 isLocationMode.toggle() // 切换注释模式
                             }) {
-                                Image(systemName: "location")
+                                Image(systemName: "square.and.pencil")
                             }
                         }
                     }
@@ -180,13 +182,13 @@ struct ContentView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showDirectoryPicker = true }) {
                         Image(systemName: "folder")
-                            .padding(8) // Add padding
+                            .padding(8)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showLinkInput = true }) {
                         Image(systemName: "link")
-                            .padding(8) // Add padding
+                            .padding(8)
                     }
                 }
             }.sheet(isPresented: Binding<Bool>(
