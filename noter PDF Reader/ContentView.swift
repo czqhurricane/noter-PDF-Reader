@@ -21,116 +21,135 @@ struct ContentView: View {
     @State private var annotation: String = "" // 存储用户输入的注释
     @State private var isLocationMode = false // 是否添加注释的状态变量
     @State private var forceRender = true
-    @State private var showAnnotations = false // 显示保存的注释列表视图
+    @State private var showAnnotationsSheet = false // 显示保存的注释列表视图
     @State private var showOutlines = false // 显示 PDF 目录
+    @State private var showSearchSheet = false // 显示 PDF 全文搜索 sheet
+    @State private var pdfDocument: PDFDocument?
+    // 添加新的状态变量用于跟踪当前选中的搜索结果
+    @State private var selectedSearchSelection: PDFSelection? = nil
 
     // 目录访问管理器
     @StateObject private var directoryManager = DirectoryAccessManager.shared
     @StateObject var annotationListViewModel = AnnotationListViewModel()
 
+    // Helper view for displaying the PDF
+    @ViewBuilder
+    private var pdfDisplaySection: some View {
+        if let url = pdfURL {
+            ZStack {
+                PDFKitView(
+                    url: url,
+                    page: currentPage,
+                    xRatio: xRatio,
+                    yRatio: yRatio,
+                    isLocationMode: isLocationMode, // 传递注释模式状态
+                    rawPdfPath: rawPdfPath,
+                    showOutlines: showOutlines,
+                    isPDFLoaded: $isPDFLoaded,
+                    viewPoint: $viewPoint,
+                    annotation: $annotation,
+                    forceRender: $forceRender,
+                    pdfDocument: $pdfDocument,
+                    selectedSearchSelection: $selectedSearchSelection
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                .onAppear {
+                    pdfLoadError = nil
+                }
+                .onChange(of: isPDFLoaded) { loaded in
+                    if !loaded {
+                        pdfLoadError = "无法加载PDF文件，请检查文件路径和权限"
+                    }
+                }
+
+                if isLocationMode {
+                    VStack {
+                        Spacer()
+                        Text("请点击PDF上的位置来放置箭头")
+                            .padding()
+                            .background(Color.black.opacity(0.7))
+                            .foregroundColor(.white)
+                            .cornerRadius(8)
+                            .padding(.bottom, 20)
+                    }
+                }
+            }
+            .frame(minHeight: UIScreen.main.bounds.height * 0.9) // 当显示PDF时，设置一个合适的最小高度
+        }
+    }
+
+    // Helper view for when no PDF is loaded
+    @ViewBuilder
+    private var noPdfLoadedSection: some View {
+        VStack(spacing: 20) {
+            if let rootURL = directoryManager.rootDirectoryURL {
+                Text("已选择根文件夹: \(rootURL.lastPathComponent)")
+                    .padding()
+            }
+
+            Button(action: {
+                showDirectoryPicker = true
+            }) {
+                HStack {
+                    Image(systemName: "folder")
+                    Text("选择 PDF 根文件夹")
+                }
+                .padding()
+                .background(Color.gray)
+                .foregroundColor(.white)
+                .cornerRadius(8)
+            }
+
+            // 显示扫描进度
+            ScanningProgressView(accessManager: directoryManager)
+
+            Divider()
+                .padding(.vertical, 8)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                TextField("请输入原始路径", text: $originalPathInput)
+                    .fixedSize(horizontal: true, vertical: false)
+            }
+
+            Button {
+                PathConverter.originalPath = originalPathInput
+                UserDefaults.standard.set(originalPathInput, forKey: "OriginalPath")
+            } label: {
+                HStack {
+                    Image(systemName: "square.and.arrow.down")
+                    Text("保存路径")
+                }
+            }
+            .padding()
+            .background(Color.gray)
+            .foregroundColor(.white)
+            .cornerRadius(8)
+
+            Divider()
+                .padding(.vertical, 8)
+
+            Button(action: {
+                showLinkInput = true
+            }) {
+                HStack {
+                    Image(systemName: "link")
+                    Text("输入 NOTERPAGE 链接")
+                }
+                .padding()
+                .background(Color.gray)
+                .foregroundColor(.white)
+                .cornerRadius(8)
+            }
+        }.padding()
+    }
+
     var body: some View {
         NavigationView {
             ScrollView(.vertical, showsIndicators: true) { VStack {
-                if let url = pdfURL {
-                    ZStack {
-                        PDFKitView(
-                            url: url,
-                            page: currentPage,
-                            xRatio: xRatio,
-                            yRatio: yRatio,
-                            isLocationMode: isLocationMode, // 传递注释模式状态
-                            rawPdfPath: rawPdfPath,
-                            showOutlines: showOutlines,
-                            isPDFLoaded: $isPDFLoaded,
-                            viewPoint: $viewPoint,
-                            annotation: $annotation,
-                            forceRender: $forceRender
-                        )
-                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
-                        .onAppear {
-                            pdfLoadError = nil
-                        }
-                        .onChange(of: isPDFLoaded) { loaded in
-                            if !loaded {
-                                pdfLoadError = "无法加载PDF文件，请检查文件路径和权限"
-                            }
-                        }
-
-                        if isLocationMode {
-                            VStack {
-                                Spacer()
-                                Text("请点击PDF上的位置来放置箭头")
-                                    .padding()
-                                    .background(Color.black.opacity(0.7))
-                                    .foregroundColor(.white)
-                                    .cornerRadius(8)
-                                    .padding(.bottom, 20)
-                            }
-                        }
-                    }
-                    .frame(minHeight: UIScreen.main.bounds.height * 0.9) // 当显示PDF时，设置一个合适的最小高度
-
+                if pdfURL != nil { // Check pdfURL directly
+                    pdfDisplaySection
                 } else {
-                    VStack(spacing: 20) {
-                        if let rootURL = directoryManager.rootDirectoryURL {
-                            Text("已选择根文件夹: \(rootURL.lastPathComponent)")
-                                .padding()
-                        }
-
-                        Button(action: {
-                            showDirectoryPicker = true
-                        }) {
-                            HStack {
-                                Image(systemName: "folder")
-                                Text("选择 PDF 根文件夹")
-                            }
-                            .padding()
-                            .background(Color.gray)
-                            .foregroundColor(.white)
-                            .cornerRadius(8)
-                        }
-
-                        // 显示扫描进度
-                        ScanningProgressView(accessManager: directoryManager)
-
-                        Divider()
-                            .padding(.vertical, 8)
-
-                        ScrollView(.horizontal, showsIndicators: false) {
-                            TextField("请输入原始路径", text: $originalPathInput)
-                                .fixedSize(horizontal: true, vertical: false)
-                        }
-
-                        Button {
-                            PathConverter.originalPath = originalPathInput
-                            UserDefaults.standard.set(originalPathInput, forKey: "OriginalPath")
-                        } label: {
-                            HStack {
-                                Image(systemName: "square.and.arrow.down")
-                                Text("保存路径")
-                            }
-                        }
-                        .padding()
-                        .background(Color.gray)
-                        .foregroundColor(.white)
-                        .cornerRadius(8)
-
-                        Divider()
-                            .padding(.vertical, 8)
-
-                        Button(action: {
-                            showLinkInput = true
-                        }) {
-                            HStack {
-                                Image(systemName: "link")
-                                Text("输入 NOTERPAGE 链接")
-                            }
-                            .padding()
-                            .background(Color.gray)
-                            .foregroundColor(.white)
-                            .cornerRadius(8)
-                        }
-                    }.padding()
+                    noPdfLoadedSection
                 }
 
                 // 显示错误信息
@@ -152,7 +171,7 @@ struct ContentView: View {
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
-                        showAnnotations = true // 显示保存的注释
+                        showAnnotationsSheet = true // 显示保存的注释
                     }) {
                         Image(systemName: "note.text")
                     }
@@ -164,6 +183,17 @@ struct ContentView: View {
                                 showOutlines = true // 显示目录模式
                             }) {
                                 Image(systemName: "list.bullet.indent")
+                            }
+                        }
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Group {
+                        if let _ = pdfURL {
+                            Button(action: {
+                                showSearchSheet = true // PDF 全文搜索模式
+                            }) {
+                                Image(systemName: "magnifyingglass")
                             }
                         }
                     }
@@ -239,9 +269,28 @@ struct ContentView: View {
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .statusBar(hidden: false)
-        .sheet(isPresented: $showAnnotations) {
-            // 传递同一个 ViewModel 实例到 AnnotationListView
-            AnnotationListViewWrapper(viewModel: annotationListViewModel)
+        .sheet(isPresented: Binding<Bool>(
+            get: { showAnnotationsSheet || showSearchSheet },
+            set: {
+                if !$0 {
+                    showAnnotationsSheet = false
+                    showSearchSheet = false
+                }
+            }
+        )) {
+            Group {
+                if showAnnotationsSheet {
+                    // 传递同一个 ViewModel 实例到 AnnotationListView
+                    AnnotationListViewWrapper(viewModel: annotationListViewModel)
+                } else {
+                    NavigationView {
+                        PDFSearchView(pdfDocument: $pdfDocument) { result in
+                            // 更新选中的搜索结果
+                            selectedSearchSelection = result.selection
+                        }
+                    }
+                }
+            }
         }
         .ignoresSafeArea(.all, edges: .all) // Use full screen space
         .onAppear {

@@ -14,6 +14,8 @@ struct PDFKitView: UIViewRepresentable {
     @Binding var viewPoint: CGPoint
     @Binding var annotation: String // 绑定到ContentView的注释状态
     @Binding var forceRender: Bool
+    @Binding var pdfDocument: PDFDocument?
+    @Binding var selectedSearchSelection: PDFSelection?
 
     func makeUIView(context: Context) -> PDFView {
         NSLog("✅ PDFKitView.swift -> PDFKitView.makeUIView, url : \(String(describing: url))")
@@ -88,6 +90,7 @@ struct PDFKitView: UIViewRepresentable {
         // 设置PDF文档
         if let document = document {
             pdfView.document = document
+            pdfDocument = document
 
             NSLog("✅ PDFKitView.swift -> PDFKitView.makeUIView, 成功获取 pdfView.document")
         } else {
@@ -109,6 +112,23 @@ struct PDFKitView: UIViewRepresentable {
     func updateUIView(_ pdfView: PDFView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.isLocationMode = isLocationMode // 更新协调器中的状态
+
+        // 处理搜索结果选择
+        if let selection = selectedSearchSelection {
+            // Navigate to the selected page
+            if let page = selection.pages.first {
+                pdfView.go(to: page)
+            }
+
+            // Highlight the selected text - Fix: Use UIColor.yellow instead of just .yellow
+            selection.color = UIColor.yellow.withAlphaComponent(0.3)
+            pdfView.setCurrentSelection(selection, animate: true)
+
+            // Reset selection state
+            DispatchQueue.main.async {
+                selectedSearchSelection = nil
+            }
+        }
 
         if showOutlines {
             if context.coordinator.outlineVC == nil {
