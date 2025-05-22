@@ -20,6 +20,7 @@ struct PDFSearchView: View {
 
                 TextField("搜索 PDF 内容", text: $searchText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
+                    .autocapitalization(.none) // 禁用自动首字母大写
                     .disableAutocorrection(true)
                     .onChange(of: searchText) { _ in
                         performSearch()
@@ -148,4 +149,3 @@ private func getContextString(from result: PDFSearchResult) -> String {
     // 组合上下文，使用 ... 表示截断
     return "\(contextStart > pageText.startIndex ? "..." : "")\(prefix)\(match)\(suffix)\(contextEnd < pageText.endIndex ? "..." : "")"
 }
-
