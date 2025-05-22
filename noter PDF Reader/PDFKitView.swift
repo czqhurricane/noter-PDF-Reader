@@ -211,6 +211,7 @@ struct PDFKitView: UIViewRepresentable {
 
         if let document = document {
             pdfView.document = document
+            pdfDocument = document
 
             NSLog("✅ PDFKitView.swift -> PDFKitView.updateUIView, 成功加载文档")
 
