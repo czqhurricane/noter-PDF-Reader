@@ -390,6 +390,28 @@ struct ContentView: View {
                 self.showOutlines = showOutlinesValue
             }
         }
+
+        NotificationCenter.default.addObserver(
+          forName: Notification.Name("OpenSelectedPDF"),
+          object: nil,
+          queue: .main
+        ) { notification in
+            guard let userInfo = notification.userInfo,
+                  let pdfPath = userInfo["pdfPath"] as? String,
+                  let currentPage = userInfo["currentPage"] as? Int,
+                  let xRatio = userInfo["xRatio"] as? Double,
+                  let yRatio = userInfo["yRatio"] as? Double
+            else {
+                return
+            }
+
+            rawPdfPath = self.convertToRawPath(pdfPath)
+
+            NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenSelectedPDF 观察者, 接收到打开PDF请求，原始路径: \(pdfPath), 反转换路径: \(rawPdfPath)")
+
+            // 调用 openPDF 方法打开文件
+            openPDF(at: pdfPath, currentPage: currentPage, xRatio: xRatio, yRatio: yRatio)
+        }
     }
 
     private func processMetanoteLink(_ link: String) {
@@ -478,6 +500,28 @@ struct ContentView: View {
         }
 
         rootVC.present(activityVC, animated: true)
+    }
+
+    private func convertToRawPath(_ path: String) -> String {
+        // 获取当前的 rootDirectoryURL
+        let rootPath: String
+
+        if let rootURL = directoryManager.rootDirectoryURL {
+            rootPath = rootURL.path
+        } else if let cachedPath = UserDefaults.standard.string(forKey: "LastSuccessfulRootPath") {
+            rootPath = cachedPath
+        } else {
+            return path // 无法转换，返回原始路径
+        }
+
+        // 获取原始路径
+        var processedOriginalPath = PathConverter.originalPath
+        if processedOriginalPath.hasSuffix("/") {
+            processedOriginalPath.removeLast()
+        }
+
+        // 执行反向替换
+        return path.replacingOccurrences(of: rootPath, with: processedOriginalPath)
     }
 }
 

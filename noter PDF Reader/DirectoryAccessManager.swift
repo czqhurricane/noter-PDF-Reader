@@ -14,7 +14,7 @@ class DirectoryAccessManager: ObservableObject {
     private var bookmarks: [String: Data] = [:]
 
     // 扫描目录并创建书签
-    func scanDirectory(at url: URL) {
+    func scanDirectory(at url: URL, completion: @escaping () -> Void) {
         isScanning = true
         scanningProgress = 0
         errorMessage = nil
@@ -113,7 +113,6 @@ class DirectoryAccessManager: ObservableObject {
 
                         // 保存到 UserDefaults
                         UserDefaults.standard.set(serializableBookmarks, forKey: "FileBookmarks")
-                        self.isScanning = false
                         self.scanningProgress = 1.0
 
                         NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 目录扫描完成，创建了 \(serializableBookmarks.count) 个书签")
@@ -131,6 +130,11 @@ class DirectoryAccessManager: ObservableObject {
             // 停止访问资源
             if shouldStopAccessing {
                 url.stopAccessingSecurityScopedResource()
+            }
+
+            DispatchQueue.main.async {
+                self.isScanning = false
+                completion()
             }
         }
     }
