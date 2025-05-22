@@ -8,6 +8,7 @@ struct PDFKitView: UIViewRepresentable {
     var yRatio: Double
     var isLocationMode: Bool // 添加这个属性来控制是否处于位置选择模式
     var rawPdfPath: String
+    var showOutlines: Bool // 显示 PDF 目录
 
     @Binding var isPDFLoaded: Bool
     @Binding var viewPoint: CGPoint
@@ -108,6 +109,28 @@ struct PDFKitView: UIViewRepresentable {
     func updateUIView(_ pdfView: PDFView, context: Context) {
         context.coordinator.parent = self
         context.coordinator.isLocationMode = isLocationMode // 更新协调器中的状态
+
+        if showOutlines {
+            if context.coordinator.outlineVC == nil {
+                let outlineVC = PDFOutlineViewController()
+                outlineVC.pdfView = pdfView
+                context.coordinator.outlineVC = outlineVC
+
+                if let rootVC = UIApplication.shared.windows.first?.rootViewController {
+                    rootVC.present(outlineVC, animated: true)
+
+                    NSLog("✅ PDFKitView.swift -> PDFKitView.updateUIView, 显示目录")
+
+                    // context.coordinator.showOutlines = false // 更新协调器中的状态
+                }
+            }
+        } else {
+            // Dismiss outline view controller if it is presented
+            if let outlineVC = context.coordinator.outlineVC {
+                outlineVC.dismiss(animated: true)
+                context.coordinator.outlineVC = nil
+            }
+        }
 
         let currentState = (url: url, page: page, xRatio: xRatio, yRatio: yRatio, forceRender: forceRender)
 
@@ -248,6 +271,7 @@ struct PDFKitView: UIViewRepresentable {
         var isLocationMode: Bool = false // 添加这个属性
         var currentOutlineString = "" // 新增属性存储当前大纲路径
         var previousState: (url: URL, page: Int, xRatio: Double, yRatio: Double, forceRender: Bool)?
+        var outlineVC: PDFOutlineViewController?
 
         // 添加 directoryManager 属性
         let directoryManager = DirectoryAccessManager.shared

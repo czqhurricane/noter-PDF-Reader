@@ -19,9 +19,10 @@ struct ContentView: View {
     @State private var pdfLoadError: String? = nil
     @State private var originalPathInput: String = UserDefaults.standard.string(forKey: "OriginalPath") ?? ""
     @State private var annotation: String = "" // 存储用户输入的注释
-    @State private var isLocationMode = false // 添加这个状态变量
+    @State private var isLocationMode = false // 是否添加注释的状态变量
     @State private var forceRender = true
-    @State private var showAnnotations = false
+    @State private var showAnnotations = false // 显示保存的注释列表视图
+    @State private var showOutlines = false // 显示 PDF 目录
 
     // 目录访问管理器
     @StateObject private var directoryManager = DirectoryAccessManager.shared
@@ -37,8 +38,9 @@ struct ContentView: View {
                             page: currentPage,
                             xRatio: xRatio,
                             yRatio: yRatio,
-                            isLocationMode: isLocationMode, // 传递位置选择模式状态
+                            isLocationMode: isLocationMode, // 传递注释模式状态
                             rawPdfPath: rawPdfPath,
+                            showOutlines: showOutlines,
                             isPDFLoaded: $isPDFLoaded,
                             viewPoint: $viewPoint,
                             annotation: $annotation,
@@ -65,15 +67,9 @@ struct ContentView: View {
                                     .padding(.bottom, 20)
                             }
                         }
-
-                        // if isPDFLoaded {
-                        //     ArrowAnnotationView(
-                        //         viewPoint: viewPoint
-                        //     )
-                        // }
                     }
-                    // 当显示PDF时，设置一个合适的最小高度
-                    .frame(minHeight: UIScreen.main.bounds.height * 0.9)
+                    .frame(minHeight: UIScreen.main.bounds.height * 0.9) // 当显示PDF时，设置一个合适的最小高度
+
                 } else {
                     VStack(spacing: 20) {
                         if let rootURL = directoryManager.rootDirectoryURL {
@@ -143,8 +139,8 @@ struct ContentView: View {
                         .foregroundColor(.red)
                         .padding()
                 }
-            } // 确保内容填充整个屏幕宽度
-            .frame(maxWidth: .infinity)
+            }
+            .frame(maxWidth: .infinity) // 确保内容填充整个屏幕宽度
             }
             .navigationBarTitle("PDF 阅读器", displayMode: .inline)
             .navigationBarTitleDisplayMode(.automatic)
@@ -159,11 +155,22 @@ struct ContentView: View {
                         Image(systemName: "list.bullet")
                     }
                 }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Group {
+                        if let _ = pdfURL {
+                            Button(action: {
+                                showOutlines = true // 显示目录模式
+                            }) {
+                                Image(systemName: "list.bullet.indent")
+                            }
+                        }
+                    }
+                }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Group {
                         if let _ = pdfURL {
                             Button(action: {
-                                isLocationMode.toggle() // 切换位置选择模式
+                                isLocationMode.toggle() // 切换注释模式
                             }) {
                                 Image(systemName: "location")
                             }
@@ -311,6 +318,21 @@ struct ContentView: View {
 
             annotationListViewModel.loadAnnotationsFromDatabase(dataBasePath)
         }
+
+        // 监听目录视图关闭通知
+        NotificationCenter.default.addObserver(
+            forName: NSNotification.Name("UpdateShowOutlines"),
+            object: nil,
+            queue: .main
+        ) { notification in
+            if let userInfo = notification.userInfo,
+               let showOutlinesValue = userInfo["showOutlines"] as? Bool
+            {
+                NSLog("✅ ContentView.swift -> ContentView.setupNotifications, UpdateShowOutlines 接收到通知")
+
+                self.showOutlines = showOutlinesValue
+            }
+        }
     }
 
     private func processMetanoteLink(_ link: String) {
@@ -408,6 +430,6 @@ struct AnnotationListViewWrapper: View {
 
     var body: some View {
         AnnotationListView()
-          .environmentObject(viewModel)
+            .environmentObject(viewModel)
     }
 }
