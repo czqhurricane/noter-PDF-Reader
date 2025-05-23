@@ -11,8 +11,11 @@ struct ContentView: View {
     @State private var xRatio: Double = 0.0
     @State private var yRatio: Double = 0.0
     @State private var showDirectoryPicker = false
+    @State private var showAnnotationsSheet = false // 显示保存的注释列表视图
+    @State private var showOutlines = false // 显示 PDF 目录
+    @State private var showSearchSheet = false // 显示 PDF 全文搜索 sheet
     @State private var showPDFPicker = false
-    @State private var showLinkInput = false
+    @State private var showLinkInputSheet = false
     @State private var linkText: String = ""
     @State private var rootFolderURL: URL? = UserDefaults.standard.url(forKey: "RootFolder")
     @State private var isPDFLoaded = false
@@ -22,9 +25,6 @@ struct ContentView: View {
     @State private var annotation: String = "" // 存储用户输入的注释
     @State private var isLocationMode = false // 是否添加注释的状态变量
     @State private var forceRender = true
-    @State private var showAnnotationsSheet = false // 显示保存的注释列表视图
-    @State private var showOutlines = false // 显示 PDF 目录
-    @State private var showSearchSheet = false // 显示 PDF 全文搜索 sheet
     @State private var pdfDocument: PDFDocument?
     // 添加新的状态变量用于跟踪当前选中的搜索结果
     @State private var selectedSearchSelection: PDFSelection? = nil
@@ -133,7 +133,7 @@ struct ContentView: View {
                 .padding(.vertical, 8)
 
             Button(action: {
-                showLinkInput = true
+                showLinkInputSheet = true
             }) {
                 HStack {
                     Image(systemName: "link")
@@ -175,7 +175,7 @@ struct ContentView: View {
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
-                        showAnnotationsSheet = true // 显示保存的注释
+                        showAnnotationsSheet = true // 显示保存的注释 sheet
                     }) {
                         Image(systemName: "note.text")
                     }
@@ -195,7 +195,7 @@ struct ContentView: View {
                     Group {
                         if let _ = pdfURL {
                             Button(action: {
-                                showSearchSheet = true // PDF 全文搜索模式
+                                showSearchSheet = true // 显示 PDF 全文搜索 sheet
                             }) {
                                 Image(systemName: "magnifyingglass")
                             }
@@ -214,33 +214,43 @@ struct ContentView: View {
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showPDFPicker = true }) {
+                    Button(action: { showPDFPicker = true }) { // 显示 PDFPicker
                         Image(systemName: "folder")
                             .padding(8)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showLinkInput = true }) {
+                    Button(action: { showLinkInputSheet = true }) { // 显示 LinkInput sheet
                         Image(systemName: "link")
                             .padding(8)
                     }
                 }
             }.sheet(isPresented: Binding<Bool>(
-                get: { showLinkInput || showDirectoryPicker || showPDFPicker },
+                get: { showAnnotationsSheet || showSearchSheet || showDirectoryPicker || showPDFPicker || showLinkInputSheet },
                 set: {
                     if !$0 {
-                        showLinkInput = false
+                        showAnnotationsSheet = false
+                        showSearchSheet = false
                         showDirectoryPicker = false
                         showPDFPicker = false
+                        showLinkInputSheet = false
                     }
                 }
             )) {
                 Group {
-                    if showLinkInput {
-                        LinkInputView(linkText: $linkText, onSubmit: {
-                            processMetanoteLink(linkText)
-                            showLinkInput = false
-                        })
+                    if showAnnotationsSheet {
+                        // 传递同一个 ViewModel 实例到 AnnotationListView
+                        AnnotationListViewWrapper(viewModel: annotationListViewModel)
+                    } else if showSearchSheet {
+                        NavigationView {
+                            PDFSearchView(pdfDocument: $pdfDocument) { result in
+                                // 更新选中的搜索结果
+                                selectedSearchSelection = result.selection
+
+                                // 保存最后选择的搜索结果页码
+                                UserDefaults.standard.set(result.page, forKey: "lastSearchPage")
+                            }
+                        }
                     } else if showDirectoryPicker {
                         DocumentPicker(accessManager: directoryManager)
                             .onAppear {
@@ -251,23 +261,27 @@ struct ContentView: View {
 
                                 NSLog("❌ ContentView.swift -> ContentView.body, 文件选择器 sheet 不显示")
                             }
-                    } else {
+                    } else if showPDFPicker {
                         PDFPicker(accessManager: directoryManager)
-                          .onAppear {
-                              NSLog("✅ ContentView.swift -> ContentView.body, PDF 选择器 sheet 显示")
-                          }
-                          .onDisappear {
-                              showPDFPicker = false
+                            .onAppear {
+                                NSLog("✅ ContentView.swift -> ContentView.body, PDF 选择器 sheet 显示")
+                            }
+                            .onDisappear {
+                                showPDFPicker = false
 
-                              NSLog("❌ ContentView.swift -> ContentView.body, PDF 选择器 sheet 不显示")
-                          }
+                                NSLog("❌ ContentView.swift -> ContentView.body, PDF 选择器 sheet 不显示")
+                            }
+                    } else if showLinkInputSheet {
+                        LinkInputView(linkText: $linkText, onSubmit: {
+                            processMetanoteLink(linkText)
+                            showLinkInputSheet = false
+                        })
                     }
                 }
             }
             .onAppear {
                 directoryManager.restoreSavedBookmarks()
                 setupNotifications()
-
                 // 检查是否有待处理的 PDF 信息
                 if let info = SceneDelegate.pendingPDFInfo {
                     NotificationCenter.default.post(
@@ -280,45 +294,17 @@ struct ContentView: View {
 
                     NSLog("✅ ContentView.swift -> ContentView.body, 应用初始化完成后发送 OpenPDFNotification 通知")
                 }
+
+                // Lock orientation to portrait initially
+                UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
+            }.onDisappear {
+                // Reset orientation lock
+                UIDevice.current.setValue(UIInterfaceOrientation.unknown.rawValue, forKey: "orientation")
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .statusBar(hidden: false)
-        .sheet(isPresented: Binding<Bool>(
-            get: { showAnnotationsSheet || showSearchSheet },
-            set: {
-                if !$0 {
-                    showAnnotationsSheet = false
-                    showSearchSheet = false
-                }
-            }
-        )) {
-            Group {
-                if showAnnotationsSheet {
-                    // 传递同一个 ViewModel 实例到 AnnotationListView
-                    AnnotationListViewWrapper(viewModel: annotationListViewModel)
-                } else {
-                    NavigationView {
-                        PDFSearchView(pdfDocument: $pdfDocument) { result in
-                            // 更新选中的搜索结果
-                            selectedSearchSelection = result.selection
-
-                            // 保存最后选择的搜索结果页码
-                            UserDefaults.standard.set(result.page, forKey: "lastSearchPage")
-                        }
-                    }
-                }
-            }
-        }
         .ignoresSafeArea(.all, edges: .all) // Use full screen space
-        .onAppear {
-            // Lock orientation to portrait initially
-            UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
-        }
-        .onDisappear {
-            // Reset orientation lock
-            UIDevice.current.setValue(UIInterfaceOrientation.unknown.rawValue, forKey: "orientation")
-        }
     }
 
     private func setupNotifications() {
