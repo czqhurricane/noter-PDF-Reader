@@ -315,6 +315,12 @@ struct PDFKitView: UIViewRepresentable {
 
             super.init()
 
+            // 注册自定义菜单项并设置target为self
+            UIMenuController.shared.menuItems = [
+                UIMenuItem(title: "翻译", action: #selector(Coordinator.translateSelectedText(_:))),
+                UIMenuItem(title: "对话", action: #selector(Coordinator.chatWithSelectedText(_:)))
+            ]
+
             // 配置箭头样式
             arrowLayer.fillColor = UIColor.red.cgColor
 
@@ -639,42 +645,26 @@ struct PDFKitView: UIViewRepresentable {
             guard let selection = pdfView.currentSelection else { return }
             guard let selectedText = selection.string, !selectedText.isEmpty else { // 隐藏菜单如果当前没有选择文本
                 UIMenuController.shared.hideMenu()
-
                 return
             }
 
             // 保存选中的文本
             self.selectedText = selectedText
 
-            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.handleTextSelection, \(selectedText)")
-
             // 确保 PDFView 是第一响应者
             if !pdfView.isFirstResponder {
                 pdfView.becomeFirstResponder()
-
-                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.handleTextSelection, becomeFirstResponder")
             }
-
-            // 创建翻译和对话选项
-            let translateItem = UIMenuItem(title: "翻译", action: #selector(translateSelectedText(_:)))
-            let chatItem = UIMenuItem(title: "对话", action: #selector(chatWithSelectedText(_:)))
-
-            // 创建自定义菜单
-            let menuController = UIMenuController.shared
-            // 设置菜单项
-            menuController.menuItems = [translateItem, chatItem]
 
             // 显示菜单
             if let currentPage = pdfView.currentPage {
                 let selectionRect = selection.bounds(for: currentPage)
                 let convertedRect = pdfView.convert(selectionRect, from: currentPage)
-                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.handleTextSelection, convertedRect: \(convertedRect)")
                 // 延迟显示菜单，确保选择状态稳定
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     // 检查是否仍然有文本被选中，避免在选择消失后显示菜单
                     if let selectionString = pdfView.currentSelection?.string, !selectionString.isEmpty {
-                        NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.handleTextSelection, selectionString: \(selectionString)")
-                        menuController.showMenu(from: pdfView, rect: convertedRect)
+                        UIMenuController.shared.showMenu(from: pdfView, rect: convertedRect)
                     }
                 }
             }
@@ -706,8 +696,24 @@ struct PDFKitView: UIViewRepresentable {
 class CustomPDFView: PDFView {
     override var canBecomeFirstResponder: Bool { true }
 
+    // 必须声明显式的 @objc 方法来支持 iOS 14
+    @objc func translateSelectedText(_ sender: Any?) {
+        // 直接通过父视图的coordinator调用方法
+        if let coordinator = self.delegate as? PDFKitView.Coordinator {
+            coordinator.translateSelectedText(sender)
+        }
+    }
+
+    @objc func chatWithSelectedText(_ sender: Any?) {
+        // 直接通过父视图的coordinator调用方法
+        if let coordinator = self.delegate as? PDFKitView.Coordinator {
+            coordinator.chatWithSelectedText(sender)
+        }
+    }
+
     override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
-        if action == Selector("translateSelectedText") || action == Selector("chatWithSelectedText") {
+        // 使用明确的 #selector 语法来确保兼容性
+        if action == #selector(translateSelectedText(_:)) || action == #selector(chatWithSelectedText(_:)) {
             return true
         }
         return super.canPerformAction(action, withSender: sender)
