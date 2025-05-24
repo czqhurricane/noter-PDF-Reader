@@ -16,7 +16,6 @@ struct ContentView: View {
     @State private var showSearchSheet = false // 显示 PDF 全文搜索 sheet
     @State private var showPDFPicker = false
     @State private var showLinkInputSheet = false
-    @State private var showChatSheet = false
     @State private var linkText: String = ""
     @State private var rootFolderURL: URL? = UserDefaults.standard.url(forKey: "RootFolder")
     @State private var isPDFLoaded = false
@@ -29,6 +28,9 @@ struct ContentView: View {
     @State private var pdfDocument: PDFDocument?
     // 添加新的状态变量用于跟踪当前选中的搜索结果
     @State private var selectedSearchSelection: PDFSelection? = nil
+    @State private var showChatViewSheet = false
+    @State private var textToProcess = ""
+    @State private var autoSendMessage = false
 
     // 目录访问管理器
     @StateObject private var directoryManager = DirectoryAccessManager.shared
@@ -55,7 +57,10 @@ struct ContentView: View {
                     annotation: $annotation,
                     forceRender: $forceRender,
                     pdfDocument: $pdfDocument,
-                    selectedSearchSelection: $selectedSearchSelection
+                    selectedSearchSelection: $selectedSearchSelection,
+                    showChatViewSheet: $showChatViewSheet,
+                    textToProcess: $textToProcess,
+                    autoSendMessage: $autoSendMessage
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .onAppear {
@@ -183,7 +188,7 @@ struct ContentView: View {
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
-                        showChatSheet = true // 显示 Chat sheet
+                        showChatViewSheet = true // 显示 Chat sheet
                     }) {
                         Image(systemName: "bubble.left.and.bubble.right")
                     }
@@ -234,11 +239,11 @@ struct ContentView: View {
                     }
                 }
             }.sheet(isPresented: Binding<Bool>(
-                get: { showAnnotationsSheet || showChatSheet || showSearchSheet || showDirectoryPicker || showPDFPicker || showLinkInputSheet },
+                get: { showAnnotationsSheet || showChatViewSheet || showSearchSheet || showDirectoryPicker || showPDFPicker || showLinkInputSheet },
                 set: {
                     if !$0 {
                         showAnnotationsSheet = false
-                        showChatSheet = false
+                        showChatViewSheet = false
                         showSearchSheet = false
                         showDirectoryPicker = false
                         showPDFPicker = false
@@ -250,8 +255,9 @@ struct ContentView: View {
                     if showAnnotationsSheet {
                         // 传递同一个 ViewModel 实例到 AnnotationListView
                         AnnotationListViewWrapper(viewModel: annotationListViewModel)
-                    } else if showChatSheet {
-                        ChatView()
+                    } else if showChatViewSheet {
+                        ChatView(initialText: textToProcess,
+                                 autoSend: autoSendMessage)
                     } else if showSearchSheet {
                         NavigationView {
                             PDFSearchView(pdfDocument: $pdfDocument) { result in

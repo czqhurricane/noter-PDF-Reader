@@ -1,19 +1,16 @@
-import Foundation
 import Combine
+import Foundation
 
 class ChatViewModel: ObservableObject {
-    @Published var messages: [Message] = []  //publised le chai view lai notify garxa if they change
-    @Published var userInput: String = ""
+    @Published var messages: [Message] = []
     private let networkManager = NetworkManager()
 
-    func sendMessage() {
-        //user message rakheko
-        let userMessage = Message(text: userInput, isUser: true)
-        messages.append(userMessage)
-        userInput = ""
+    func sendMessage(_ message: Message) {
+        // 添加用户消息到列表
+        messages.append(message)
 
-        //ai message rakheko
-        networkManager.sendMessage(message: userMessage.text){ reply in
+        // 发送到API
+        networkManager.sendMessage(message: message.text) { reply in
             DispatchQueue.main.async {
                 let botMessage = Message(text: reply, isUser: false)
                 self.messages.append(botMessage)

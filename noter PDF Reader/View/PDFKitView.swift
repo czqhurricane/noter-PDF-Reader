@@ -16,6 +16,9 @@ struct PDFKitView: UIViewRepresentable {
     @Binding var forceRender: Bool
     @Binding var pdfDocument: PDFDocument?
     @Binding var selectedSearchSelection: PDFSelection?
+    @Binding var showChatViewSheet: Bool
+    @Binding var textToProcess: String
+    @Binding var autoSendMessage: Bool
 
     func makeUIView(context: Context) -> PDFView {
         NSLog("✅ PDFKitView.swift -> PDFKitView.makeUIView, url : \(String(describing: url))")
@@ -36,7 +39,8 @@ struct PDFKitView: UIViewRepresentable {
             NSLog("✅ PDFKitView.swift -> PDFKitView.makeUIView, 文件可读性检查: \(isReadable ? "可读" : "不可读")")
         }
 
-        let pdfView = PDFView()
+        let pdfView = CustomPDFView()
+
         pdfView.autoScales = true
         pdfView.displayMode = .singlePage
         pdfView.displayDirection = .vertical
@@ -294,16 +298,22 @@ struct PDFKitView: UIViewRepresentable {
         var previousState: (url: URL, page: Int, xRatio: Double, yRatio: Double, forceRender: Bool)?
         var outlineVC: PDFOutlineViewController?
 
-        // 添加 directoryManager 属性
+        // directoryManager 属性
         let directoryManager = DirectoryAccessManager.shared
 
-        // 添加计时器属性
+        // 计时器的属性
         private var arrowTimer: Timer?
         private var lastTapXRatio: Double = 0
         private var lastTapYRatio: Double = 0
+        // 存储选中文本的属性
+        private var selectedText: String = ""
+        // 否是翻译模式标识
+        private var isTranslationMode: Bool = false
 
         init(_ parent: PDFKitView) {
             self.parent = parent
+
+            super.init()
 
             // 配置箭头样式
             arrowLayer.fillColor = UIColor.red.cgColor
@@ -327,6 +337,14 @@ struct PDFKitView: UIViewRepresentable {
 
             // 设置初始大小
             arrowLayer.bounds = CGRect(x: 0, y: 0, width: arrowSize, height: arrowSize)
+
+            // 文本选择通知监听
+            NotificationCenter.default.addObserver(
+                self,
+                selector: #selector(handleTextSelection(_:)),
+                name: .PDFViewSelectionChanged,
+                object: nil
+            )
         }
 
         func convertToViewCoordinates(pdfView: PDFView) -> CGPoint? {
@@ -434,6 +452,7 @@ struct PDFKitView: UIViewRepresentable {
         // 在析构函数中清理计时器
         deinit {
             arrowTimer?.invalidate()
+            NotificationCenter.default.removeObserver(self)
         }
 
         private func showAnnotationDialog(pdfView: PDFView, selectedText: String) {
@@ -532,7 +551,7 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
-            guard let pdfView = recognizer.view as? PDFView else { return }
+            guard let pdfView = recognizer.view as? CustomPDFView else { return }
 
             // Then check location mode
             guard isLocationMode else {
@@ -613,5 +632,84 @@ struct PDFKitView: UIViewRepresentable {
                 showAnnotationDialog(pdfView: pdfView, selectedText: "")
             }
         }
+
+        // 处理文本选择
+        @objc func handleTextSelection(_ notification: Notification) {
+            guard let pdfView = notification.object as? CustomPDFView else { return }
+            guard let selection = pdfView.currentSelection else { return }
+            guard let selectedText = selection.string, !selectedText.isEmpty else { // 隐藏菜单如果当前没有选择文本
+                UIMenuController.shared.hideMenu()
+
+                return
+            }
+
+            // 保存选中的文本
+            self.selectedText = selectedText
+
+            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.handleTextSelection, \(selectedText)")
+
+            // 确保 PDFView 是第一响应者
+            if !pdfView.isFirstResponder {
+                pdfView.becomeFirstResponder()
+
+                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.handleTextSelection, becomeFirstResponder")
+            }
+
+            // 创建翻译和对话选项
+            let translateItem = UIMenuItem(title: "翻译", action: #selector(translateSelectedText(_:)))
+            let chatItem = UIMenuItem(title: "对话", action: #selector(chatWithSelectedText(_:)))
+
+            // 创建自定义菜单
+            let menuController = UIMenuController.shared
+            // 设置菜单项
+            menuController.menuItems = [translateItem, chatItem]
+
+            // 显示菜单
+            if let currentPage = pdfView.currentPage {
+                let selectionRect = selection.bounds(for: currentPage)
+                let convertedRect = pdfView.convert(selectionRect, from: currentPage)
+                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.handleTextSelection, convertedRect: \(convertedRect)")
+                // 延迟显示菜单，确保选择状态稳定
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    // 检查是否仍然有文本被选中，避免在选择消失后显示菜单
+                    if let selectionString = pdfView.currentSelection?.string, !selectionString.isEmpty {
+                        NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.handleTextSelection, selectionString: \(selectionString)")
+                        menuController.showMenu(from: pdfView, rect: convertedRect)
+                    }
+                }
+            }
+        }
+
+        // 处理翻译操作
+        @objc func translateSelectedText(_: Any) {
+            isTranslationMode = true
+            showChatView()
+        }
+
+        // 处理对话操作
+        @objc func chatWithSelectedText(_: Any) {
+            isTranslationMode = false
+            showChatView()
+        }
+
+        // 显示ChatView
+        private func showChatView() {
+            DispatchQueue.main.async {
+                self.parent.showChatViewSheet = true
+                self.parent.textToProcess = self.selectedText
+                self.parent.autoSendMessage = self.isTranslationMode
+            }
+        }
+    }
+}
+
+class CustomPDFView: PDFView {
+    override var canBecomeFirstResponder: Bool { true }
+
+    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
+        if action == Selector("translateSelectedText") || action == Selector("chatWithSelectedText") {
+            return true
+        }
+        return super.canPerformAction(action, withSender: sender)
     }
 }
