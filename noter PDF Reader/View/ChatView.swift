@@ -22,17 +22,45 @@ struct ChatView: View {
                             HStack {
                                 if message.isUser {
                                     Spacer()
-                                    Text(message.text)
-                                        .padding()
-                                        .background(Color.orange)
-                                        .foregroundColor(.white)
-                                        .cornerRadius(10)
+                                    ZStack(alignment: .topLeading) {
+                                        Text(message.text)
+                                            .padding()
+                                            .background(Color.orange)
+                                            .foregroundColor(.white)
+                                            .cornerRadius(10)
+                                            .padding(.leading, 24)
+
+                                        Button(action: {
+                                            UIPasteboard.general.string = message.text
+                                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                                            generator.impactOccurred()
+                                        }) {
+                                            Image(systemName: "doc.on.doc")
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.black)
+                                                .padding(6)
+                                        }
+                                    }
                                 } else {
-                                    Text(message.text)
-                                        .padding()
-                                        .background(Color.gray.opacity(0.2))
-                                        .foregroundColor(.black)
-                                        .cornerRadius(10)
+                                    ZStack(alignment: .topLeading) {
+                                        Text(message.text)
+                                            .padding()
+                                            .background(Color.gray.opacity(0.2))
+                                            .foregroundColor(.black)
+                                            .cornerRadius(10)
+                                            .padding(.leading, 24)
+
+                                        Button(action: {
+                                            UIPasteboard.general.string = message.text
+                                            let generator = UIImpactFeedbackGenerator(style: .medium)
+                                            generator.impactOccurred()
+                                        }) {
+                                            Image(systemName: "doc.on.doc")
+                                                .font(.system(size: 12))
+                                                .foregroundColor(.black)
+                                                .padding(6)
+                                        }
+                                    }
                                     Spacer()
                                 }
                             }
