@@ -102,12 +102,13 @@ struct ChatView: View {
                 }
 
                 ToolbarItem(placement: .navigationBarTrailing) {
+                    // 在清除聊天记录的按钮动作中
                     Button(action: {
-                        viewModel.messages = [] // purano chat haru hatauna lai
-                    }) {
-                        Image(systemName: "plus")
-                            .font(.title2)
-                            .foregroundColor(.orange)
+                               viewModel.clearMessages() // 使用 ViewModel 中的方法清除并保存
+                           }) {
+                        Image(systemName: "trash")
+                          .font(.title2)
+                          .foregroundColor(.orange)
                     }
                 }
             }
