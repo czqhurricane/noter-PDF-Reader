@@ -307,6 +307,7 @@ struct PDFKitView: UIViewRepresentable {
         private var lastTapYRatio: Double = 0
         // 存储选中文本的属性
         private var selectedText: String = ""
+        private var pageText: String = ""
         // 否是翻译模式标识
         private var isTranslationMode: Bool = false
 
@@ -318,7 +319,8 @@ struct PDFKitView: UIViewRepresentable {
             // 注册自定义菜单项并设置target为self
             UIMenuController.shared.menuItems = [
                 UIMenuItem(title: "翻译", action: #selector(Coordinator.translateSelectedText(_:))),
-                UIMenuItem(title: "对话", action: #selector(Coordinator.chatWithSelectedText(_:)))
+                UIMenuItem(title: "翻译整页", action: #selector(Coordinator.translateWholePage(_:))),
+                UIMenuItem(title: "对话", action: #selector(Coordinator.chatWithSelectedText(_:))),
             ]
 
             // 配置箭头样式
@@ -658,6 +660,9 @@ struct PDFKitView: UIViewRepresentable {
 
             // 显示菜单
             if let currentPage = pdfView.currentPage {
+                // 保存页面的文本
+                self.pageText = currentPage.string ?? "default value"
+
                 let selectionRect = selection.bounds(for: currentPage)
                 let convertedRect = pdfView.convert(selectionRect, from: currentPage)
                 // 延迟显示菜单，确保选择状态稳定
@@ -674,6 +679,15 @@ struct PDFKitView: UIViewRepresentable {
         @objc func translateSelectedText(_: Any) {
             isTranslationMode = true
             showChatView()
+        }
+
+        // 添加新的方法来处理"翻译整页"菜单项的点击事件
+        @objc func translateWholePage(_ sender: Any) {
+            DispatchQueue.main.async {
+                self.parent.showChatViewSheet = true
+                self.parent.textToProcess = self.pageText
+                self.parent.autoSendMessage = true
+            }
         }
 
         // 处理对话操作
@@ -699,14 +713,21 @@ class CustomPDFView: PDFView {
     // 必须声明显式的 @objc 方法来支持 iOS 14
     @objc func translateSelectedText(_ sender: Any?) {
         // 直接通过父视图的coordinator调用方法
-        if let coordinator = self.delegate as? PDFKitView.Coordinator {
+        if let coordinator = delegate as? PDFKitView.Coordinator {
             coordinator.translateSelectedText(sender)
+        }
+    }
+
+    @objc func translateWholePage(_ sender: Any?) {
+        // 直接通过父视图的coordinator调用方法
+        if let coordinator = delegate as? PDFKitView.Coordinator {
+            coordinator.translateWholePage(sender)
         }
     }
 
     @objc func chatWithSelectedText(_ sender: Any?) {
         // 直接通过父视图的coordinator调用方法
-        if let coordinator = self.delegate as? PDFKitView.Coordinator {
+        if let coordinator = delegate as? PDFKitView.Coordinator {
             coordinator.chatWithSelectedText(sender)
         }
     }
