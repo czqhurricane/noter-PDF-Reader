@@ -22,14 +22,16 @@ struct ChatView: View {
                             HStack {
                                 if message.isUser {
                                     Spacer()
-                                    ZStack(alignment: .topLeading) {
+                                    ZStack(alignment: .topTrailing) {
                                         // 使用UITextView包装器来支持文本选择
-                                        SelectableText(text: message.text)
+                                        SelectableText(text: message.text, textColor: .white)
                                             .padding()
                                             .background(Color.orange)
                                             .foregroundColor(.white)
                                             .cornerRadius(10)
-                                            .padding(.leading, 24)
+                                            .padding(.trailing, 24)
+                                            .frame(maxWidth: .infinity, alignment: .trailing) // 添加这一行
+                                            .fixedSize(horizontal: false, vertical: true) // 添加这一行
 
                                         Button(action: {
                                             UIPasteboard.general.string = message.text
@@ -45,12 +47,14 @@ struct ChatView: View {
                                 } else {
                                     ZStack(alignment: .topLeading) {
                                         // 使用UITextView包装器来支持文本选择
-                                        SelectableText(text: message.text)
+                                        SelectableText(text: message.text, textColor: .black)
                                             .padding()
                                             .background(Color.gray.opacity(0.2))
                                             .foregroundColor(.black)
                                             .cornerRadius(10)
                                             .padding(.leading, 24)
+                                            .frame(maxWidth: .infinity, alignment: .leading) // 添加这一行
+                                            .fixedSize(horizontal: false, vertical: true) // 添加这一行
 
                                         Button(action: {
                                             UIPasteboard.general.string = message.text
@@ -129,24 +133,58 @@ struct ChatView: View {
     }
 }
 
-// 创建一个可选择文本的UIViewRepresentable包装器
 struct SelectableText: UIViewRepresentable {
-    let text: String
+    var text: String
+    var textColor: UIColor = .black
 
-    func makeUIView(context _: Context) -> UITextView {
+    func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()
         textView.isEditable = false
         textView.isSelectable = true
         textView.isScrollEnabled = false
         textView.backgroundColor = .clear
-        textView.textContainerInset = .zero
+
+        // 关键设置：确保文本可以正确换行
         textView.textContainer.lineFragmentPadding = 0
+        textView.textContainerInset = .zero
+        textView.textContainer.lineBreakMode = .byWordWrapping
+        textView.textContainer.maximumNumberOfLines = 0
+
         return textView
     }
 
-    func updateUIView(_ uiView: UITextView, context _: Context) {
+    func updateUIView(_ uiView: UITextView, context: Context) {
+        // 设置文本
         uiView.text = text
-        // 自动调整高度
-        uiView.sizeToFit()
+
+        // 设置文本颜色
+        uiView.textColor = textColor
+
+        // 计算可用宽度 - 使用更可靠的方法
+        let screenWidth = UIScreen.main.bounds.width
+        let availableWidth = screenWidth * 0.8 // 使用屏幕宽度的80% 作为基准
+
+        // 设置明确的宽度约束
+        let containerWidth = availableWidth // 增加更多边距
+
+        // 重要：设置preferredMaxLayoutWidth以确保文本正确换行
+        uiView.textContainer.size = CGSize(width: containerWidth, height: .greatestFiniteMagnitude)
+
+        // 清除所有现有约束
+        NSLayoutConstraint.deactivate(uiView.constraints)
+        uiView.translatesAutoresizingMaskIntoConstraints = false
+
+        // 添加宽度约束，强制文本在指定宽度内换行
+        NSLayoutConstraint.activate([
+            uiView.widthAnchor.constraint(equalToConstant: containerWidth)
+        ])
+
+        // 强制布局更新
+        uiView.setNeedsLayout()
+        uiView.layoutIfNeeded()
+
+        // 计算并设置适当的高度
+        let newSize = uiView.sizeThatFits(CGSize(width: containerWidth, height: CGFloat.greatestFiniteMagnitude))
+        uiView.frame.size.height = newSize.height
     }
 }
