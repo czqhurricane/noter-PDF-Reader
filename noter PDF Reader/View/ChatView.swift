@@ -23,7 +23,8 @@ struct ChatView: View {
                                 if message.isUser {
                                     Spacer()
                                     ZStack(alignment: .topLeading) {
-                                        Text(message.text)
+                                        // 使用UITextView包装器来支持文本选择
+                                        SelectableText(text: message.text)
                                             .padding()
                                             .background(Color.orange)
                                             .foregroundColor(.white)
@@ -43,7 +44,8 @@ struct ChatView: View {
                                     }
                                 } else {
                                     ZStack(alignment: .topLeading) {
-                                        Text(message.text)
+                                        // 使用UITextView包装器来支持文本选择
+                                        SelectableText(text: message.text)
                                             .padding()
                                             .background(Color.gray.opacity(0.2))
                                             .foregroundColor(.black)
@@ -104,11 +106,11 @@ struct ChatView: View {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     // 在清除聊天记录的按钮动作中
                     Button(action: {
-                               viewModel.clearMessages() // 使用 ViewModel 中的方法清除并保存
-                           }) {
+                        viewModel.clearMessages() // 使用 ViewModel 中的方法清除并保存
+                    }) {
                         Image(systemName: "trash")
-                          .font(.title2)
-                          .foregroundColor(.orange)
+                            .font(.title2)
+                            .foregroundColor(.orange)
                     }
                 }
             }
@@ -124,5 +126,27 @@ struct ChatView: View {
             viewModel.sendMessage(Message(text: translationPrompt, isUser: true))
             inputText = ""
         }
+    }
+}
+
+// 创建一个可选择文本的UIViewRepresentable包装器
+struct SelectableText: UIViewRepresentable {
+    let text: String
+
+    func makeUIView(context _: Context) -> UITextView {
+        let textView = UITextView()
+        textView.isEditable = false
+        textView.isSelectable = true
+        textView.isScrollEnabled = false
+        textView.backgroundColor = .clear
+        textView.textContainerInset = .zero
+        textView.textContainer.lineFragmentPadding = 0
+        return textView
+    }
+
+    func updateUIView(_ uiView: UITextView, context _: Context) {
+        uiView.text = text
+        // 自动调整高度
+        uiView.sizeToFit()
     }
 }
