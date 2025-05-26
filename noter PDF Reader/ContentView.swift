@@ -29,6 +29,7 @@ struct ContentView: View {
     // 添加新的状态变量用于跟踪当前选中的搜索结果
     @State private var selectedSearchSelection: PDFSelection? = nil
     @State private var showChatViewSheet = false
+    @State private var showConfigSheet = false
     @State private var textToProcess = ""
     @State private var autoSendMessage = false
 
@@ -88,78 +89,11 @@ struct ContentView: View {
         }
     }
 
-    // Helper view for when no PDF is loaded
-    @ViewBuilder
-    private var noPdfLoadedSection: some View {
-        VStack(spacing: 20) {
-            if let rootURL = directoryManager.rootDirectoryURL {
-                Text("已选择根文件夹: \(rootURL.lastPathComponent)")
-                    .padding()
-            }
-
-            Button(action: {
-                showDirectoryPicker = true
-            }) {
-                HStack {
-                    Image(systemName: "folder")
-                    Text("选择 PDF 根文件夹")
-                }
-                .padding()
-                .background(Color.gray)
-                .foregroundColor(.white)
-                .cornerRadius(8)
-            }
-
-            // 显示扫描进度
-            ScanningProgressView(accessManager: directoryManager)
-
-            Divider()
-                .padding(.vertical, 8)
-
-            ScrollView(.horizontal, showsIndicators: false) {
-                TextField("请输入原始路径", text: $originalPathInput)
-                    .fixedSize(horizontal: true, vertical: false)
-            }
-
-            Button {
-                PathConverter.originalPath = originalPathInput
-                UserDefaults.standard.set(originalPathInput, forKey: "OriginalPath")
-            } label: {
-                HStack {
-                    Image(systemName: "square.and.arrow.down")
-                    Text("保存路径")
-                }
-            }
-            .padding()
-            .background(Color.gray)
-            .foregroundColor(.white)
-            .cornerRadius(8)
-
-            Divider()
-                .padding(.vertical, 8)
-
-            Button(action: {
-                showLinkInputSheet = true
-            }) {
-                HStack {
-                    Image(systemName: "link")
-                    Text("输入 NOTERPAGE 链接")
-                }
-                .padding()
-                .background(Color.gray)
-                .foregroundColor(.white)
-                .cornerRadius(8)
-            }
-        }.padding()
-    }
-
     var body: some View {
         NavigationView {
             ScrollView(.vertical, showsIndicators: true) { VStack {
                 if pdfURL != nil { // Check pdfURL directly
                     pdfDisplaySection
-                } else {
-                    noPdfLoadedSection
                 }
 
                 // 显示错误信息
@@ -175,8 +109,11 @@ struct ContentView: View {
             .navigationBarTitleDisplayMode(.automatic)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
-                    Button(action: shareLogs) {
-                        Image(systemName: "archivebox")
+                    Button(action: {
+                        showConfigSheet = true
+
+                    }) {
+                        Image(systemName: "gear")
                     }
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -239,9 +176,10 @@ struct ContentView: View {
                     }
                 }
             }.sheet(isPresented: Binding<Bool>(
-                get: { showAnnotationsSheet || showChatViewSheet || showSearchSheet || showDirectoryPicker || showPDFPicker || showLinkInputSheet },
+                      get: { showConfigSheet || showAnnotationsSheet || showChatViewSheet || showSearchSheet || showDirectoryPicker || showPDFPicker || showLinkInputSheet },
                 set: {
                     if !$0 {
+                        showConfigSheet = false
                         showAnnotationsSheet = false
                         showChatViewSheet = false
                         showSearchSheet = false
@@ -252,7 +190,12 @@ struct ContentView: View {
                 }
             )) {
                 Group {
-                    if showAnnotationsSheet {
+                    if showConfigSheet {
+                        ConfigView(
+                          originalPathInput: $originalPathInput,
+                          directoryManager: directoryManager
+                        )
+                    } else if showAnnotationsSheet {
                         // 传递同一个 ViewModel 实例到 AnnotationListView
                         AnnotationListViewWrapper(viewModel: annotationListViewModel)
                     } else if showChatViewSheet {
@@ -470,51 +413,6 @@ struct ContentView: View {
 
             NSLog("❌ ContentView.swift -> ContentView.openPDF, 无法访问文件: \(convertedPdfPath)")
         }
-    }
-
-    private func shareLogs() {
-        guard let docsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
-
-        let logFile = docsDir.appendingPathComponent("noterPDFReaderDebug.log")
-
-        // 创建一个临时文件（如果需要）
-        if !FileManager.default.fileExists(atPath: logFile.path) {
-            // 创建一个空的日志文件用于演示
-            try? "Debug logs will appear here.".write(to: logFile, atomically: true, encoding: .utf8)
-        }
-
-        // 使用 UIActivityViewController 来分享文件
-        let activityVC = UIActivityViewController(activityItems: [logFile], applicationActivities: nil)
-
-        // 设置完成回调
-        activityVC.completionWithItemsHandler = { activityType, completed, _, error in
-            if let error = error {
-                NSLog("❌ ContentView.swift -> ContentView.shareLog, 分享日志文件时出错: \(error.localizedDescription)")
-                return
-            }
-
-            if completed {
-                NSLog("✅ ContentView.swift -> ContentView.shareLogs, 日志文件分享成功，活动类型: \(String(describing: activityType))")
-            } else {
-                NSLog("✅ ContentView.swift -> ContentView.shareLogs, 用户取消了日志文件分享")
-            }
-        }
-
-        // 在 iPad 上设置弹出位置（如果适用）
-        if let popoverController = activityVC.popoverPresentationController {
-            popoverController.sourceView = UIApplication.shared.windows.first
-            popoverController.sourceRect = CGRect(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height / 2, width: 0, height: 0)
-            popoverController.permittedArrowDirections = []
-        }
-
-        // 显示分享界面
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let rootVC = windowScene.windows.first?.rootViewController
-        else {
-            return
-        }
-
-        rootVC.present(activityVC, animated: true)
     }
 
     private func convertToRawPath(_ path: String) -> String {

@@ -31,6 +31,7 @@
 		02C684B22DD487C900576619 /* AnnotationListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02C684B12DD487C900576619 /* AnnotationListView.swift */; };
 		02DD375E2DD1F8EF004892E9 /* DocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DD375D2DD1F8EF004892E9 /* DocumentPicker.swift */; };
 		02DD37612DD1F91B004892E9 /* DirectoryAccessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DD37602DD1F91B004892E9 /* DirectoryAccessManager.swift */; };
+		02F073852DE5068800809345 /* ConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02F073842DE5068800809345 /* ConfigView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -60,6 +61,7 @@
 		02C684B12DD487C900576619 /* AnnotationListView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AnnotationListView.swift; sourceTree = "<group>"; };
 		02DD375D2DD1F8EF004892E9 /* DocumentPicker.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DocumentPicker.swift; sourceTree = "<group>"; };
 		02DD37602DD1F91B004892E9 /* DirectoryAccessManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DirectoryAccessManager.swift; sourceTree = "<group>"; };
+		02F073842DE5068800809345 /* ConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -135,6 +137,7 @@
 				02C684B12DD487C900576619 /* AnnotationListView.swift */,
 				02C684AE2DD46F8E00576619 /* LinkInputView.swift */,
 				025FCAAD2DDF174E00102A44 /* PDFSearchView.swift */,
+				02F073842DE5068800809345 /* ConfigView.swift */,
 			);
 			path = View;
 			sourceTree = "<group>";
@@ -249,6 +252,7 @@
 				0262EBAE2DCB66EF00E9CBC8 /* PDFKitView.swift in Sources */,
 				029B41A62DDB846800EE0236 /* DatabaseManager.swift in Sources */,
 				025107892DDFA95F009BE1EA /* PDFPicker.swift in Sources */,
+				02F073852DE5068800809345 /* ConfigView.swift in Sources */,
 				02BB0A4A2DE0999E00E42A91 /* ChatView.swift in Sources */,
 				02BB0A432DE0998B00E42A91 /* Message.swift in Sources */,
 				02DD37612DD1F91B004892E9 /* DirectoryAccessManager.swift in Sources */,
