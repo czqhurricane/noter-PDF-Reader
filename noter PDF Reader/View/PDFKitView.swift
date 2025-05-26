@@ -464,97 +464,159 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         private func showAnnotationDialog(pdfView: PDFView, selectedText: String) {
-            if let rootViewController = pdfView.window?.rootViewController {
-                let alert = UIAlertController(title: "添加注释", message: nil, preferredStyle: .alert)
+            // 创建自定义视图控制器而不是使用UIAlertController
+            let customVC = UIViewController()
+            customVC.modalPresentationStyle = .formSheet
+            customVC.preferredContentSize = CGSize(width: 350, height: 250)
 
-                alert.addTextField { textField in
-                    textField.placeholder = "输入您的注释"
-                    textField.text = selectedText
-                }
+            // 创建UITextView作为多行输入框
+            let textView = UITextView()
+            textView.text = selectedText
+            textView.font = UIFont.systemFont(ofSize: 16)
+            textView.isEditable = true
+            textView.layer.borderColor = UIColor.lightGray.cgColor
+            textView.layer.borderWidth = 1.0
+            textView.layer.cornerRadius = 8.0
+            textView.autocorrectionType = .no
 
-                let confirmAction = UIAlertAction(title: "确认", style: .default) { _ in
-                    if let text = alert.textFields?.first?.text {
-                        DispatchQueue.main.async {
-                            if let document = pdfView.document {
-                                let fileName = document.documentURL?.lastPathComponent ?? "unknown.pdf"
-                                // 获取PDF路径、页码、坐标和大纲路径
-                                let pdfPath = self.parent.rawPdfPath
-                                let pageNumber = (pdfView.currentPage?.pageRef?.pageNumber ?? 0)
-                                // 使用存储的值
-                                let xRatio = self.lastTapXRatio
-                                let yRatio = self.lastTapYRatio
-                                let outlineString = self.currentOutlineString
-                                // 获取当前时间戳并格式化为 (high low) 形式
-                                let currentTimeInterval = Date().timeIntervalSince1970
-                                // 将秒数分解为 HIGH 和 LOW 部分
-                                let seconds = Int64(floor(currentTimeInterval))
-                                let high = Int32(seconds >> 16)
-                                let low = Int32(seconds & 0xFFFF)
-                                let formattedTimestamp = "(\(high) \(low))"
-                                // 生成唯一ID
-                                let annotationId = pdfPath + "#" + String(Int(currentTimeInterval))
-                                // 格式化坐标
-                                let edges = "(\(xRatio) \(yRatio))"
+            // 创建确认和取消按钮
+            let confirmButton = UIButton(type: .system)
+            confirmButton.setTitle("确认", for: .normal)
+            confirmButton.backgroundColor = .systemBlue
+            confirmButton.setTitleColor(.white, for: .normal)
+            confirmButton.layer.cornerRadius = 8.0
 
-                                // 创建注释数据对象
-                                let annotation = AnnotationData(
-                                    id: annotationId,
-                                    file: pdfPath,
-                                    page: pageNumber,
-                                    edges: edges,
-                                    type: "text",
-                                    color: "",
-                                    contents: text,
-                                    subject: "",
-                                    created: formattedTimestamp,
-                                    modified: formattedTimestamp,
-                                    outlines: outlineString
-                                )
+            let cancelButton = UIButton(type: .system)
+            cancelButton.setTitle("取消", for: .normal)
+            cancelButton.backgroundColor = .systemGray5
+            cancelButton.layer.cornerRadius = 8.0
 
-                                // 格式化注释内容
-                                let formattedAnnotation = "[[NOTERPAGE:\(pdfPath)#(\(pageNumber) \(yRatio) . \(xRatio))][\(text) < \(outlineString.isEmpty ? fileName : outlineString)]]"
+            // 设置按钮动作
+            confirmButton.addAction(UIAction { [weak self, weak textView, weak customVC] _ in
+                guard let self = self, let text = textView?.text, let customVC = customVC else { return }
 
-                                self.parent.annotation = formattedAnnotation
+                DispatchQueue.main.async {
+                    if let document = pdfView.document {
+                        let fileName = document.documentURL?.lastPathComponent ?? "unknown.pdf"
+                        // 获取PDF路径、页码、坐标和大纲路径
+                        let pdfPath = self.parent.rawPdfPath
+                        let pageNumber = (pdfView.currentPage?.pageRef?.pageNumber ?? 0)
+                        // 使用存储的值
+                        let xRatio = self.lastTapXRatio
+                        let yRatio = self.lastTapYRatio
+                        let outlineString = self.currentOutlineString
+                        // 获取当前时间戳并格式化为 (high low) 形式
+                        let currentTimeInterval = Date().timeIntervalSince1970
+                        // 将秒数分解为 HIGH 和 LOW 部分
+                        let seconds = Int64(floor(currentTimeInterval))
+                        let high = Int32(seconds >> 16)
+                        let low = Int32(seconds & 0xFFFF)
+                        let formattedTimestamp = "(\(high) \(low))"
+                        // 生成唯一ID
+                        let annotationId = pdfPath + "#" + String(Int(currentTimeInterval))
+                        // 格式化坐标
+                        let edges = "(\(xRatio) \(yRatio))"
 
-                                // 持久化保存到数据库
-                                if let savedDatabasePath = UserDefaults.standard.string(forKey: "LastSelectedDirectory"),
-                                   let url = URL(string: savedDatabasePath)
-                                {
-                                    let dataBasePath = url.appendingPathComponent("pdf-annotations.db").path
+                        // 创建注释数据对象
+                        let annotation = AnnotationData(
+                            id: annotationId,
+                            file: pdfPath,
+                            page: pageNumber,
+                            edges: edges,
+                            type: "text",
+                            color: "",
+                            contents: text,
+                            subject: "",
+                            created: formattedTimestamp,
+                            modified: formattedTimestamp,
+                            outlines: outlineString
+                        )
 
-                                    // 打开数据库
-                                    guard DatabaseManager.shared.openDatabase(with: self.directoryManager, at: dataBasePath) else {
-                                        NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 无法打开数据库: \(dataBasePath)")
-                                        return
-                                    }
+                        // 格式化注释内容
+                        let formattedAnnotation = "[[NOTERPAGE:\(pdfPath)#(\(pageNumber) \(yRatio) . \(xRatio))][\(text) < \(outlineString.isEmpty ? fileName : outlineString)]]"
 
-                                    // 添加注释
-                                    if DatabaseManager.shared.addAnnotation(annotation) {
-                                        NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, confirmAction，成功添加注释: \(text)")
+                        self.parent.annotation = formattedAnnotation
 
-                                    } else {
-                                        NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, confirmAction, 添加注释失败")
-                                    }
+                        // 持久化保存到数据库
+                        if let savedDatabasePath = UserDefaults.standard.string(forKey: "LastSelectedDirectory"),
+                           let url = URL(string: savedDatabasePath)
+                        {
+                            let dataBasePath = url.appendingPathComponent("pdf-annotations.db").path
 
-                                    // 关闭数据库
-                                    DatabaseManager.shared.closeDatabase()
-                                }
-
-                                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 新建注释使用的比例 - xRatio: \(xRatio), yRatio: \(yRatio)")
-                                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 保存注释: \(formattedAnnotation)")
+                            // 打开数据库
+                            guard DatabaseManager.shared.openDatabase(with: self.directoryManager, at: dataBasePath) else {
+                                NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 无法打开数据库: \(dataBasePath)")
+                                return
                             }
+
+                            // 添加注释
+                            if DatabaseManager.shared.addAnnotation(annotation) {
+                                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, confirmAction，成功添加注释: \(text)")
+
+                            } else {
+                                NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, confirmAction, 添加注释失败")
+                            }
+
+                            // 关闭数据库
+                            DatabaseManager.shared.closeDatabase()
                         }
+
+                        NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 新建注释使用的比例 - xRatio: \(xRatio), yRatio: \(yRatio)")
+                        NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 保存注释: \(formattedAnnotation)")
                     }
                 }
 
-                let cancelAction = UIAlertAction(title: "取消", style: .cancel) {
-                    _ in NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 注释输入已取消")
+                customVC.dismiss(animated: true)
+            }, for: .touchUpInside)
+
+            cancelButton.addAction(UIAction { [weak customVC] _ in
+                customVC?.dismiss(animated: true)
+                NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 注释输入已取消")
+            }, for: .touchUpInside)
+
+            // 创建标题标签
+            let titleLabel = UILabel()
+            titleLabel.text = "添加注释"
+            titleLabel.font = UIFont.boldSystemFont(ofSize: 18)
+            titleLabel.textAlignment = .center
+
+            // 添加视图到控制器
+            customVC.view.backgroundColor = .systemBackground
+
+            // 使用自动布局
+            for item in [titleLabel, textView, confirmButton, cancelButton] {
+                item.translatesAutoresizingMaskIntoConstraints = false
+                customVC.view.addSubview(item)
+            }
+
+            NSLayoutConstraint.activate([
+                // 标题布局
+                titleLabel.topAnchor.constraint(equalTo: customVC.view.topAnchor, constant: 20),
+                titleLabel.leadingAnchor.constraint(equalTo: customVC.view.leadingAnchor, constant: 20),
+                titleLabel.trailingAnchor.constraint(equalTo: customVC.view.trailingAnchor, constant: -20),
+
+                // 文本视图布局
+                textView.topAnchor.constraint(equalTo: titleLabel.bottomAnchor, constant: 20),
+                textView.leadingAnchor.constraint(equalTo: customVC.view.leadingAnchor, constant: 20),
+                textView.trailingAnchor.constraint(equalTo: customVC.view.trailingAnchor, constant: -20),
+                textView.heightAnchor.constraint(equalTo: customVC.view.heightAnchor, multiplier: 0.5),
+
+                // 按钮布局
+                cancelButton.leadingAnchor.constraint(equalTo: customVC.view.leadingAnchor, constant: 20),
+                cancelButton.bottomAnchor.constraint(equalTo: customVC.view.bottomAnchor, constant: -20),
+                cancelButton.widthAnchor.constraint(equalTo: customVC.view.widthAnchor, multiplier: 0.4),
+
+                confirmButton.trailingAnchor.constraint(equalTo: customVC.view.trailingAnchor, constant: -20),
+                confirmButton.bottomAnchor.constraint(equalTo: customVC.view.bottomAnchor, constant: -20),
+                confirmButton.widthAnchor.constraint(equalTo: customVC.view.widthAnchor, multiplier: 0.4),
+            ])
+
+            // 显示自定义视图控制器
+            if let rootViewController = pdfView.window?.rootViewController {
+                rootViewController.present(customVC, animated: true) {
+                    // 自动聚焦到文本视图
+                    textView.becomeFirstResponder()
                 }
-
-                alert.addAction(confirmAction)
-                alert.addAction(cancelAction)
-
-                rootViewController.present(alert, animated: true)
             }
         }
 
@@ -661,7 +723,7 @@ struct PDFKitView: UIViewRepresentable {
             // 显示菜单
             if let currentPage = pdfView.currentPage {
                 // 保存页面的文本
-                self.pageText = currentPage.string ?? "default value"
+                pageText = currentPage.string ?? "default value"
 
                 let selectionRect = selection.bounds(for: currentPage)
                 let convertedRect = pdfView.convert(selectionRect, from: currentPage)
@@ -682,7 +744,7 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         // 添加新的方法来处理"翻译整页"菜单项的点击事件
-        @objc func translateWholePage(_ sender: Any) {
+        @objc func translateWholePage(_: Any) {
             DispatchQueue.main.async {
                 self.parent.showChatViewSheet = true
                 self.parent.textToProcess = self.pageText
