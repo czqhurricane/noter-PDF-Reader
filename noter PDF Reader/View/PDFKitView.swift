@@ -1,6 +1,20 @@
 import PDFKit
 import SwiftUI
 
+extension UIResponder {
+    static var currentFirstResponder: UIResponder? {
+        _currentFirstResponder = nil
+        UIApplication.shared.sendAction(#selector(UIResponder.findFirstResponder(_:)), to: nil, from: nil, for: nil)
+        return _currentFirstResponder
+    }
+
+    private weak static var _currentFirstResponder: UIResponder?
+
+    @objc private func findFirstResponder(_: Any) {
+        UIResponder._currentFirstResponder = self
+    }
+}
+
 struct PDFKitView: UIViewRepresentable {
     var url: URL
     var page: Int
@@ -321,6 +335,7 @@ struct PDFKitView: UIViewRepresentable {
                 UIMenuItem(title: "翻译", action: #selector(Coordinator.translateSelectedText(_:))),
                 UIMenuItem(title: "翻译整页", action: #selector(Coordinator.translateWholePage(_:))),
                 UIMenuItem(title: "对话", action: #selector(Coordinator.chatWithSelectedText(_:))),
+                UIMenuItem(title: "高亮", action: #selector(Coordinator.highlightSelectedText(_:))),
             ]
 
             // 配置箭头样式
@@ -758,6 +773,32 @@ struct PDFKitView: UIViewRepresentable {
             showChatView()
         }
 
+        // 处理高亮操作
+        @objc func highlightSelectedText(_: Any) {
+            guard !selectedText.isEmpty else {
+                return
+            }
+
+            // 获取当前响应者视图链中的PDFView
+            guard let pdfView = UIResponder.currentFirstResponder as? PDFView,
+                  let currentSelection = pdfView.currentSelection,
+                  let page = currentSelection.pages.first
+            else {
+                return
+            }
+
+            // 创建高亮注释
+            let highlight = PDFAnnotation(bounds: currentSelection.bounds(for: page),
+                                          forType: .highlight,
+                                          withProperties: nil)
+
+            // 设置高亮颜色为半透明黄色
+            highlight.color = UIColor.yellow.withAlphaComponent(0.3)
+
+            // 将高亮注释添加到页面
+            page.addAnnotation(highlight)
+        }
+
         // 显示ChatView
         private func showChatView() {
             DispatchQueue.main.async {
@@ -794,9 +835,16 @@ class CustomPDFView: PDFView {
         }
     }
 
+    @objc func highlightSelectedText(_ sender: Any?) {
+        // 直接通过父视图的coordinator调用方法
+        if let coordinator = delegate as? PDFKitView.Coordinator {
+            coordinator.highlightSelectedText(sender)
+        }
+    }
+
     override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
         // 使用明确的 #selector 语法来确保兼容性
-        if action == #selector(translateSelectedText(_:)) || action == #selector(chatWithSelectedText(_:)) {
+        if action == #selector(translateSelectedText(_:)) || action == #selector(translateWholePage(_:)) || action == #selector(chatWithSelectedText(_:)) || action == #selector(highlightSelectedText(_:)) {
             return true
         }
         return super.canPerformAction(action, withSender: sender)
