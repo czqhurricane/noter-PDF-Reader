@@ -6,11 +6,18 @@ struct ChatView: View {
 
     @StateObject private var viewModel = ChatViewModel()
     @State private var inputText: String = ""
+    @State private var textEditorHeight: CGFloat = 40 // 初始高度
 
     init(initialText: String = "", autoSend: Bool = false) {
         self.initialText = initialText
         self.autoSend = autoSend
         _inputText = State(initialValue: initialText)
+
+        // 预先计算初始文本高度
+        if !initialText.isEmpty {
+            let estimatedHeight = min(150, initialText.height(width: UIScreen.main.bounds.width * 0.8, font: .systemFont(ofSize: 16)))
+            _textEditorHeight = State(initialValue: max(40, estimatedHeight))
+        }
     }
 
     var body: some View {
@@ -75,26 +82,55 @@ struct ChatView: View {
                 }
                 .padding(.horizontal)
 
-                HStack {
-                    TextField("Type a message...", text: $inputText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .onAppear {
-                            if autoSend && !initialText.isEmpty {
-                                // 如果是翻译模式且有初始文本，自动发送翻译请求
-                                sendTranslationRequest()
+                // 替换TextField为支持多行的输入区域
+                HStack(alignment: .bottom) {
+                    ZStack(alignment: .topLeading) {
+                        // 使用TextEditor替代TextField
+                        TextEditor(text: $inputText)
+                            .frame(height: max(40, textEditorHeight))
+                            .padding(8)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(10)
+                            .onChange(of: inputText) { newValue in
+                                // 根据内容动态调整高度
+                                let estimatedHeight = newValue.isEmpty ? 40 : min(150, newValue.height(width: UIScreen.main.bounds.width * 0.8, font: .systemFont(ofSize: 16)))
+                                textEditorHeight = estimatedHeight
                             }
+                            .onAppear {
+                                // 在视图出现时也计算一次高度，确保初始文本正确显示
+                                if !inputText.isEmpty {
+                                    let estimatedHeight = min(150, inputText.height(width: UIScreen.main.bounds.width * 0.8, font: .systemFont(ofSize: 16)))
+                                    textEditorHeight = max(40, estimatedHeight)
+                                }
+
+                                if autoSend && !initialText.isEmpty {
+                                    // 如果是翻译模式且有初始文本，自动发送翻译请求
+                                    sendTranslationRequest()
+                                }
+                            }
+
+                        // 当TextEditor为空时显示占位符
+                        if inputText.isEmpty {
+                            Text("输入消息...")
+                                .foregroundColor(Color(.placeholderText))
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 12)
+                                .allowsHitTesting(false)
                         }
-                        .padding()
+                    }
 
                     Button(action: {
                         if !inputText.isEmpty {
                             viewModel.sendMessage(Message(text: inputText, isUser: true))
                             inputText = ""
+                            // 重置高度
+                            textEditorHeight = 40
                         }
                     }) {
                         Image(systemName: "paperplane.fill")
                             .foregroundColor(.orange)
                             .font(.title2)
+                            .padding(.bottom, 8)
                     }
                 }
                 .padding()
@@ -130,6 +166,20 @@ struct ChatView: View {
             viewModel.sendMessage(Message(text: translationPrompt, isUser: true))
             inputText = ""
         }
+    }
+}
+
+// 扩展String来计算文本高度
+extension String {
+    func height(width: CGFloat, font: UIFont) -> CGFloat {
+        let constraintRect = CGSize(width: width, height: .greatestFiniteMagnitude)
+        let boundingBox = self.boundingRect(
+            with: constraintRect,
+            options: .usesLineFragmentOrigin,
+            attributes: [.font: font],
+            context: nil
+        )
+        return ceil(boundingBox.height) + 20 // 添加一些额外空间
     }
 }
 
