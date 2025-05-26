@@ -14,7 +14,7 @@ struct ChatView: View {
         _inputText = State(initialValue: initialText)
 
         // 预先计算初始文本高度
-        if !initialText.isEmpty {
+        if !initialText.isEmpty && !autoSend {
             let estimatedHeight = min(150, initialText.height(width: UIScreen.main.bounds.width * 0.8, font: .systemFont(ofSize: 16)))
             _textEditorHeight = State(initialValue: max(40, estimatedHeight))
         }
