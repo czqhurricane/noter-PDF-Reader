@@ -1,10 +1,19 @@
 import PDFKit
 import UIKit
 
-class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UIAdaptivePresentationControllerDelegate {
+class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITableViewDelegate, UIAdaptivePresentationControllerDelegate, UISearchBarDelegate {
     var pdfView: PDFView?
     private var outlineItems: [PDFOutline] = []
+    private var filteredOutlineItems: [PDFOutline] = [] // 过滤后的目录项
     private let tableView = UITableView()
+    private let searchBar = UISearchBar() // 添加搜索栏
+    private var searchText: String = "" // 搜索文本
+
+    // 用于持久化搜索状态的文档标识符
+    private var documentIdentifier: String {
+        guard let document = pdfView?.document else { return "" }
+        return document.documentURL?.absoluteString ?? document.documentAttributes?[PDFDocumentAttribute.titleAttribute] as? String ?? ""
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -17,6 +26,37 @@ class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITable
             action: #selector(dismissOutline)
         )
 
+        // 设置搜索栏
+        setupSearchBar()
+
+        // 设置表格视图
+        setupTableView()
+
+        // 加载目录项
+        loadOutlineItems()
+
+        // 恢复上次的搜索状态
+        restoreSearchState()
+
+        // 设置presentation controller的代理为self
+        presentationController?.delegate = self
+    }
+
+    private func setupSearchBar() {
+        searchBar.delegate = self
+        searchBar.placeholder = "搜索目录"
+        searchBar.searchBarStyle = .minimal
+        searchBar.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(searchBar)
+
+        NSLayoutConstraint.activate([
+            searchBar.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            searchBar.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            searchBar.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+        ])
+    }
+
+    private func setupTableView() {
         tableView.dataSource = self
         tableView.delegate = self
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: "OutlineCell")
@@ -24,16 +64,11 @@ class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITable
         view.addSubview(tableView)
 
         NSLayoutConstraint.activate([
-            tableView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor),
+            tableView.topAnchor.constraint(equalTo: searchBar.bottomAnchor),
             tableView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             tableView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             tableView.bottomAnchor.constraint(equalTo: view.safeAreaLayoutGuide.bottomAnchor),
         ])
-
-        loadOutlineItems()
-
-        // 设置presentation controller的代理为self
-        presentationController?.delegate = self
     }
 
     private func loadOutlineItems() {
@@ -44,7 +79,7 @@ class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITable
             return
         }
         outlineItems = flattenOutline(outline)
-        tableView.reloadData()
+        filterOutlineItems() // 应用过滤
     }
 
     private func flattenOutline(_ outline: PDFOutline) -> [PDFOutline] {
@@ -60,15 +95,44 @@ class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITable
         return items
     }
 
+    // 过滤目录项
+    private func filterOutlineItems() {
+        if searchText.isEmpty {
+            filteredOutlineItems = outlineItems
+        } else {
+            filteredOutlineItems = outlineItems.filter { outline in
+                guard let label = outline.label else { return false }
+                return label.lowercased().contains(searchText.lowercased())
+            }
+        }
+        tableView.reloadData()
+    }
+
+    // 保存搜索状态
+    private func saveSearchState() {
+        let key = "PDFOutlineSearch_\(documentIdentifier)"
+        UserDefaults.standard.set(searchText, forKey: key)
+    }
+
+    // 恢复搜索状态
+    private func restoreSearchState() {
+        let key = "PDFOutlineSearch_\(documentIdentifier)"
+        if let savedSearch = UserDefaults.standard.string(forKey: key) {
+            searchText = savedSearch
+            searchBar.text = savedSearch
+            filterOutlineItems()
+        }
+    }
+
     // MARK: - UITableViewDataSource
 
     func tableView(_: UITableView, numberOfRowsInSection _: Int) -> Int {
-        return outlineItems.count
+        return filteredOutlineItems.count
     }
 
     func tableView(_ tableView: UITableView, cellForRowAt indexPath: IndexPath) -> UITableViewCell {
         let cell = tableView.dequeueReusableCell(withIdentifier: "OutlineCell", for: indexPath)
-        let outline = outlineItems[indexPath.row]
+        let outline = filteredOutlineItems[indexPath.row]
         var indentLevel = 0
         var parent = outline.parent
         while parent != nil && parent?.label != nil {
@@ -85,7 +149,7 @@ class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITable
     // MARK: - UITableViewDelegate
 
     func tableView(_: UITableView, didSelectRowAt indexPath: IndexPath) {
-        let outline = outlineItems[indexPath.row]
+        let outline = filteredOutlineItems[indexPath.row]
 
         if let pdfView = pdfView, let destination = outline.destination {
             pdfView.go(to: destination)
@@ -102,6 +166,18 @@ class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITable
         )
 
         NSLog("✅ PDFOutlineViewController.swift -> PDFOutlineViewController.tableView, 发送通知 UpdateShowOutlines")
+    }
+
+    // MARK: - UISearchBarDelegate
+
+    func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
+        self.searchText = searchText
+        filterOutlineItems()
+        saveSearchState() // 保存搜索状态
+    }
+
+    func searchBarSearchButtonClicked(_ searchBar: UISearchBar) {
+        searchBar.resignFirstResponder() // 隐藏键盘
     }
 
     @objc private func dismissOutline() {
