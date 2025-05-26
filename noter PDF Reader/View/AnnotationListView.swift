@@ -39,7 +39,7 @@ struct AnnotationListView: View {
                             VStack(alignment: .leading) {
                                 Text(extractedAnnotation(annotation))
                                     .font(.body)
-                                    .lineLimit(2)
+                                    // .lineLimit(2)
                                     .contentShape(Rectangle())
                                     .onTapGesture {
                                         extractAndHandleNOTERPAGE(from: annotation)
