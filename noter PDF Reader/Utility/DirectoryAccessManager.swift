@@ -30,9 +30,9 @@ class DirectoryAccessManager: ObservableObject {
 
             // 发送通知，通知加载数据库
             NotificationCenter.default.post(
-              name: NSNotification.Name("LoadAnnotationsDatabase"),
-              object: nil,
-              userInfo: ["dataBasePath": dataBasePath]
+                name: NSNotification.Name("LoadAnnotationsDatabase"),
+                object: nil,
+                userInfo: ["dataBasePath": dataBasePath]
             )
         } else {
             NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 在目录中未找到数据库文件")
@@ -171,7 +171,6 @@ class DirectoryAccessManager: ObservableObject {
     // 打开文件并获取安全访问权限
     func startAccessingFile(at path: String) -> URL? {
         guard let url = getSecureURL(for: path) else {
-
             return nil
         }
 
@@ -257,13 +256,5 @@ class DirectoryAccessManager: ObservableObject {
         }
 
         return isReadable
-    }
-
-    // 检查是否有特定路径的父目录的访问权限
-    func hasAccessToParentDirectoryOf(path: String) -> Bool {
-        let url = URL(fileURLWithPath: path)
-        let parentPath = url.deletingLastPathComponent().path
-
-        return hasAccessTo(path: parentPath)
     }
 }

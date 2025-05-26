@@ -6,7 +6,7 @@ struct ChatView: View {
 
     @StateObject private var viewModel = ChatViewModel()
     @State private var inputText: String = ""
-    @State private var textEditorHeight: CGFloat = 40 // 初始高度
+    @State private var textEditorHeight: CGFloat = 24 // 初始高度
 
     init(initialText: String = "", autoSend: Bool = false) {
         self.initialText = initialText
@@ -16,7 +16,7 @@ struct ChatView: View {
         // 预先计算初始文本高度
         if !initialText.isEmpty && !autoSend {
             let estimatedHeight = min(150, initialText.height(width: UIScreen.main.bounds.width * 0.8, font: .systemFont(ofSize: 16)))
-            _textEditorHeight = State(initialValue: max(40, estimatedHeight))
+            _textEditorHeight = State(initialValue: max(24, estimatedHeight))
         }
     }
 
@@ -87,20 +87,20 @@ struct ChatView: View {
                     ZStack(alignment: .topLeading) {
                         // 使用TextEditor替代TextField
                         TextEditor(text: $inputText)
-                            .frame(height: max(40, textEditorHeight))
+                            .frame(height: max(24, textEditorHeight))
                             .padding(8)
                             .background(Color(.systemGray6))
                             .cornerRadius(10)
                             .onChange(of: inputText) { newValue in
                                 // 根据内容动态调整高度
-                                let estimatedHeight = newValue.isEmpty ? 40 : min(150, newValue.height(width: UIScreen.main.bounds.width * 0.8, font: .systemFont(ofSize: 16)))
+                                let estimatedHeight = newValue.isEmpty ? 24 : min(150, newValue.height(width: UIScreen.main.bounds.width * 0.8, font: .systemFont(ofSize: 16)))
                                 textEditorHeight = estimatedHeight
                             }
                             .onAppear {
                                 // 在视图出现时也计算一次高度，确保初始文本正确显示
-                                if !inputText.isEmpty {
+                                if !inputText.isEmpty && !autoSend {
                                     let estimatedHeight = min(150, inputText.height(width: UIScreen.main.bounds.width * 0.8, font: .systemFont(ofSize: 16)))
-                                    textEditorHeight = max(40, estimatedHeight)
+                                    textEditorHeight = max(24, estimatedHeight)
                                 }
 
                                 if autoSend && !initialText.isEmpty {
@@ -124,7 +124,7 @@ struct ChatView: View {
                             viewModel.sendMessage(Message(text: inputText, isUser: true))
                             inputText = ""
                             // 重置高度
-                            textEditorHeight = 40
+                            textEditorHeight = 24
                         }
                     }) {
                         Image(systemName: "paperplane.fill")
@@ -138,7 +138,7 @@ struct ChatView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .principal) {
-                    Text("JK Bot")
+                    Text("DeepSeek Bot")
                         .font(.title)
                         .fontWeight(.bold)
                 }
@@ -186,6 +186,7 @@ extension String {
 struct SelectableText: UIViewRepresentable {
     var text: String
     var textColor: UIColor = .black
+    var fontSize: CGFloat = 24// Add this parameter
 
     func makeUIView(context: Context) -> UITextView {
         let textView = UITextView()

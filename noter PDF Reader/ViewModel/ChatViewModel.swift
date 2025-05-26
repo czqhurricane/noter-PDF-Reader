@@ -59,7 +59,7 @@ class ChatViewModel: ObservableObject {
             let data = try JSONEncoder().encode(messages)
             UserDefaults.standard.set(data, forKey: userDefaultsKey)
         } catch {
-            print("保存消息失败: \(error.localizedDescription)")
+            NSLog("❌ ChatViewModel.swift -> ChatViewModel.saveMessages, 保存消息失败: \(error.localizedDescription)")
         }
     }
 
@@ -70,7 +70,7 @@ class ChatViewModel: ObservableObject {
         do {
             messages = try JSONDecoder().decode([Message].self, from: data)
         } catch {
-            print("加载消息失败: \(error.localizedDescription)")
+            NSLog("❌ ChatViewModel.swift -> ChatViewModel.loadMessages, 加载消息失败: \(error.localizedDescription)")
         }
     }
 }
