@@ -774,29 +774,55 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         // 处理高亮操作
-        @objc func highlightSelectedText(_: Any) {
-            guard !selectedText.isEmpty else {
-                return
-            }
-
-            // 获取当前响应者视图链中的PDFView
+        @objc func highlightSelectedText(_: Any?) {
+            // 获取当前PDFView和选中内容
             guard let pdfView = UIResponder.currentFirstResponder as? PDFView,
                   let currentSelection = pdfView.currentSelection,
-                  let page = currentSelection.pages.first
-            else {
-                return
-            }
+                  let page = currentSelection.pages.first else { return }
 
             // 创建高亮注释
-            let highlight = PDFAnnotation(bounds: currentSelection.bounds(for: page),
-                                          forType: .highlight,
-                                          withProperties: nil)
+            let bounds = currentSelection.bounds(for: page)
+            let highlight = PDFAnnotation(bounds: bounds, forType: .highlight, withProperties: nil)
+            highlight.color = UIColor.yellow.withAlphaComponent(0.5)
 
-            // 设置高亮颜色为半透明黄色
-            highlight.color = UIColor.yellow.withAlphaComponent(0.3)
+            // 确保文档未锁定且允许注释
+            if !page.document!.isLocked && page.document!.allowsCommenting {
+                page.addAnnotation(highlight)
+            }
 
-            // 将高亮注释添加到页面
-            page.addAnnotation(highlight)
+            // 在UI上立即显示高亮效果
+            pdfView.setNeedsDisplay()
+
+            // 将文件保存操作放在后台线程执行
+            if let document = pdfView.document,
+               let documentURL = document.documentURL
+            {
+                // 创建一个弱引用，避免循环引用
+                weak var weakDocument = document
+
+                // 使用后台队列执行保存操作
+                DispatchQueue.global(qos: .userInitiated).async {
+                    // 确保document仍然有效
+                    guard let strongDocument = weakDocument else { return }
+
+                    do {
+                        // 在后台线程保存文件
+                        try strongDocument.write(to: documentURL)
+
+                        // 在主线程更新UI或显示成功消息
+                        DispatchQueue.main.async {
+                            NSLog("✅ PDFKitView.swift -> highlightSelectedText, 成功将高亮保存到PDF文件")
+                            // 可以在这里添加成功提示，如果需要
+                        }
+                    } catch {
+                        // 在主线程处理错误
+                        DispatchQueue.main.async {
+                            NSLog("❌ PDFKitView.swift -> highlightSelectedText, 保存PDF文件失败: \(error.localizedDescription)")
+                            // 可以在这里添加错误提示，如果需要
+                        }
+                    }
+                }
+            }
         }
 
         // 显示ChatView
