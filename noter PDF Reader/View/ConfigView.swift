@@ -5,6 +5,8 @@ struct ConfigView: View {
     @Binding var originalPathInput: String
     @State private var deepSeekApiKey: String = UserDefaults.standard.string(forKey: "DeepSeekApiKey") ?? ""
     @State private var showDirectoryPicker = false
+    @State private var isSharePresented: Bool = false
+    @State private var logFileURL: URL? = nil
 
     // 目录访问管理器
     @ObservedObject var directoryManager: DirectoryAccessManager
@@ -70,7 +72,10 @@ struct ConfigView: View {
                 }
 
                 Section(header: Text("日志")) {
-                    Button(action: shareLogs) {
+                    Button(action: {
+                        prepareLogFile()
+                        isSharePresented = true
+                    }) {
                         HStack {
                             Image(systemName: "archivebox")
                             Text("导出日志")
@@ -91,10 +96,15 @@ struct ConfigView: View {
             .sheet(isPresented: $showDirectoryPicker) {
                 DocumentPicker(accessManager: directoryManager)
             }
+            // 使用 SwiftUI 的方式集成 UIActivityViewController
+            .background(
+                ActivityViewController(isPresented: $isSharePresented, activityItems: [logFileURL].compactMap { $0 })
+            )
         }
     }
 
-    private func shareLogs() {
+    // 准备日志文件
+    private func prepareLogFile() {
         guard let docsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first else { return }
 
         let logFile = docsDir.appendingPathComponent("noterPDFReaderDebug.log")
@@ -105,38 +115,48 @@ struct ConfigView: View {
             try? "Debug logs will appear here.".write(to: logFile, atomically: true, encoding: .utf8)
         }
 
-        // 使用 UIActivityViewController 来分享文件
-        let activityVC = UIActivityViewController(activityItems: [logFile], applicationActivities: nil)
+        logFileURL = logFile
+    }
 
-        // 设置完成回调
-        activityVC.completionWithItemsHandler = { activityType, completed, _, error in
-            if let error = error {
-                NSLog("❌ ContentView.swift -> ContentView.shareLog, 分享日志文件时出错: \(error.localizedDescription)")
-                return
+    // 创建一个 UIViewControllerRepresentable 来包装 UIActivityViewController
+    struct ActivityViewController: UIViewControllerRepresentable {
+        @Binding var isPresented: Bool
+        var activityItems: [Any]
+        var applicationActivities: [UIActivity]? = nil
+
+        func makeUIViewController(context _: Context) -> UIViewController {
+            let controller = UIViewController()
+            return controller
+        }
+
+        func updateUIViewController(_ uiViewController: UIViewController, context _: Context) {
+            if isPresented && uiViewController.presentedViewController == nil {
+                let activityVC = UIActivityViewController(activityItems: activityItems, applicationActivities: applicationActivities)
+
+                // 设置完成回调
+                activityVC.completionWithItemsHandler = { _, completed, _, error in
+                    if let error = error {
+                        NSLog("❌ ConfigView.swift -> ConfigView.ActivityViewController.updateUIViewController, 分享日志文件时出错: \(error.localizedDescription)")
+                    } else if completed {
+                        NSLog("✅ ConfigView.swift -> ConfigView.ActivityViewController.updateUIViewController, 日志文件分享成功")
+                    } else {
+                        NSLog("✅ ConfigView.swift -> ConfigView.ActivityViewController.updateUIViewController, 用户取消了日志文件分享")
+                    }
+
+                    // 关闭分享界面
+                    self.isPresented = false
+                }
+
+                // 在 iPad 上设置弹出位置（如果适用）
+                if let popoverController = activityVC.popoverPresentationController {
+                    popoverController.sourceView = uiViewController.view
+                    popoverController.sourceRect = CGRect(x: uiViewController.view.bounds.width / 2, y: uiViewController.view.bounds.height / 2, width: 0, height: 0)
+                    popoverController.permittedArrowDirections = []
+                }
+
+                uiViewController.present(activityVC, animated: true)
             }
-
-            if completed {
-                NSLog("✅ ContentView.swift -> ContentView.shareLogs, 日志文件分享成功，活动类型: \(String(describing: activityType))")
-            } else {
-                NSLog("✅ ContentView.swift -> ContentView.shareLogs, 用户取消了日志文件分享")
-            }
         }
-
-        // 在 iPad 上设置弹出位置（如果适用）
-        if let popoverController = activityVC.popoverPresentationController {
-            popoverController.sourceView = UIApplication.shared.windows.first
-            popoverController.sourceRect = CGRect(x: UIScreen.main.bounds.width / 2, y: UIScreen.main.bounds.height / 2, width: 0, height: 0)
-            popoverController.permittedArrowDirections = []
-        }
-
-        // 显示分享界面
-        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-              let rootVC = windowScene.windows.first?.rootViewController
-        else {
-            return
-        }
-
-        rootVC.present(activityVC, animated: true)
     }
 }
 
