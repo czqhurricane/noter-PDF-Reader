@@ -72,39 +72,127 @@ struct ContentView: View {
                         pdfLoadError = "无法加载PDF文件，请检查文件路径和权限"
                     }
                 }
-
-                if isLocationMode {
-                    VStack {
-                        Spacer()
-                        Text("请点击PDF上的位置来放置箭头")
-                            .padding()
-                            .background(Color.black.opacity(0.7))
-                            .foregroundColor(.white)
-                            .cornerRadius(8)
-                            .padding(.bottom, 20)
-                    }
-                }
+                locationModeOverlay
             }
             .frame(minHeight: UIScreen.main.bounds.height * 0.9) // 当显示PDF时，设置一个合适的最小高度
         }
     }
 
+    private var locationModeOverlay: some View {
+        Group {
+            if isLocationMode {
+                VStack {
+                    Spacer()
+                    Text("请点击PDF上的位置来放置箭头")
+                        .padding()
+                        .background(Color.black.opacity(0.7))
+                        .foregroundColor(.white)
+                        .cornerRadius(8)
+                        .padding(.bottom, 20)
+                }
+            }
+        }
+    }
+
+    private var mainContentSection: some View {
+        VStack {
+            if pdfURL != nil {
+                pdfDisplaySection
+            }
+        }
+    }
+
+    private var errorSection: some View {
+        Group {
+            if let error = pdfLoadError {
+                Text(error)
+                    .foregroundColor(.red)
+                    .padding()
+            }
+        }
+    }
+
+    private var anySheetBinding: Binding<Bool> {
+        Binding<Bool>(
+            get: { showConfigSheet || showAnnotationsSheet || showChatSheet || showSearchSheet || showOcclusionSheet || showPDFPicker || showLinkInputSheet },
+            set: {
+                if !$0 {
+                    showConfigSheet = false
+                    showAnnotationsSheet = false
+                    showChatSheet = false
+                    showSearchSheet = false
+                    showOcclusionSheet = false
+                    showPDFPicker = false
+                    showLinkInputSheet = false
+                }
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var configSheetContent: some View {
+        ConfigView(
+            originalPathInput: $originalPathInput,
+            directoryManager: directoryManager
+        )
+    }
+
+    @ViewBuilder
+    private var annotationsSheetContent: some View {
+        // 传递同一个 ViewModel 实例到 AnnotationListView
+        AnnotationListViewWrapper(viewModel: annotationListViewModel)
+    }
+
+    @ViewBuilder
+    private var chatSheetContent: some View {
+        ChatView(initialText: textToProcess, autoSend: autoSendMessage)
+    }
+
+    @ViewBuilder
+    private var searchSheetContent: some View {
+        NavigationView {
+            PDFSearchView(pdfDocument: $pdfDocument) { result in
+                // 更新选中的搜索结果
+                selectedSearchSelection = result.selection
+                // 保存最后选择的搜索结果页码
+                UserDefaults.standard.set(result.page, forKey: "lastSearchPage")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var occlusionSheetContent: some View {
+        // OcclusionView() // Assuming OcclusionView handles its own dismissal or this was intended
+        // To ensure the sheet dismisses if OcclusionView doesn't handle it:
+        // OcclusionView().onDisappear { showOcclusionSheet = false }
+        // For now, keeping original logic which might be intentional if OcclusionView is simple
+        OcclusionView()
+    }
+
+    @ViewBuilder
+    private var pdfPickerSheetContent: some View {
+        PDFPicker(accessManager: directoryManager)
+            .onAppear {
+                NSLog("✅ ContentView.swift -> ContentView.body, PDF 选择器 sheet 显示")
+            }
+        // .onDisappear is handled by anySheetBinding's setter now
+    }
+
+    @ViewBuilder
+    private var linkInputSheetContent: some View {
+        LinkInputView(linkText: $linkText, onSubmit: {
+            processMetanoteLink(linkText)
+            // showLinkInputSheet = false // Handled by anySheetBinding's setter
+        })
+    }
+
     var body: some View {
         NavigationView {
-            ScrollView(.vertical, showsIndicators: true) { VStack {
-                if pdfURL != nil { // Check pdfURL directly
-                    pdfDisplaySection
-                }
-
-                // 显示错误信息
-                if let error = pdfLoadError {
-                    Text(error)
-                        .foregroundColor(.red)
-                        .padding()
-                }
+            ScrollView(.vertical, showsIndicators: true) {
+                mainContentSection
+                errorSection
             }
             .frame(maxWidth: .infinity) // 确保内容填充整个屏幕宽度
-            }
             .navigationBarTitle("", displayMode: .inline)
             .navigationBarTitleDisplayMode(.automatic)
             .toolbar {
@@ -175,8 +263,8 @@ struct ContentView: View {
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                               showPDFPicker = true // 显示 PDFPicker sheet
-                           }) {
+                        showPDFPicker = true // 显示 PDFPicker sheet
+                    }) {
                         Image(systemName: "folder")
                     }
                 }
@@ -185,60 +273,29 @@ struct ContentView: View {
                         Image(systemName: "link")
                     }
                 }
-            }.sheet(isPresented: Binding<Bool>(
-                get: { showConfigSheet || showAnnotationsSheet || showChatSheet || showSearchSheet || showOcclusionSheet || showPDFPicker || showLinkInputSheet },
-                set: {
-                    if !$0 {
-                        showConfigSheet = false
-                        showAnnotationsSheet = false
-                        showChatSheet = false
-                        showSearchSheet = false
-                        showOcclusionSheet = false
-                        showPDFPicker = false
-                        showLinkInputSheet = false
-                    }
-                }
-            )) {
+            }.sheet(isPresented: anySheetBinding) {
                 Group {
                     if showConfigSheet {
-                        ConfigView(
-                            originalPathInput: $originalPathInput,
-                            directoryManager: directoryManager
-                        )
+                        configSheetContent
                     } else if showAnnotationsSheet {
-                        // 传递同一个 ViewModel 实例到 AnnotationListView
-                        AnnotationListViewWrapper(viewModel: annotationListViewModel)
+                        annotationsSheetContent
                     } else if showChatSheet {
-                        ChatView(initialText: textToProcess,
-                                 autoSend: autoSendMessage)
+                        chatSheetContent
                     } else if showSearchSheet {
                         NavigationView {
-                            PDFSearchView(pdfDocument: $pdfDocument) { result in
-                                // 更新选中的搜索结果
-                                selectedSearchSelection = result.selection
-
-                                // 保存最后选择的搜索结果页码
-                                UserDefaults.standard.set(result.page, forKey: "lastSearchPage")
-                            }
+                            searchSheetContent
                         }
                     } else if showOcclusionSheet {
-                        OcclusionView()
-                        showOcclusionSheet = false
+                        occlusionSheetContent
+                          .onDisappear { // Ensure state is reset if view dismisses itself
+                              if showOcclusionSheet { // only if it was this sheet
+                                  showOcclusionSheet = false
+                              }
+                          }
                     } else if showPDFPicker {
-                        PDFPicker(accessManager: directoryManager)
-                            .onAppear {
-                                NSLog("✅ ContentView.swift -> ContentView.body, PDF 选择器 sheet 显示")
-                            }
-                            .onDisappear {
-                                showPDFPicker = false
-
-                                NSLog("❌ ContentView.swift -> ContentView.body, PDF 选择器 sheet 不显示")
-                            }
+                        pdfPickerSheetContent
                     } else if showLinkInputSheet {
-                        LinkInputView(linkText: $linkText, onSubmit: {
-                            processMetanoteLink(linkText)
-                            showLinkInputSheet = false
-                        })
+                        linkInputSheetContent
                     }
                 }
             }
