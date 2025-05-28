@@ -18,6 +18,7 @@
 		0262EBA82DCB669A00E9CBC8 /* PathConverter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EBA72DCB669A00E9CBC8 /* PathConverter.swift */; };
 		0262EBAB2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EBAA2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift */; };
 		0262EBAE2DCB66EF00E9CBC8 /* PDFKitView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EBAD2DCB66EF00E9CBC8 /* PDFKitView.swift */; };
+		026811852DE63ADE00CDD91D /* v3 in Resources */ = {isa = PBXBuildFile; fileRef = 026811842DE63ADE00CDD91D /* v3 */; };
 		029B41A62DDB846800EE0236 /* DatabaseManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 029B41A52DDB846800EE0236 /* DatabaseManager.swift */; };
 		029B41A92DDB848400EE0236 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 029B41A82DDB848400EE0236 /* Assets.xcassets */; };
 		029B41AE2DDB9C5800EE0236 /* FMDB in Frameworks */ = {isa = PBXBuildFile; productRef = 029B41AD2DDB9C5800EE0236 /* FMDB */; };
@@ -32,6 +33,7 @@
 		02DD375E2DD1F8EF004892E9 /* DocumentPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DD375D2DD1F8EF004892E9 /* DocumentPicker.swift */; };
 		02DD37612DD1F91B004892E9 /* DirectoryAccessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DD37602DD1F91B004892E9 /* DirectoryAccessManager.swift */; };
 		02F073852DE5068800809345 /* ConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02F073842DE5068800809345 /* ConfigView.swift */; };
+		02F073882DE60C5200809345 /* OcclusionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02F073872DE60C5100809345 /* OcclusionView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -49,6 +51,7 @@
 		0262EBA72DCB669A00E9CBC8 /* PathConverter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathConverter.swift; sourceTree = "<group>"; };
 		0262EBAA2DCB66CA00E9CBC8 /* ArrowAnnotationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArrowAnnotationView.swift; sourceTree = "<group>"; };
 		0262EBAD2DCB66EF00E9CBC8 /* PDFKitView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PDFKitView.swift; sourceTree = "<group>"; };
+		026811842DE63ADE00CDD91D /* v3 */ = {isa = PBXFileReference; lastKnownFileType = folder; path = v3; sourceTree = "<group>"; };
 		029B41A52DDB846800EE0236 /* DatabaseManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DatabaseManager.swift; sourceTree = "<group>"; };
 		029B41A82DDB848400EE0236 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		029B41B52DDBC1EA00EE0236 /* AnnotationListViewModel.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AnnotationListViewModel.swift; sourceTree = "<group>"; };
@@ -62,6 +65,7 @@
 		02DD375D2DD1F8EF004892E9 /* DocumentPicker.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DocumentPicker.swift; sourceTree = "<group>"; };
 		02DD37602DD1F91B004892E9 /* DirectoryAccessManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DirectoryAccessManager.swift; sourceTree = "<group>"; };
 		02F073842DE5068800809345 /* ConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigView.swift; sourceTree = "<group>"; };
+		02F073872DE60C5100809345 /* OcclusionView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OcclusionView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -103,6 +107,7 @@
 		0262EB8B2DCB611400E9CBC8 /* noter PDF Reader */ = {
 			isa = PBXGroup;
 			children = (
+				026811842DE63ADE00CDD91D /* v3 */,
 				028029782DE08DAC00182C02 /* Utility */,
 				028029772DE08D8100182C02 /* Model */,
 				028029762DE08D6700182C02 /* ViewModel */,
@@ -129,6 +134,7 @@
 		028029742DE08D2700182C02 /* View */ = {
 			isa = PBXGroup;
 			children = (
+				02F073872DE60C5100809345 /* OcclusionView.swift */,
 				02BB0A492DE0999E00E42A91 /* ChatView.swift */,
 				025FCAA92DDE6F3D00102A44 /* PDFOutlineViewController.swift */,
 				02BB0A3C2DE094F400E42A91 /* ScanningProgressView.swift */,
@@ -238,6 +244,7 @@
 			files = (
 				0262EB942DCB611800E9CBC8 /* Preview Assets.xcassets in Resources */,
 				029B41A92DDB848400EE0236 /* Assets.xcassets in Resources */,
+				026811852DE63ADE00CDD91D /* v3 in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -253,6 +260,7 @@
 				029B41A62DDB846800EE0236 /* DatabaseManager.swift in Sources */,
 				025107892DDFA95F009BE1EA /* PDFPicker.swift in Sources */,
 				02F073852DE5068800809345 /* ConfigView.swift in Sources */,
+				02F073882DE60C5200809345 /* OcclusionView.swift in Sources */,
 				02BB0A4A2DE0999E00E42A91 /* ChatView.swift in Sources */,
 				02BB0A432DE0998B00E42A91 /* Message.swift in Sources */,
 				02DD37612DD1F91B004892E9 /* DirectoryAccessManager.swift in Sources */,

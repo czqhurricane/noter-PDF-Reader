@@ -10,12 +10,14 @@ struct ContentView: View {
     @State private var currentPage: Int = 1
     @State private var xRatio: Double = 0.0
     @State private var yRatio: Double = 0.0
-    @State private var showDirectoryPicker = false
     @State private var showAnnotationsSheet = false // 显示保存的注释列表视图
     @State private var showOutlines = false // 显示 PDF 目录
     @State private var showSearchSheet = false // 显示 PDF 全文搜索 sheet
     @State private var showPDFPicker = false
     @State private var showLinkInputSheet = false
+    @State private var showChatSheet = false
+    @State private var showConfigSheet = false
+    @State private var showOcclusionSheet = false
     @State private var linkText: String = ""
     @State private var rootFolderURL: URL? = UserDefaults.standard.url(forKey: "RootFolder")
     @State private var isPDFLoaded = false
@@ -28,8 +30,6 @@ struct ContentView: View {
     @State private var pdfDocument: PDFDocument?
     // 添加新的状态变量用于跟踪当前选中的搜索结果
     @State private var selectedSearchSelection: PDFSelection? = nil
-    @State private var showChatViewSheet = false
-    @State private var showConfigSheet = false
     @State private var textToProcess = ""
     @State private var autoSendMessage = false
 
@@ -59,7 +59,7 @@ struct ContentView: View {
                     forceRender: $forceRender,
                     pdfDocument: $pdfDocument,
                     selectedSearchSelection: $selectedSearchSelection,
-                    showChatViewSheet: $showChatViewSheet,
+                    showChatSheet: $showChatSheet,
                     textToProcess: $textToProcess,
                     autoSendMessage: $autoSendMessage
                 )
@@ -110,8 +110,7 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
-                        showConfigSheet = true
-
+                        showConfigSheet = true // 显示配置 sheet
                     }) {
                         Image(systemName: "gear")
                     }
@@ -125,18 +124,29 @@ struct ContentView: View {
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
-                        showChatViewSheet = true // 显示 Chat sheet
+                        showChatSheet = true // 显示 Chat sheet
                     }) {
                         Image(systemName: "bubble.left.and.bubble.right")
                     }
                 }
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Group {
                         if let _ = pdfURL {
                             Button(action: {
                                 showOutlines = true // 显示目录模式
                             }) {
                                 Image(systemName: "list.bullet.indent")
+                            }
+                        }
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Group {
+                        if let _ = pdfURL {
+                            Button(action: {
+                                isLocationMode.toggle() // 切换注释模式
+                            }) {
+                                Image(systemName: "square.and.pencil")
                             }
                         }
                     }
@@ -156,34 +166,34 @@ struct ContentView: View {
                     Group {
                         if let _ = pdfURL {
                             Button(action: {
-                                isLocationMode.toggle() // 切换注释模式
+                                showOcclusionSheet = true // 显示 PDF Occlusion sheet
                             }) {
-                                Image(systemName: "square.and.pencil")
+                                Image(systemName: "rectangle.slash")
                             }
                         }
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: { showPDFPicker = true }) { // 显示 PDFPicker
+                    Button(action: {
+                               showPDFPicker = true // 显示 PDFPicker sheet
+                           }) {
                         Image(systemName: "folder")
-                            .padding(8)
                     }
                 }
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showLinkInputSheet = true }) { // 显示 LinkInput sheet
                         Image(systemName: "link")
-                            .padding(8)
                     }
                 }
             }.sheet(isPresented: Binding<Bool>(
-                      get: { showConfigSheet || showAnnotationsSheet || showChatViewSheet || showSearchSheet || showDirectoryPicker || showPDFPicker || showLinkInputSheet },
+                get: { showConfigSheet || showAnnotationsSheet || showChatSheet || showSearchSheet || showOcclusionSheet || showPDFPicker || showLinkInputSheet },
                 set: {
                     if !$0 {
                         showConfigSheet = false
                         showAnnotationsSheet = false
-                        showChatViewSheet = false
+                        showChatSheet = false
                         showSearchSheet = false
-                        showDirectoryPicker = false
+                        showOcclusionSheet = false
                         showPDFPicker = false
                         showLinkInputSheet = false
                     }
@@ -192,13 +202,13 @@ struct ContentView: View {
                 Group {
                     if showConfigSheet {
                         ConfigView(
-                          originalPathInput: $originalPathInput,
-                          directoryManager: directoryManager
+                            originalPathInput: $originalPathInput,
+                            directoryManager: directoryManager
                         )
                     } else if showAnnotationsSheet {
                         // 传递同一个 ViewModel 实例到 AnnotationListView
                         AnnotationListViewWrapper(viewModel: annotationListViewModel)
-                    } else if showChatViewSheet {
+                    } else if showChatSheet {
                         ChatView(initialText: textToProcess,
                                  autoSend: autoSendMessage)
                     } else if showSearchSheet {
@@ -211,16 +221,9 @@ struct ContentView: View {
                                 UserDefaults.standard.set(result.page, forKey: "lastSearchPage")
                             }
                         }
-                    } else if showDirectoryPicker {
-                        DocumentPicker(accessManager: directoryManager)
-                            .onAppear {
-                                NSLog("✅ ContentView.swift -> ContentView.body, 文件选择器 sheet 显示")
-                            }
-                            .onDisappear {
-                                showDirectoryPicker = false
-
-                                NSLog("❌ ContentView.swift -> ContentView.body, 文件选择器 sheet 不显示")
-                            }
+                    } else if showOcclusionSheet {
+                        OcclusionView()
+                        showOcclusionSheet = false
                     } else if showPDFPicker {
                         PDFPicker(accessManager: directoryManager)
                             .onAppear {
@@ -324,12 +327,12 @@ struct ContentView: View {
             guard let userInfo = notification.userInfo,
                   let dataBasePath = userInfo["dataBasePath"] as? String
             else {
-                NSLog("❌ ContentView.swift -> ContentView.setupNotifications, 通知中缺少数据库路径")
+                NSLog("❌ ContentView.swift -> ContentView.setupNotifications, loadAnnotationsDatabaseNotification 通知中缺少数据库路径")
 
                 return
             }
 
-            NSLog("✅ ContentView.swift -> ContentView.setupNotifications, 收到加载数据库通知: \(dataBasePath)")
+            NSLog("✅ ContentView.swift -> ContentView.setupNotifications, loadAnnotationsDatabaseNotification 收到加载数据库通知，数据库路径：\(dataBasePath)")
 
             annotationListViewModel.loadAnnotationsFromDatabase(dataBasePath)
         }
@@ -365,7 +368,7 @@ struct ContentView: View {
 
             rawPdfPath = self.convertToRawPath(pdfPath)
 
-            NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenSelectedPDF 观察者, 接收到打开PDF请求，原始路径: \(pdfPath), 反转换路径: \(rawPdfPath)")
+            NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenSelectedPDF 观察者, 接收到打开 PDF 请求，原始路径: \(pdfPath), 反转换路径: \(rawPdfPath)")
 
             // 调用 openPDF 方法打开文件
             openPDF(at: pdfPath, currentPage: currentPage, xRatio: xRatio, yRatio: yRatio)

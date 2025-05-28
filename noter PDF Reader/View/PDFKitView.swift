@@ -30,7 +30,7 @@ struct PDFKitView: UIViewRepresentable {
     @Binding var forceRender: Bool
     @Binding var pdfDocument: PDFDocument?
     @Binding var selectedSearchSelection: PDFSelection?
-    @Binding var showChatViewSheet: Bool
+    @Binding var showChatSheet: Bool
     @Binding var textToProcess: String
     @Binding var autoSendMessage: Bool
 
@@ -761,7 +761,7 @@ struct PDFKitView: UIViewRepresentable {
         // 添加新的方法来处理"翻译整页"菜单项的点击事件
         @objc func translateWholePage(_: Any) {
             DispatchQueue.main.async {
-                self.parent.showChatViewSheet = true
+                self.parent.showChatSheet = true
                 self.parent.textToProcess = self.pageText
                 self.parent.autoSendMessage = true
             }
@@ -828,7 +828,7 @@ struct PDFKitView: UIViewRepresentable {
         // 显示ChatView
         private func showChatView() {
             DispatchQueue.main.async {
-                self.parent.showChatViewSheet = true
+                self.parent.showChatSheet = true
                 self.parent.textToProcess = self.selectedText
                 self.parent.autoSendMessage = self.isTranslationMode
             }
