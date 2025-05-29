@@ -63,19 +63,35 @@ struct WebViewContainer: UIViewRepresentable {
 
         let configuration = WKWebViewConfiguration()
         configuration.userContentController = userContentController
+        // 改进的配置
+        configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
+        // configuration.preferences.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
+        configuration.allowsInlineMediaPlayback = true
+        configuration.mediaTypesRequiringUserActionForPlayback = []
+
+        // 添加进程池配置
+        configuration.processPool = WKProcessPool()
+
+        if #available(iOS 14, *) {
+            configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+        }
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
 
         webView.navigationDelegate = context.coordinator // Set navigation delegate
 
-        // 获取HTML文件的路径
-        if let htmlPath = Bundle.main.path(forResource: "index", ofType: "html", inDirectory: "v3"),
-           let resourceDirectoryPath = Bundle.main.resourcePath?.appending("/v3") {
-            let htmlUrl = URL(fileURLWithPath: htmlPath)
-            let resourceDirectoryUrl = URL(fileURLWithPath: resourceDirectoryPath)
+        // 添加错误处理
+        webView.allowsBackForwardNavigationGestures = false
 
-            // Use loadFileURL to load the local HTML file and grant access to the resource directory
-            webView.loadFileURL(htmlUrl, allowingReadAccessTo: resourceDirectoryUrl)
+        // 获取HTML文件的路径
+        if let htmlFileURL = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "v3") {
+            do {
+                let htmlData = try Data(contentsOf: htmlFileURL)
+                let v3DirectoryURL = htmlFileURL.deletingLastPathComponent()
+                webView.load(htmlData, mimeType: "text/html", characterEncodingName: "utf-8", baseURL: v3DirectoryURL)
+            } catch {
+                NSLog("❌ OcclusionView.swift -> WebViewContainer.makeUIView, Error loading HTML data: \(error.localizedDescription)")
+            }
         } else {
             NSLog("❌ OcclusionView.swift -> WebViewContainer.makeUIView, 无法找到 HTML 文件")
         }
@@ -112,6 +128,21 @@ extension WebViewContainer {
             }
         }
 
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation _: WKNavigation!, withError error: Error) {
+            NSLog("❌ OcclusionView.swift -> WebView provisional navigation failed: \(error.localizedDescription)")
+
+            // 尝试重新加载
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                if let htmlURL = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "v3") {
+                    webView.loadFileURL(htmlURL, allowingReadAccessTo: Bundle.main.bundleURL)
+                }
+            }
+        }
+
+        func webView(_: WKWebView, didFail _: WKNavigation!, withError error: Error) {
+            NSLog("❌ OcclusionView.swift -> WebView navigation failed: \(error.localizedDescription)")
+        }
+
         func webView(_ webView: WKWebView, didFinish _: WKNavigation!) {
             guard let originalImage = parent.image else {
                 NSLog("❌ OcclusionView.swift -> WebViewContainer.Coordinator.webView, Coordinator.webView.didFinish, Image is nil")
@@ -141,56 +172,30 @@ extension WebViewContainer {
             // The script message handler is now added in makeUIView
             // No need to add it here:
             // webView.configuration.userContentController.add(self, name: "ankiDeckExport")
-
-            // 注入 JavaScript 函数来读取文件并发送给 Swift
+            // 注入拦截下载的脚本
             let downloadScript = """
-                function exportAnkiDeck() {
-                    // 假设 Anki-Deck-Export.apkg 已经存在于 IndexedDB 或其他存储中
-                    // 这里需要根据 genanki.js 实际的存储方式来获取文件内容
-                    // 如果是写入到文件系统，可能需要通过 FileReader 或其他方式读取
-                    // 这是一个示例，假设文件内容可以直接获取
-                    // 实际情况可能需要更复杂的逻辑来从 IndexedDB 或其他地方读取文件
-                    // 例如，如果 genanki.js 使用了 IndexedDB，您需要从 IndexedDB 中读取数据
-                    // 或者如果它写入了 WebAssembly 的文件系统，您需要从那里读取
-
-                    // 这是一个占位符，您需要根据 genanki.js 的实际文件保存方式来修改
-                    // 假设文件内容可以通过某个全局变量或函数获取
-                    // 例如，如果 genanki.js 暴露了一个获取文件内容的函数
-                    // var fileContent = getAnkiDeckFileContent();
-
-                    // 为了演示，我们假设文件内容是 Base64 编码的字符串
-                    // 您需要替换 'YOUR_BASE64_ENCODED_ANKI_DECK_CONTENT' 为实际的文件内容
-                    // 或者调用 genanki.js 中读取文件的方法
-
-                    // 由于 genanki.js 使用了 writeToFile，这通常意味着它写入了 Emscripten 的文件系统
-                    // 您需要找到从 Emscripten 文件系统读取文件的方法
-                    // 例如，如果 Emscripten 的 FS 对象可用：
-                    if (typeof FS !== 'undefined' && FS.readFile) {
-                        try {
-                            var fileData = FS.readFile('Anki-Deck-Export.apkg', { encoding: 'binary' });
-                            var base64String = btoa(String.fromCharCode.apply(null, fileData));
-                            window.webkit.messageHandlers.ankiDeckExport.postMessage(base64String);
-                        } catch (e) {
-                            console.error('Error reading Anki-Deck-Export.apkg from Emscripten FS:', e);
-                        }
-                    } else {
-                        console.error('FS object or FS.readFile not available. Cannot read Anki-Deck-Export.apkg.');
-                    }
-                }
+            (function() {
+            const originalSaveAs = window.saveAs;
+            window.saveAs = function(blob, filename) {
+            if (filename === 'Anki-Deck-Export.apkg') {
+            const reader = new FileReader();
+            reader.onload = function() {
+            const base64 = reader.result.split(',')[1];
+            webkit.messageHandlers.ankiDeckExport.postMessage(base64);
+            };
+            reader.readAsDataURL(blob);
+            } else {
+            originalSaveAs.call(this, blob, filename);
+            }
+            };
+            })();
             """
-            webView.evaluateJavaScript(downloadScript) { result, error in
+
+            webView.evaluateJavaScript(downloadScript) { _, error in
                 if let error = error {
-                    NSLog("❌ OcclusionView.swift -> WebViewContainer.Coordinator.webView, JavaScript injection error: \(error.localizedDescription)")
+                    NSLog("❌ Download script injection error: \(error.localizedDescription)")
                 } else {
-                    NSLog("✅ OcclusionView.swift -> WebViewContainer.Coordinator.webView, JavaScript injection successful. Result: \(String(describing: result))")
-                    // 在这里调用注入的函数来触发文件导出
-                    webView.evaluateJavaScript("exportAnkiDeck();") { result, error in
-                        if let error = error {
-                            NSLog("❌ OcclusionView.swift -> WebViewContainer.Coordinator.webView, exportAnkiDeck call error: \(error.localizedDescription)")
-                        } else {
-                            NSLog("✅ OcclusionView.swift -> WebViewContainer.Coordinator.webView, exportAnkiDeck called successfully. Result: \(String(describing: result))")
-                        }
-                    }
+                    NSLog("✅ Download script injected successfully")
                 }
             }
         }
@@ -208,13 +213,44 @@ extension WebViewContainer {
                             do {
                                 try data.write(to: fileURL)
                                 NSLog("✅ Anki-Deck-Export.apkg saved to: \(fileURL.path)")
-                                // 可以在这里添加代码来分享文件或通知用户
+
+                                // 在主线程中显示分享界面
+                                DispatchQueue.main.async {
+                                    self.shareFile(fileURL: fileURL)
+                                }
                             } catch {
                                 NSLog("❌ Error saving Anki-Deck-Export.apkg: \(error.localizedDescription)")
                             }
                         }
                     }
                 }
+            }
+        }
+
+        private func shareFile(fileURL: URL) {
+            let activityViewController = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
+
+            // Find the topmost presented view controller
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let window = windowScene.windows.first,
+               let rootViewController = window.rootViewController
+            {
+                // Get the topmost view controller
+                var topViewController = rootViewController
+                while let presentedViewController = topViewController.presentedViewController {
+                    topViewController = presentedViewController
+                }
+
+                // For iPad, set up popover
+                if let popover = activityViewController.popoverPresentationController {
+                    popover.sourceView = topViewController.view
+                    popover.sourceRect = CGRect(x: topViewController.view.bounds.midX,
+                                                y: topViewController.view.bounds.midY,
+                                                width: 0, height: 0)
+                    popover.permittedArrowDirections = []
+                }
+
+                topViewController.present(activityViewController, animated: true, completion: nil)
             }
         }
     }

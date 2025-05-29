@@ -35,7 +35,6 @@ struct ContentView: View {
     @State private var occlusionImage: UIImage? = nil // State to hold the captured image
     @State private var pdfViewCoordinator: PDFKitView.Coordinator? // To call coordinator methods
 
-
     // 目录访问管理器
     @StateObject private var directoryManager = DirectoryAccessManager.shared
     @StateObject var annotationListViewModel = AnnotationListViewModel()
@@ -75,8 +74,10 @@ struct ContentView: View {
                     pdfLoadError = nil
                 }
                 .onChange(of: isPDFLoaded) { loaded in
-                    if !loaded {
-                        pdfLoadError = "无法加载PDF文件，请检查文件路径和权限"
+                    DispatchQueue.main.async {
+                        if !loaded {
+                            self.pdfLoadError = "无法加载PDF文件，请检查文件路径和权限"
+                        }
                     }
                 }
                 locationModeOverlay
@@ -262,15 +263,15 @@ struct ContentView: View {
                     Group {
                         if let _ = pdfURL {
                             Button(action: {
-                                       // Capture the image before showing the sheet
-                                       self.occlusionImage = pdfViewCoordinator?.captureCurrentPageAsImage()
-                                       if self.occlusionImage != nil {
-                                           showOcclusionSheet = true // 显示 PDF Occlusion sheet
-                                       } else {
-                                           // Handle error: show an alert or log
-                                           NSLog("❌ ContentView.swift -> ContentView.body, Failed to capture image for OcclusionView")
-                                       }
-                                   }) {
+                                // Capture the image before showing the sheet
+                                self.occlusionImage = pdfViewCoordinator?.captureCurrentPageAsImage()
+                                if self.occlusionImage != nil {
+                                    showOcclusionSheet = true // 显示 PDF Occlusion sheet
+                                } else {
+                                    // Handle error: show an alert or log
+                                    NSLog("❌ ContentView.swift -> ContentView.body, Failed to capture image for OcclusionView")
+                                }
+                            }) {
                                 Image(systemName: "rectangle.slash")
                             }
                         }
@@ -302,11 +303,11 @@ struct ContentView: View {
                         }
                     } else if showOcclusionSheet {
                         occlusionSheetContent
-                          .onDisappear { // Ensure state is reset if view dismisses itself
-                              if showOcclusionSheet { // only if it was this sheet
-                                  showOcclusionSheet = false
-                              }
-                          }
+                            .onDisappear { // Ensure state is reset if view dismisses itself
+                                if showOcclusionSheet { // only if it was this sheet
+                                    showOcclusionSheet = false
+                                }
+                            }
                     } else if showPDFPicker {
                         pdfPickerSheetContent
                     } else if showLinkInputSheet {

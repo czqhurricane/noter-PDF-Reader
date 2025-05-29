@@ -136,6 +136,21 @@ struct PDFKitView: UIViewRepresentable {
     }
 
     func updateUIView(_ pdfView: PDFView, context: Context) {
+        // 确保在主线程执行
+        guard Thread.isMainThread else {
+            DispatchQueue.main.async {
+                self.updateUIView(pdfView, context: context)
+            }
+            return
+        }
+
+        // 检查视图状态
+        guard pdfView.superview != nil else {
+            NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, PDFView没有父视图，跳过更新")
+
+            return
+        }
+
         context.coordinator.parent = self
         context.coordinator.isLocationMode = isLocationMode // 更新协调器中的状态
 
@@ -156,25 +171,32 @@ struct PDFKitView: UIViewRepresentable {
             }
         }
 
+        // 处理目录显示
         if showOutlines {
             if context.coordinator.outlineVC == nil {
                 let outlineVC = PDFOutlineViewController()
                 outlineVC.pdfView = pdfView
                 context.coordinator.outlineVC = outlineVC
 
-                if let rootVC = UIApplication.shared.windows.first?.rootViewController {
-                    rootVC.present(outlineVC, animated: true)
-
-                    NSLog("✅ PDFKitView.swift -> PDFKitView.updateUIView, 显示目录")
-
-                    // context.coordinator.showOutlines = false // 更新协调器中的状态
+                // 安全地获取根视图控制器
+                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+                   let window = windowScene.windows.first,
+                   let rootVC = window.rootViewController
+                {
+                    // 确保在主线程呈现
+                    DispatchQueue.main.async {
+                        rootVC.present(outlineVC, animated: true)
+                        NSLog("✅ PDFKitView.swift -> PDFKitView.updateUIView, 显示目录")
+                    }
                 }
             }
         } else {
             // Dismiss outline view controller if it is presented
             if let outlineVC = context.coordinator.outlineVC {
-                outlineVC.dismiss(animated: true)
-                context.coordinator.outlineVC = nil
+                DispatchQueue.main.async {
+                    outlineVC.dismiss(animated: true)
+                    context.coordinator.outlineVC = nil
+                }
             }
         }
 
@@ -183,7 +205,11 @@ struct PDFKitView: UIViewRepresentable {
         if context.coordinator.previousState == nil ||
             context.coordinator.previousState! != currentState
         {
-            forceRender = false
+            // 安全地更新状态
+            DispatchQueue.main.async {
+                self.forceRender = false
+            }
+
             context.coordinator.previousState = (url: url, page: page, xRatio: xRatio, yRatio: yRatio, forceRender: false)
         } else {
             return
@@ -845,7 +871,7 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         func captureCurrentPageAsImage() -> UIImage? {
-            guard let pdfView = self.pdfView, let currentPage = pdfView.currentPage else {
+            guard let pdfView = pdfView, let currentPage = pdfView.currentPage else {
                 NSLog("❌ PDFKitView.swift -> Coordinator.captureCurrentPageAsImage, PDFView or currentPage is nil")
                 return nil
             }
@@ -863,6 +889,21 @@ struct PDFKitView: UIViewRepresentable {
 }
 
 class CustomPDFView: PDFView {
+    override func willMove(toSuperview newSuperview: UIView?) {
+        super.willMove(toSuperview: newSuperview)
+        if newSuperview == nil {
+            NSLog("✅ PDFKitView.swift -> CustomPDFView.willMove, CustomPDFView 即将从父视图移除")
+            NSLog("✅ ")
+        }
+    }
+
+    override func didMoveToSuperview() {
+        super.didMoveToSuperview()
+        if superview != nil {
+            NSLog("✅ PDFKitView.swift -> CustomPDFView.didMoveToSuperview, CustomPDFView已添加到父视图")
+        }
+    }
+
     override var canBecomeFirstResponder: Bool { true }
 
     // 必须声明显式的 @objc 方法来支持 iOS 14

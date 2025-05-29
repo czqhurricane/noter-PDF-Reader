@@ -110,5 +110,11 @@
 	</dict>
 	<key>UIPasteboardUsageDescription</key>
 	<string>用于复制和粘贴注释内容</string>
+  <key>com.apple.security.app-sandbox</key>
+<true/>
+<key>com.apple.security.files.user-selected.read-write</key>
+<true/>
+<key>com.apple.security.network.client</key>
+<true/>
 </dict>
 </plist>
