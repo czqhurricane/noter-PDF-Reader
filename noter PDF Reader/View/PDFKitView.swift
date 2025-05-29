@@ -24,6 +24,8 @@ struct PDFKitView: UIViewRepresentable {
     var rawPdfPath: String
     var showOutlines: Bool // 显示 PDF 目录
 
+    var coordinatorCallback: ((Coordinator) -> Void)? // Callback to pass the coordinator
+
     @Binding var isPDFLoaded: Bool
     @Binding var viewPoint: CGPoint
     @Binding var annotation: String // 绑定到ContentView的注释状态
@@ -121,6 +123,12 @@ struct PDFKitView: UIViewRepresentable {
 
         // 设置代理
         pdfView.delegate = context.coordinator
+
+        // Pass the pdfView instance to the coordinator so it can be accessed for screenshots
+        context.coordinator.pdfView = pdfView
+
+        // Call the callback with the coordinator instance
+        coordinatorCallback?(context.coordinator)
 
         NSLog("✅ PDFKitView.swift -> PDFKitView.makeUIView, 返回 pdfView = PDFView()")
 
@@ -324,6 +332,8 @@ struct PDFKitView: UIViewRepresentable {
         private var pageText: String = ""
         // 否是翻译模式标识
         private var isTranslationMode: Bool = false
+
+        weak var pdfView: PDFView? // Add a weak reference to the PDFView
 
         init(_ parent: PDFKitView) {
             self.parent = parent
@@ -832,6 +842,22 @@ struct PDFKitView: UIViewRepresentable {
                 self.parent.textToProcess = self.selectedText
                 self.parent.autoSendMessage = self.isTranslationMode
             }
+        }
+
+        func captureCurrentPageAsImage() -> UIImage? {
+            guard let pdfView = self.pdfView, let currentPage = pdfView.currentPage else {
+                NSLog("❌ PDFKitView.swift -> Coordinator.captureCurrentPageAsImage, PDFView or currentPage is nil")
+                return nil
+            }
+            let pageBounds = currentPage.bounds(for: .cropBox)
+            let renderer = UIGraphicsImageRenderer(bounds: pageBounds)
+            let image = renderer.image { _ in
+                UIColor.white.setFill()
+                UIRectFill(pageBounds)
+                currentPage.draw(with: .cropBox, to: UIGraphicsGetCurrentContext()!)
+            }
+            NSLog("✅ PDFKitView.swift -> Coordinator.captureCurrentPageAsImage, Screenshot captured")
+            return image
         }
     }
 }
