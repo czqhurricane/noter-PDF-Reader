@@ -134,9 +134,19 @@ extension WebViewContainer {
             }
             let base64String = imageData.base64EncodedString()
             let fullBase64String = "data:image/png;base64,\(base64String)"
-            let width = image.size.width
-            let height = image.size.height
+            let width = image.size.width * scale
+            let height = image.size.height * scale
+
+            NSLog("🔍 OcclusionView.swift -> WebViewContainer.Coordinator.webView, Coordinator.webView.didFinish,  图像尺寸信息:")
+            NSLog("📏 OcclusionView.swift -> WebViewContainer.Coordinator.webView, Coordinator.webView.didFinish,  原始图像尺寸: width = %.2f, height = %.2f", originalImage.size.width, originalImage.size.height)
+            NSLog("📏 OcclusionView.swift -> WebViewContainer.Coordinator.webView, Coordinator.webView.didFinish,  翻转后图像尺寸: width = %.2f, height = %.2f", width, height)
+            NSLog("📱 OcclusionView.swift -> WebViewContainer.Coordinator.webView, Coordinator.webView.didFinish,  屏幕缩放因子: %.2f", scale)
+            NSLog("📐 OcclusionView.swift -> WebViewContainer.Coordinator.webView, Coordinator.webView.didFinish,  传入 addImage 的参数: width = %.2f, height = %.2f", width, height)
+
             let script = "addImage('\(fullBase64String)', \(height), \(width));"
+
+            NSLog("📝 OcclusionView.swift -> WebViewContainer.Coordinator.webView, Coordinator.webView.didFinish, 执行的 JavaScript: addImage('base64...', %.2f, %.2f)", height, width)
+
             webView.evaluateJavaScript(script) { result, error in
                 if let error = error {
                     NSLog("❌ OcclusionView.swift -> WebViewContainer.Coordinator.webView, Coordinator.webView.didFinish, JavaScript evaluation error: \(error.localizedDescription)")

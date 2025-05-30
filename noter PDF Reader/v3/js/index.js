@@ -58,9 +58,63 @@ var canDraw = false;
 // https://stackoverflow.com/questions/10298658/mouse-position-inside-autoscaled-svg
 var pt;
 var svg;
+// function cursorPoint(evt) {
+//     pt.x = evt.clientX; pt.y = evt.clientY;
+//     return pt.matrixTransform(svg.getScreenCTM().inverse());
+// }
+
 function cursorPoint(evt) {
-    pt.x = evt.clientX; pt.y = evt.clientY;
-    return pt.matrixTransform(svg.getScreenCTM().inverse());
+    pt.x = evt.clientX;
+    pt.y = evt.clientY;
+
+    // 获取 SVG 元素的变换矩阵
+    var svg = document.getElementById("SVG101");
+    var ctm = svg.getScreenCTM();
+
+    // SVG 初始化后的调试
+    if (draw) {
+        const svgElement = document.getElementById('drawing');
+        if (svgElement) {
+            const rect = svgElement.getBoundingClientRect();
+            console.log('SVG actual dimensions:', {
+                width: rect.width,
+                height: rect.height,
+                top: rect.top,
+                left: rect.left
+            });
+        }
+    }
+
+    // 考虑缩放因子
+    if (scaleVar !== 1.0) {
+        // 将屏幕坐标转换为 SVG 局部坐标
+        var transformedPoint = pt.matrixTransform(ctm.inverse());
+        // 调整坐标以补偿缩放
+        transformedPoint.x = transformedPoint.x / scaleVar;
+        transformedPoint.y = transformedPoint.y / scaleVar;
+
+        // 调试信息
+        console.log('Cursor point debug:', {
+            clientX: evt.clientX,
+            clientY: evt.clientY,
+            transformedX: transformedPoint.x,
+            transformedY: transformedPoint.y,
+            scale: svg.style.transform,
+            scaleVar: scaleVar
+        });
+
+        return transformedPoint;
+    }
+
+    // 调试信息
+    console.log('Cursor point debug:', {
+        clientX: evt.clientX,
+        clientY: evt.clientY,
+        scale: svg.style.transform,
+        scaleVar: scaleVar
+    });
+
+    return pt.matrixTransform(ctm.inverse());
 }
 
 function handleMouseDown() {
@@ -358,6 +412,21 @@ function redoDraw() {
 var imgHeight;
 var imgWidth;
 function addImage(url="", height=0, width=0, deck="", front="") {
+    // iOS 模拟器调试信息
+    console.log('=== iOS Simulator Debug Info ===');
+    console.log('Received dimensions:', { height, width });
+    console.log('Device pixel ratio:', window.devicePixelRatio);
+    console.log('Screen dimensions:', {
+        width: screen.width,
+        height: screen.height,
+        availWidth: screen.availWidth,
+        availHeight: screen.availHeight
+    });
+    console.log('Window dimensions:', {
+        innerWidth: window.innerWidth,
+        innerHeight: window.innerHeight
+    });
+
     scaleVar = 1.0;
 
     polygonStack = [];
@@ -616,13 +685,16 @@ function zoomIn() {
 
 
 function resetZoom() {
-
     var scrWidth = screen.width;
     if (imgWidth > scrWidth) {
         scaleVar = scrWidth/imgWidth;
     } else {
         scaleVar = imgWidth/scrWidth;
     }
+
+    console.log('scrWidth: ', scrWidth)
+    console.log('imgWidth: ', imgWidth)
+    console.log('scaleVar: ', scaleVar)
 
     document.getElementById("SVG101").style.transform = "scale(" + scaleVar + ")";
     document.getElementById("uploadPreview").style.transform = "scale(" + scaleVar + ")";
