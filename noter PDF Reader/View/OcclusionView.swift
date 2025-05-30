@@ -19,37 +19,13 @@ extension UIImage {
 }
 
 struct OcclusionView: View {
-    @Environment(\.presentationMode) var presentationMode
-
     var image: UIImage? // Accept UIImage
 
     var body: some View {
-        VStack(spacing: 0) {
-            // 模拟导航栏
-            HStack {
-                Button(action: {
-                    presentationMode.wrappedValue.dismiss() // 关闭 sheet
-                }) {
-                    Image(systemName: "chevron.backward")
-                        .imageScale(.large)
-                        .padding()
-                }
-                Spacer()
-                Text("Occlusion") // 标题
-                    .font(.headline)
-                Spacer()
-                // 可以添加一个占位符让标题居中，或者右侧按钮
-                Image(systemName: "chevron.backward")
-                    .imageScale(.large)
-                    .padding()
-                    .opacity(0) // 保持对称，但不可见
-            }
-            .frame(height: 44) // 标准导航栏高度
-            .background(Color(.systemGray6)) // 背景色，可选
-
-            WebViewContainer(image: image)
-                .edgesIgnoringSafeArea(.bottom) // WebView 忽略底部安全区域
-        }
+        WebViewContainer(image: image)
+          .navigationBarTitleDisplayMode(.inline)
+          .navigationTitle("Occlusion")
+          .edgesIgnoringSafeArea(.bottom) // WebView 忽略底部安全区域
     }
 }
 

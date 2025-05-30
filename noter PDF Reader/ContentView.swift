@@ -17,7 +17,6 @@ struct ContentView: View {
     @State private var showLinkInputSheet = false
     @State private var showChatSheet = false
     @State private var showConfigSheet = false
-    @State private var showOcclusionSheet = false
     @State private var linkText: String = ""
     @State private var rootFolderURL: URL? = UserDefaults.standard.url(forKey: "RootFolder")
     @State private var isPDFLoaded = false
@@ -34,6 +33,8 @@ struct ContentView: View {
     @State private var autoSendMessage = false
     @State private var occlusionImage: UIImage? = nil // State to hold the captured image
     @State private var pdfViewCoordinator: PDFKitView.Coordinator? // To call coordinator methods
+    @State private var shouldNavigateToOcclusion = false // 添加新的导航状态
+
 
     // 目录访问管理器
     @StateObject private var directoryManager = DirectoryAccessManager.shared
@@ -122,14 +123,13 @@ struct ContentView: View {
 
     private var anySheetBinding: Binding<Bool> {
         Binding<Bool>(
-            get: { showConfigSheet || showAnnotationsSheet || showChatSheet || showSearchSheet || showOcclusionSheet || showPDFPicker || showLinkInputSheet },
+            get: { showConfigSheet || showAnnotationsSheet || showChatSheet || showSearchSheet || showPDFPicker || showLinkInputSheet },
             set: {
                 if !$0 {
                     showConfigSheet = false
                     showAnnotationsSheet = false
                     showChatSheet = false
                     showSearchSheet = false
-                    showOcclusionSheet = false
                     showPDFPicker = false
                     showLinkInputSheet = false
                 }
@@ -200,6 +200,15 @@ struct ContentView: View {
             ScrollView(.vertical, showsIndicators: true) {
                 mainContentSection
                 errorSection
+
+                // 添加隐藏的 NavigationLink
+                NavigationLink(
+                  destination: OcclusionView(image: occlusionImage),
+                  isActive: $shouldNavigateToOcclusion
+                ) {
+                    EmptyView()
+                }
+                  .hidden()
             }
             .frame(maxWidth: .infinity) // 确保内容填充整个屏幕宽度
             .navigationBarTitle("", displayMode: .inline)
@@ -266,7 +275,7 @@ struct ContentView: View {
                                 // Capture the image before showing the sheet
                                 self.occlusionImage = pdfViewCoordinator?.captureCurrentPageAsImage()
                                 if self.occlusionImage != nil {
-                                    showOcclusionSheet = true // 显示 PDF Occlusion sheet
+                                shouldNavigateToOcclusion = true // 触发导航
                                 } else {
                                     // Handle error: show an alert or log
                                     NSLog("❌ ContentView.swift -> ContentView.body, Failed to capture image for OcclusionView")
@@ -301,14 +310,7 @@ struct ContentView: View {
                         NavigationView {
                             searchSheetContent
                         }
-                    } else if showOcclusionSheet {
-                        occlusionSheetContent
-                            .onDisappear { // Ensure state is reset if view dismisses itself
-                                if showOcclusionSheet { // only if it was this sheet
-                                    showOcclusionSheet = false
-                                }
-                            }
-                    } else if showPDFPicker {
+                    }  else if showPDFPicker {
                         pdfPickerSheetContent
                     } else if showLinkInputSheet {
                         linkInputSheetContent
