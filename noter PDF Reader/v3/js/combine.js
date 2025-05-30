@@ -313,11 +313,11 @@ async function createCombineCloze() {
                   }
               };
 
-              const result = invoke("addNote", 6, params);
-              result.then(
-                  (v) => {alert(v)},
-                  (e) => {alert(e);},
-              );
+              // const result = invoke("addNote", 6, params);
+              // result.then(
+              //     (v) => {alert(v)},
+              //     (e) => {alert(e);},
+              // );
             }
         }
     }

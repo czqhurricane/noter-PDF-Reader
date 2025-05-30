@@ -444,7 +444,7 @@ function addImage(url="", height=0, width=0, deck="", front="") {
         try {
         document.getElementById("drawing").innerHTML = "<img id='uploadPreview' style='-webkit-transform-origin-x: 0%; -webkit-transform-origin-y: 0%;'/>";
 
-        // [[NOTER_PAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第三版.pdf#(710 0.1751487111698612 . 0.19999999999999998)]][[JavaScript 高级程序设计 第三版.pdf: Page 710; Quoting: files = EventUtil.getTarget(event) .files,]]
+        // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第三版.pdf#(710 0.1751487111698612 . 0.19999999999999998)]][[JavaScript 高级程序设计 第三版.pdf: Page 710; Quoting: files = EventUtil.getTarget(event) .files,]]
 
         var selectedFile = event.target.files[0];
         var reader = new FileReader();
@@ -494,6 +494,11 @@ function addImage(url="", height=0, width=0, deck="", front="") {
         imgHeight = height;
         imgWidth = width;
 
+        var timeStamp = new Date().getTime();
+        originalImageName = "image-occlusion-original-" + timeStamp + ".jpg"
+
+        saveSelectedImageToDeck();
+
         draw = SVG('drawing')
             .height(imgHeight)
             .width(imgWidth)
@@ -522,10 +527,10 @@ var xmlns = "http://www.w3.org/2000/svg";
 async function saveSVG(name, rect, height, width) {
 
     await pause(100);
-    // [[NOTER_PAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(488 0.17076271186440678 . 0.17407407407407408)]][[JavaScript 高级程序设计 第四版.pdf: Page 488]]
+    // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(488 0.17076271186440678 . 0.17407407407407408)]][[JavaScript 高级程序设计 第四版.pdf: Page 488]]
     var svg = document.createElementNS(svgNS, "svg");
 
-    // [[NOTER_PAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(486 0.9110169491525424 . 0.20370370370370372)]][[JavaScript 高级程序设计 第四版.pdf: Page 486; Quoting: <svg xmlns="http://www.w3.org/2000/svg" version="1.1"]]
+    // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(486 0.9110169491525424 . 0.20370370370370372)]][[JavaScript 高级程序设计 第四版.pdf: Page 486; Quoting: <svg xmlns="http://www.w3.org/2000/svg" version="1.1"]]
     // 为什么使用setAttribute ？
     svg.setAttribute("xmlns", xmlns);
     svg.setAttributeNS(null, "height", height);
@@ -538,17 +543,18 @@ async function saveSVG(name, rect, height, width) {
 
     var svgData = svg.outerHTML;
 
-    return svgData;
+    // return svgData;
+    // [[NOTERPAGE:/Users/c/Library/Mobile%20Documents/iCloud~QReader~MarginStudy/Documents/JavaScript%20高级程序设计%20第四版.pdf#(649%200.8533898305084745%20.%200.13015873015873017)]][[blob 表示二进制大对象（binary larget object） < 20.4.4 Blob与部分读取 < 20.4 File API与Blob API < 第20章 JavaScript API < JavaScript 高级程序设计 第四版.pdf]]
+    var svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
 
-    // var svgBlob = new Blob([svgData], { type: "image/svg+xml;charset=utf-8" });
-
-    // var svgUrl = URL.createObjectURL(svgBlob);
+    // [[NOTERPAGE:/Users/c/Library/Mobile%20Documents/iCloud~QReader~MarginStudy/Documents/JavaScript%20高级程序设计%20第四版.pdf#(650%200.6351694915254237%20.%200.21587301587301588)]][[对象 URL 与 Blob < 20.4.5 对象URL与Blob < 20.4 File API与Blob API < 第20章 JavaScript API < JavaScript 高级程序设计 第四版.pdf]]
+    var svgUrl = URL.createObjectURL(svgBlob);
     /*var downloadLink = document.createElement("a");
     downloadLink.href = svgUrl;
     downloadLink.download = name;
     document.body.appendChild(downloadLink);
     downloadLink.click();*/
-    // saveFile(name + ".svg", svgBlob);
+    saveFile(name + ".svg", svgBlob);
 }
 
 /* https://stackoverflow.com/questions/5623838/rgb-to-hex-and-hex-to-rgb */
@@ -1339,7 +1345,7 @@ function onFailCallback() {
 
 var json_data;
 function get_local_file(path) {
-    // [[NOTER_PAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(737 0.1826271186440678 . 0.18306878306878308)]][[JavaScript 高级程序设计 第四版.pdf: Page 737; Quoting: 使用 XHR]]
+    // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(737 0.1826271186440678 . 0.18306878306878308)]][[JavaScript 高级程序设计 第四版.pdf: Page 737; Quoting: 使用 XHR]]
     const xhr = new XMLHttpRequest()
     xhr.open('GET', path)
 
@@ -1357,11 +1363,17 @@ function get_local_file(path) {
 function saveSelectedImageToDeck() {
     var image = document.getElementById("uploadPreview");
 
-    fname = image.title;
+    fname = (image.title === undefined || image.title === "")
+        ? originalImageName
+        : image.title;
+
     var data = image.src;
     var type = image.type;
 
     var base64 = data.split(",")[1];
+
+    console.log('fname: ', fname)
+    console.log('base64: ', base64)
 
     var blob = base64toBlob(base64, type);
 

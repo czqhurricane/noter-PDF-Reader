@@ -24,18 +24,19 @@ SOFTWARE.
 
 /* Download */
 async function createNormalCloze() {
-    // [[NOTER_PAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(481 0.8470338983050847 . 0.18042328042328043)]][[JavaScript 高级程序设计 第四版.pdf: Page 481; Quoting: children 属性]]
+    // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(481 0.8470338983050847 . 0.18042328042328043)]][[JavaScript 高级程序设计 第四版.pdf: Page 481; Quoting: children 属性]]
     // 注意和childNodes 的区别
-    // [[NOTER_PAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(428 0.6900085397096498 . 0.16844349680170576)]][[JavaScript 高级程序设计 第四版.pdf: Page 428; Quoting: 每个节点都有一个 childNodes 属性，其中包含一个 NodeList 的实例。]]
+    // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(428 0.6900085397096498 . 0.16844349680170576)]][[JavaScript 高级程序设计 第四版.pdf: Page 428; Quoting: 每个节点都有一个 childNodes 属性，其中包含一个 NodeList 的实例。]]
     // 等待图片加载完成
     const uploadPreview = document.getElementById("uploadPreview");
+
     if (!uploadPreview.complete || !uploadPreview.src) {
         await new Promise(resolve => {
             uploadPreview.onload = resolve;
             if (uploadPreview.complete) resolve();
         });
     }
-    
+
     var child = document.getElementById("SVG101").childNodes;
     document.getElementById("uploadPreview").style.transform = "scale(1)";
     document.getElementById("SVG101").style.transform = "scale(1)";
@@ -55,7 +56,7 @@ async function createNormalCloze() {
             for (j = 0; j < child.length; j++) {
 
                 // text
-                // [[NOTER_PAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(439 0.32161016949152543 . 0.308994708994709)]][[JavaScript 高级程序设计 第四版.pdf: Page 439; Quoting: tagName]]
+                // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(439 0.32161016949152543 . 0.308994708994709)]][[JavaScript 高级程序设计 第四版.pdf: Page 439; Quoting: tagName]]
                 if (child[j].tagName == "text") {
 
                     // get bounding box of text, create and use rectangle as mask
@@ -177,11 +178,11 @@ async function createNormalCloze() {
                     }
                 };
 
-                const result = invoke("addNote", 6, params);
-                result.then(
-                    (v) => {alert(v)},
-                    (e) => {alert(e);},
-                );
+                // const result = invoke("addNote", 6, params);
+                // result.then(
+                //     (v) => {alert(v)},
+                //     (e) => {alert(e);},
+                // );
             }
         }
     }
