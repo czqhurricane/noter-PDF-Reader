@@ -152,6 +152,14 @@ function changeRectFillInsideG(gChild) {
 // question & answer mask of <rect> tag
 var origFileName = "";
 async function createCombineCloze() {
+    // 等待图片加载完成
+    const uploadPreview = document.getElementById("uploadPreview");
+    if (!uploadPreview.complete || !uploadPreview.src) {
+        await new Promise(resolve => {
+            uploadPreview.onload = resolve;
+            if (uploadPreview.complete) resolve();
+        });
+    }
 
     //showSnackbar("Also download notes from side menu.");
 
