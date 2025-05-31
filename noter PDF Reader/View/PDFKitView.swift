@@ -20,8 +20,8 @@ struct PDFKitView: UIViewRepresentable {
     var page: Int
     var xRatio: Double
     var yRatio: Double
-    var isLocationMode: Bool // 添加这个属性来控制是否处于位置选择模式
-    var rawPdfPath: String
+    var isLocationMode: Bool // 是否处于位置选择模式
+    var rawPdfPath: String // PDF 在电脑端的路径
     var showOutlines: Bool // 显示 PDF 目录
 
     var coordinatorCallback: ((Coordinator) -> Void)? // Callback to pass the coordinator
@@ -368,10 +368,10 @@ struct PDFKitView: UIViewRepresentable {
 
             // 添加页面变化通知监听器
             NotificationCenter.default.addObserver(
-              self,
-              selector: #selector(pageDidChange(notification:)),
-              name: Notification.Name.PDFViewPageChanged,
-              object: nil
+                self,
+                selector: #selector(pageDidChange(notification:)),
+                name: Notification.Name.PDFViewPageChanged,
+                object: nil
             )
 
             // 注册自定义菜单项并设置target为self
@@ -850,21 +850,13 @@ struct PDFKitView: UIViewRepresentable {
                     // 确保document仍然有效
                     guard let strongDocument = weakDocument else { return }
 
-                    do {
-                        // 在后台线程保存文件
-                        try strongDocument.write(to: documentURL)
+                    // 在后台线程保存文件
+                    strongDocument.write(to: documentURL)
 
-                        // 在主线程更新UI或显示成功消息
-                        DispatchQueue.main.async {
-                            NSLog("✅ PDFKitView.swift -> highlightSelectedText, 成功将高亮保存到PDF文件")
-                            // 可以在这里添加成功提示，如果需要
-                        }
-                    } catch {
-                        // 在主线程处理错误
-                        DispatchQueue.main.async {
-                            NSLog("❌ PDFKitView.swift -> highlightSelectedText, 保存PDF文件失败: \(error.localizedDescription)")
-                            // 可以在这里添加错误提示，如果需要
-                        }
+                    // 在主线程更新UI或显示成功消息
+                    DispatchQueue.main.async {
+                        NSLog("✅ PDFKitView.swift -> highlightSelectedText, 成功将高亮保存到PDF文件")
+                        // 可以在这里添加成功提示，如果需要
                     }
                 }
             }
@@ -900,13 +892,15 @@ struct PDFKitView: UIViewRepresentable {
 
             // 确保通知来自正确的 PDFView
             guard let pdfView = notification.object as? PDFView,
-                  pdfView == self.pdfView else {
+                  pdfView == self.pdfView
+            else {
                 return
             }
 
             // 获取当前页面号并保存到数据库
             if let currentPage = pdfView.currentPage,
-               let document = pdfView.document {
+               let document = pdfView.document
+            {
                 let currentPageIndex = document.index(for: currentPage) + 1 // PDFKit使用0基索引，我们使用1基索引
 
                 // 保存当前页面号到数据库
@@ -940,28 +934,28 @@ class CustomPDFView: PDFView {
     @objc func translateSelectedText(_ sender: Any?) {
         // 直接通过父视图的coordinator调用方法
         if let coordinator = delegate as? PDFKitView.Coordinator {
-            coordinator.translateSelectedText(sender)
+            coordinator.translateSelectedText(sender!)
         }
     }
 
     @objc func translateWholePage(_ sender: Any?) {
         // 直接通过父视图的coordinator调用方法
         if let coordinator = delegate as? PDFKitView.Coordinator {
-            coordinator.translateWholePage(sender)
+            coordinator.translateWholePage(sender!)
         }
     }
 
     @objc func chatWithSelectedText(_ sender: Any?) {
         // 直接通过父视图的coordinator调用方法
         if let coordinator = delegate as? PDFKitView.Coordinator {
-            coordinator.chatWithSelectedText(sender)
+            coordinator.chatWithSelectedText(sender!)
         }
     }
 
     @objc func highlightSelectedText(_ sender: Any?) {
         // 直接通过父视图的coordinator调用方法
         if let coordinator = delegate as? PDFKitView.Coordinator {
-            coordinator.highlightSelectedText(sender)
+            coordinator.highlightSelectedText(sender!)
         }
     }
 

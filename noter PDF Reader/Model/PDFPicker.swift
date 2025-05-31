@@ -40,12 +40,13 @@ struct PDFPicker: UIViewControllerRepresentable {
                 name: Notification.Name("OpenSelectedPDF"),
                 object: nil,
                 userInfo: [
-                    "pdfPath": pendingPDFPath,
+                    "pdfPath": pendingPDFPath!,
                     "currentPage": 1,
                     "xRatio": 0.5,
                     "yRatio": 0.5,
                 ]
             )
+
             NSLog("✅ PDFPicker.swift -> PDFPicker.Coordinator.documentPicker, 用户选择了文件将打开: \(url.path)")
         }
     }

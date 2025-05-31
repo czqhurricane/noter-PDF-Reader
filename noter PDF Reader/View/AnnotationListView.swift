@@ -55,7 +55,7 @@ struct AnnotationListView: View {
                                         Button(action: {
                                             // 获取注释ID并删除
                                             if let id = getAnnotationId(for: annotation) {
-                                                annotationListViewModel.deleteAnnotation(withId: id)
+                                                let _ = annotationListViewModel.deleteAnnotation(withId: id)
                                             }
                                         }) {
                                             Text("删除")

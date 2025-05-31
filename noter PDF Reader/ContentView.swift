@@ -276,7 +276,6 @@ struct ContentView: View {
                                 if self.occlusionImage != nil {
                                     shouldNavigateToOcclusion = true // 触发导航
                                 } else {
-                                    // Handle error: show an alert or log
                                     NSLog("❌ ContentView.swift -> ContentView.body, Failed to capture image for OcclusionView")
                                 }
                             }) {
