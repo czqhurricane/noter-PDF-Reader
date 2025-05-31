@@ -366,6 +366,14 @@ struct PDFKitView: UIViewRepresentable {
 
             super.init()
 
+            // 添加页面变化通知监听器
+            NotificationCenter.default.addObserver(
+              self,
+              selector: #selector(pageDidChange(notification:)),
+              name: Notification.Name.PDFViewPageChanged,
+              object: nil
+            )
+
             // 注册自定义菜单项并设置target为self
             UIMenuController.shared.menuItems = [
                 UIMenuItem(title: "翻译", action: #selector(Coordinator.translateSelectedText(_:))),
@@ -509,6 +517,7 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         // 在析构函数中清理计时器
+        // 在析构函数中移除通知监听器
         deinit {
             arrowTimer?.invalidate()
             NotificationCenter.default.removeObserver(self)
@@ -884,6 +893,27 @@ struct PDFKitView: UIViewRepresentable {
             }
             NSLog("✅ PDFKitView.swift -> Coordinator.captureCurrentPageAsImage, Screenshot captured")
             return image
+        }
+
+        @objc private func pageDidChange(notification: Notification) {
+            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, PDF 页面切换完成")
+
+            // 确保通知来自正确的 PDFView
+            guard let pdfView = notification.object as? PDFView,
+                  pdfView == self.pdfView else {
+                return
+            }
+
+            // 获取当前页面号并保存到数据库
+            if let currentPage = pdfView.currentPage,
+               let document = pdfView.document {
+                let currentPageIndex = document.index(for: currentPage) + 1 // PDFKit使用0基索引，我们使用1基索引
+
+                // 保存当前页面号到数据库
+                let _ = DatabaseManager.shared.saveLastVisitedPage(pdfPath: parent.rawPdfPath, page: currentPageIndex)
+
+                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 已保存当前文件：\(parent.rawPdfPath)，当前页面号: \(currentPageIndex) 到数据库")
+            }
         }
     }
 }

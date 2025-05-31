@@ -35,7 +35,6 @@ struct ContentView: View {
     @State private var pdfViewCoordinator: PDFKitView.Coordinator? // To call coordinator methods
     @State private var shouldNavigateToOcclusion = false // 添加新的导航状态
 
-
     // 目录访问管理器
     @StateObject private var directoryManager = DirectoryAccessManager.shared
     @StateObject var annotationListViewModel = AnnotationListViewModel()
@@ -203,12 +202,12 @@ struct ContentView: View {
 
                 // 添加隐藏的 NavigationLink
                 NavigationLink(
-                  destination: OcclusionView(image: occlusionImage),
-                  isActive: $shouldNavigateToOcclusion
+                    destination: OcclusionView(image: occlusionImage),
+                    isActive: $shouldNavigateToOcclusion
                 ) {
                     EmptyView()
                 }
-                  .hidden()
+                .hidden()
             }
             .frame(maxWidth: .infinity) // 确保内容填充整个屏幕宽度
             .navigationBarTitle("", displayMode: .inline)
@@ -275,7 +274,7 @@ struct ContentView: View {
                                 // Capture the image before showing the sheet
                                 self.occlusionImage = pdfViewCoordinator?.captureCurrentPageAsImage()
                                 if self.occlusionImage != nil {
-                                shouldNavigateToOcclusion = true // 触发导航
+                                    shouldNavigateToOcclusion = true // 触发导航
                                 } else {
                                     // Handle error: show an alert or log
                                     NSLog("❌ ContentView.swift -> ContentView.body, Failed to capture image for OcclusionView")
@@ -310,7 +309,7 @@ struct ContentView: View {
                         NavigationView {
                             searchSheetContent
                         }
-                    }  else if showPDFPicker {
+                    } else if showPDFPicker {
                         pdfPickerSheetContent
                     } else if showLinkInputSheet {
                         linkInputSheetContent
@@ -335,6 +334,12 @@ struct ContentView: View {
 
                 // Lock orientation to portrait initially
                 UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
+
+                // 确保数据库已打开
+                if let rootURL = directoryManager.rootDirectoryURL {
+                    let dbPath = rootURL.appendingPathComponent("pdf-annotations.db").path
+                    let _ = DatabaseManager.shared.openDatabase(with: directoryManager, at: dbPath)
+                }
             }.onDisappear {
                 // Reset orientation lock
                 UIDevice.current.setValue(UIInterfaceOrientation.unknown.rawValue, forKey: "orientation")
@@ -346,10 +351,8 @@ struct ContentView: View {
     }
 
     private func setupNotifications() {
-        // 使用与 SceneDelegate 相同的通知名称
+        // 使用与 SceneDelegate 和 AnnotationListView 相同的通知名称
         let openPDFNotification = NSNotification.Name("OpenPDFNotification")
-
-        // 添加通知名称常量
         let loadAnnotationsDatabaseNotification = NSNotification.Name("LoadAnnotationsDatabase")
 
         // 先移除可能存在的旧观察者，避免重复注册
@@ -359,6 +362,7 @@ struct ContentView: View {
         NSLog("✅ ContentView.swift -> ContentView.setupNotifications, 正在注册通知观察者: \(openPDFNotification)")
         NSLog("✅ ContentView.swift -> ContentView.setupNotifications, 正在注册通知观察者: \(loadAnnotationsDatabaseNotification)")
 
+        // 监听 sceneDelegate 和 AnnotationListView 的打开私有协议链接的通知
         NotificationCenter.default.addObserver(
             forName: openPDFNotification,
             object: nil,
@@ -427,6 +431,7 @@ struct ContentView: View {
             }
         }
 
+        // 监听 PDFPicker 的打开选中 PDF 通知
         NotificationCenter.default.addObserver(
             forName: Notification.Name("OpenSelectedPDF"),
             object: nil,
@@ -443,10 +448,13 @@ struct ContentView: View {
 
             rawPdfPath = self.convertToRawPath(pdfPath)
 
-            NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenSelectedPDF 观察者, 接收到打开 PDF 请求，原始路径: \(pdfPath), 反转换路径: \(rawPdfPath)")
+            // 查询数据库中的最后访问页面
+            let lastVisitedPage = DatabaseManager.shared.getLastVisitedPage(pdfPath: rawPdfPath) ?? currentPage
+
+            NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenSelectedPDF 观察者, 接收到打开 PDF 请求，原始路径: \(pdfPath), 反转换路径: \(rawPdfPath)，最后访问页面号：\(lastVisitedPage)")
 
             // 调用 openPDF 方法打开文件
-            openPDF(at: pdfPath, currentPage: currentPage, xRatio: xRatio, yRatio: yRatio)
+            openPDF(at: pdfPath, currentPage: lastVisitedPage, xRatio: xRatio, yRatio: yRatio)
         }
     }
 
@@ -483,6 +491,9 @@ struct ContentView: View {
             self.xRatio = xRatio
             self.yRatio = yRatio
             forceRender = true
+
+            // 保存PDF访问记录到数据库
+            let _ = DatabaseManager.shared.saveLastVisitedPage(pdfPath: rawPdfPath, page: currentPage)
 
             NSLog("✅ ContentView.swift -> ContentView.openPDF, 成功打开PDF文件: \(convertedPdfPath)")
         } else {

@@ -318,6 +318,86 @@ class DatabaseManager {
 
         return success
     }
+
+    // 保存PDF最后访问页面
+    func saveLastVisitedPage(pdfPath: String, page: Int) -> Bool {
+        guard let queue = dbQueue else {
+            NSLog("❌ DatabaseManager.swift -> DatabaseManager.saveLastVisitedPage, 数据库队列未初始化")
+
+            return false
+        }
+
+        var success = false
+
+        queue.inDatabase { db in
+            // 首先检查表是否存在，如果不存在则创建
+            let createTableSQL = """
+            CREATE TABLE IF NOT EXISTS pdf_last_visited (
+                pdf_path TEXT PRIMARY KEY,
+                last_page INTEGER NOT NULL,
+                last_accessed DATETIME DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+
+            if db.executeStatements(createTableSQL) {
+                // 使用INSERT OR REPLACE来更新或插入记录
+                let insertSQL = """
+                INSERT OR REPLACE INTO pdf_last_visited (pdf_path, last_page, last_accessed)
+                VALUES (?, ?, CURRENT_TIMESTAMP)
+                """
+
+                success = db.executeUpdate(insertSQL, withArgumentsIn: [pdfPath, page])
+
+                if success {
+                    NSLog("✅ DatabaseManager.swift -> DatabaseManager.saveLastVisitedPage, 成功保存PDF最后访问页面: \(pdfPath), 页码: \(page)")
+                } else {
+                    NSLog("❌ DatabaseManager.swift -> DatabaseManager.saveLastVisitedPage, 保存失败: \(db.lastErrorMessage())")
+                }
+            } else {
+                NSLog("❌ DatabaseManager.swift -> DatabaseManager.saveLastVisitedPage, 创建表失败: \(db.lastErrorMessage())")
+            }
+        }
+
+        return success
+    }
+
+    // 查询PDF最后访问页面
+    func getLastVisitedPage(pdfPath: String) -> Int? {
+        guard let queue = dbQueue else {
+            NSLog("❌ DatabaseManager.swift -> DatabaseManager.getLastVisitedPage, 数据库队列未初始化")
+
+            return nil
+        }
+
+        var lastPage: Int?
+
+        queue.inDatabase { db in
+            // 首先检查表是否存在
+            let tableExistsSQL = "SELECT name FROM sqlite_master WHERE type='table' AND name='pdf_last_visited'"
+            if let result = db.executeQuery(tableExistsSQL, withArgumentsIn: []) {
+                let tableExists = result.next()
+                result.close()
+
+                if tableExists {
+                    let querySQL = "SELECT last_page FROM pdf_last_visited WHERE pdf_path = ?"
+                    if let queryResult = db.executeQuery(querySQL, withArgumentsIn: [pdfPath]) {
+                        if queryResult.next() {
+                            lastPage = Int(queryResult.int(forColumn: "last_page"))
+
+                            NSLog("✅ DatabaseManager.swift -> DatabaseManager.getLastVisitedPage, 找到PDF最后访问页面: \(pdfPath), 页码: \(lastPage ?? 0)")
+                        } else {
+                            NSLog("✅ DatabaseManager.swift -> DatabaseManager.getLastVisitedPage, 未找到PDF访问记录: \(pdfPath)")
+                        }
+                        queryResult.close()
+                    }
+                } else {
+                    NSLog("✅ DatabaseManager.swift -> DatabaseManager.getLastVisitedPage, pdf_last_visited表不存在")
+                }
+            }
+        }
+
+        return lastPage
+    }
 }
 
 // 添加 Equatable 协议
