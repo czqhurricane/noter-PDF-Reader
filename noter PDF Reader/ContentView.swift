@@ -33,7 +33,8 @@ struct ContentView: View {
     @State private var autoSendMessage = false
     @State private var occlusionImage: UIImage? = nil // State to hold the captured image
     @State private var pdfViewCoordinator: PDFKitView.Coordinator? // To call coordinator methods
-    @State private var shouldNavigateToOcclusion = false // 添加新的导航状态
+    @State private var shouldNavigateToOcclusion = false // Occlusion 导航状态
+    @State private var toolbarScrollOffset: CGFloat = 0
 
     // 目录访问管理器
     @StateObject private var directoryManager = DirectoryAccessManager.shared
@@ -136,6 +137,109 @@ struct ContentView: View {
         )
     }
 
+    // 创建可滑动的工具栏视图
+    private var scrollableToolbar: some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 16) {
+                // 左侧按钮组
+                Button(action: {
+                    showConfigSheet = true
+                }) {
+                    Image(systemName: "gear")
+                        .foregroundColor(.primary)
+                }
+
+                Button(action: {
+                    showAnnotationsSheet = true
+                }) {
+                    Image(systemName: "note.text")
+                        .foregroundColor(.primary)
+                }
+
+                Button(action: {
+                    showChatSheet = true
+                }) {
+                    Image(systemName: "bubble.left.and.bubble.right")
+                        .foregroundColor(.primary)
+                }
+
+                // PDF 相关按钮（仅在 PDF 加载时显示）
+                if let _ = pdfURL {
+                    Button(action: {
+                        showOutlines = true
+                    }) {
+                        Image(systemName: "list.bullet.indent")
+                            .foregroundColor(.primary)
+                    }
+
+                    Button(action: {
+                        isLocationMode.toggle()
+                    }) {
+                        Image(systemName: "square.and.pencil")
+                            .foregroundColor(isLocationMode ? .blue : .primary)
+                    }
+
+                    Button(action: {
+                        showSearchSheet = true
+                    }) {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(.primary)
+                    }
+
+                    Button(action: {
+                        self.occlusionImage = pdfViewCoordinator?.captureCurrentPageAsImage()
+                        if self.occlusionImage != nil {
+                            shouldNavigateToOcclusion = true
+                        } else {
+                            NSLog("❌ ContentView.swift -> ContentView.body, Failed to capture image for OcclusionView")
+                        }
+                    }) {
+                        Image(systemName: "rectangle.slash")
+                            .foregroundColor(.primary)
+                    }
+                }
+
+                Button(action: {
+                    showPDFPicker = true
+                }) {
+                    Image(systemName: "folder")
+                        .foregroundColor(.primary)
+                }
+
+                Button(action: {
+                    showLinkInputSheet = true
+                }) {
+                    Image(systemName: "link")
+                        .foregroundColor(.primary)
+                }
+            }
+            .padding(.horizontal, 16)
+        }
+        .frame(height: 44)
+        .background(Color(UIColor.systemBackground))
+        .overlay(
+            // 添加左右渐变指示器
+            HStack {
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.black.opacity(0.1), Color.clear]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: 20)
+
+                Spacer()
+
+                LinearGradient(
+                    gradient: Gradient(colors: [Color.clear, Color.black.opacity(0.1)]),
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+                .frame(width: 20)
+            }
+            .allowsHitTesting(false)
+        )
+    }
+
     @ViewBuilder
     private var configSheetContent: some View {
         ConfigView(
@@ -196,22 +300,28 @@ struct ContentView: View {
 
     var body: some View {
         NavigationView {
-            ScrollView(.vertical, showsIndicators: true) {
-                mainContentSection
-                errorSection
+            VStack(spacing: 0) {
+                // 自定义可滑动工具栏
+                scrollableToolbar
 
-                // 添加隐藏的 NavigationLink
-                NavigationLink(
-                    destination: OcclusionView(image: occlusionImage),
-                    isActive: $shouldNavigateToOcclusion
-                ) {
-                    EmptyView()
+                ScrollView(.vertical, showsIndicators: true) {
+                    mainContentSection
+                    errorSection
+
+                    // 添加隐藏的 NavigationLink
+                    NavigationLink(
+                        destination: OcclusionView(image: occlusionImage),
+                        isActive: $shouldNavigateToOcclusion
+                    ) {
+                        EmptyView()
+                    }
+                    .hidden()
                 }
-                .hidden()
+                .frame(maxWidth: .infinity) // 确保内容填充整个屏幕宽度
             }
-            .frame(maxWidth: .infinity) // 确保内容填充整个屏幕宽度
             .navigationBarTitle("", displayMode: .inline)
             .navigationBarTitleDisplayMode(.automatic)
+            .navigationBarHidden(true) // 隐藏原始导航栏
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
