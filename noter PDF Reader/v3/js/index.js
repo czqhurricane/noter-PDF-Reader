@@ -444,8 +444,7 @@ function addImage(url="", height=0, width=0, deck="", front="") {
         try {
         document.getElementById("drawing").innerHTML = "<img id='uploadPreview' style='-webkit-transform-origin-x: 0%; -webkit-transform-origin-y: 0%;'/>";
 
-        // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第三版.pdf#(710 0.1751487111698612 . 0.19999999999999998)]][[JavaScript 高级程序设计 第三版.pdf: Page 710; Quoting: files = EventUtil.getTarget(event) .files,]]
-
+            // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第三版.pdf#(710 0.17911434236615995 . 0.20357142857142857)]][[files = EventUtil.getTarget(event) .files, < 25.4.1 FileReader类型 < 25.4 File API < 第25章 新兴的API < JavaScript 高级程序设计 第三版.pdf]]
         var selectedFile = event.target.files[0];
         var reader = new FileReader();
 
@@ -527,10 +526,10 @@ var xmlns = "http://www.w3.org/2000/svg";
 async function saveSVG(name, rect, height, width) {
 
     await pause(100);
-    // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(488 0.17076271186440678 . 0.17407407407407408)]][[JavaScript 高级程序设计 第四版.pdf: Page 488]]
+    // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(488 0.18884120171673818 . 0.1875)]][[createElementNS(namespaceURI, tagName)，以给定的标签名 tagName 创建指定命名空 间 namespaceURI 的一个新元素； < 16.1.1 XML命名空间 < 16.1 DOM的演进 < 第16章 DOM2和DOM3 < JavaScript 高级程序设计 第四版.pdf]]
     var svg = document.createElementNS(svgNS, "svg");
 
-    // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(486 0.9110169491525424 . 0.20370370370370372)]][[JavaScript 高级程序设计 第四版.pdf: Page 486; Quoting: <svg xmlns="http://www.w3.org/2000/svg" version="1.1"]]
+    // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(486 0.9148783977110158 . 0.6776785714285714)]][[ < 16.1.1 XML命名空间 < 16.1 DOM的演进 < 第16章 DOM2和DOM3 < JavaScript 高级程序设计 第四版.pdf]]
     // 为什么使用setAttribute ？
     svg.setAttribute("xmlns", xmlns);
     svg.setAttributeNS(null, "height", height);
@@ -1345,7 +1344,7 @@ function onFailCallback() {
 
 var json_data;
 function get_local_file(path) {
-    // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(737 0.1826271186440678 . 0.18306878306878308)]][[JavaScript 高级程序设计 第四版.pdf: Page 737; Quoting: 使用 XHR]]
+    // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(737 0.21316165951359084 . 0.13214285714285715)]][[使用 XHR 对象首先要调用 open()方法，这个方法接收 3 个参数：请求类型（"get"、"post"等） 、 请求 URL，以及表示请求是否异步的布尔值。下面是一个例子： < 24.1.1 使用XHR < 24.1 XMLHttpRequest对象 < 第24章 网络请求与远程资源 < JavaScript 高级程序设计 第四版.pdf]]
     const xhr = new XMLHttpRequest()
     xhr.open('GET', path)
 

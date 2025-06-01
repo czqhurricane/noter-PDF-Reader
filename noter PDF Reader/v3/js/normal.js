@@ -24,9 +24,10 @@ SOFTWARE.
 
 /* Download */
 async function createNormalCloze() {
-    // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(481 0.8470338983050847 . 0.18042328042328043)]][[JavaScript 高级程序设计 第四版.pdf: Page 481; Quoting: children 属性]]
+    // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(481 0.8457627118644068 . 0.17777777777777778)]][[children 属性 < 15.4.1 children属性 < 15.4 专有扩展 < 第15章 DOM扩展 < JavaScript 高级程序设计 第四版.pdf]]
     // 注意和childNodes 的区别
-    // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(428 0.6900085397096498 . 0.16844349680170576)]][[JavaScript 高级程序设计 第四版.pdf: Page 428; Quoting: 每个节点都有一个 childNodes 属性，其中包含一个 NodeList 的实例。]]
+    // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(428 0.6866952789699571 . 0.16964285714285715)]][[每个节点都有一个 childNodes 属性，其中包含一个 NodeList 的实例。NodeList 是一个类数组对象，用于存储可以按位置存取的有序节点。注意，NodeList 并不是 Array 的实例，但可以使用中括号访问它的值，而且它也有 length 属性。 < 14.1.1 Node类型 < 14.1 节点层级 < 第14章 DOM < JavaScript 高级程序设计 第四版.pdf]]
+
     // 等待图片加载完成
     const uploadPreview = document.getElementById("uploadPreview");
 
@@ -56,7 +57,7 @@ async function createNormalCloze() {
             for (j = 0; j < child.length; j++) {
 
                 // text
-                // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(439 0.32161016949152543 . 0.308994708994709)]][[JavaScript 高级程序设计 第四版.pdf: Page 439; Quoting: tagName]]
+                // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(439 0.31831187410586553 . 0.13392857142857142)]][[可以通过 nodeName 或 tagName 属性来获取元素的标签名。这两个属性返回同样的值（添加后一 个属性明显是为了不让人误会） < 14.1.3 Element类型 < 14.1 节点层级 < 第14章 DOM < JavaScript 高级程序设计 第四版.pdf]]
                 if (child[j].tagName == "text") {
 
                     // get bounding box of text, create and use rectangle as mask
