@@ -51,15 +51,22 @@ struct AnnotationListView: View {
                                             Text("拷贝")
                                             Image(systemName: "doc.on.doc")
                                         }
-
                                         Button(action: {
                                             // 获取注释ID并删除
                                             if let id = getAnnotationId(for: annotation) {
-                                                let _ = annotationListViewModel.deleteAnnotation(withId: id)
+                                                _ = annotationListViewModel.deleteAnnotation(withId: id)
                                             }
                                         }) {
                                             Text("删除")
                                             Image(systemName: "trash")
+                                        }
+                                        // 添加超链接按钮
+                                        Button(action: {
+                                                   let htmlLink = convertAnnotationToHtmlLink(annotation)
+                                                   UIPasteboard.general.string = htmlLink
+                                               }) {
+                                            Text("拷贝超链接")
+                                            Image(systemName: "link")
                                         }
                                     }
                             }
@@ -121,11 +128,9 @@ struct AnnotationListView: View {
     }
 
     private func extractedAnnotation(_ text: String) -> String {
-        // Split on ][ and take the part after the first occurrence
         let parts = text.components(separatedBy: "][")
         guard parts.count > 1 else { return text }
 
-        // Remove the trailing ]] and any whitespace
         return parts[1]
             .replacingOccurrences(of: "]]", with: "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -225,14 +230,12 @@ struct AnnotationListView: View {
     }
 
     private func extractAndHandleNOTERPAGE(from annotation: String) {
-        // Extract the NOTERPAGE portion from the annotation string
         let components = annotation.components(separatedBy: ")][")
         guard components.count > 1 else { return }
 
         let noterpagePart = components[0]
             .replacingOccurrences(of: "[[NOTERPAGE:", with: "NOTERPAGE:")
 
-        // Close the annotation list and pass the NOTERPAGE link
         presentationMode.wrappedValue.dismiss()
 
         processAnnotationLink(noterpagePart)
@@ -257,6 +260,35 @@ struct AnnotationListView: View {
         }
 
         NSLog("✅ AnnotationListView.swift -> AnnotationListView.copySelectedAnnotations, selectedTexts: \(selectedTexts)")
+    }
+
+    // 在AnnotationListView类中添加这个函数
+    private func convertAnnotationToHtmlLink(_ annotation: String) -> String {
+        // 解析annotation格式: [[NOTERPAGE:path#(page x . y)][title]]
+        let pattern = #"\[\[NOTERPAGE:([^#]+)#\([^)]+\)\]\[([^\]]+)\]\]"#
+
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: []),
+              let match = regex.firstMatch(in: annotation, options: [], range: NSRange(location: 0, length: annotation.count))
+        else {
+            return annotation // 如果格式不匹配，返回原始字符串
+        }
+
+        let titleRange = Range(match.range(at: 2), in: annotation)!
+
+        let title = String(annotation[titleRange])
+
+        // 提取完整的NOTERPAGE链接（包括页码和坐标信息）
+        let noterpagePattern = #"NOTERPAGE:[^\]]+"#
+        guard let noterpageRegex = try? NSRegularExpression(pattern: noterpagePattern, options: []),
+              let noterpageMatch = noterpageRegex.firstMatch(in: annotation, options: [], range: NSRange(location: 0, length: annotation.count))
+        else {
+            return annotation
+        }
+
+        let noterpageRange = Range(noterpageMatch.range, in: annotation)!
+        let fullNoterpageLink = String(annotation[noterpageRange])
+
+        return "<a href=\"\(fullNoterpageLink)\">\(title)</a>"
     }
 
     private func processAnnotationLink(_ link: String) {

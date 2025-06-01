@@ -443,7 +443,7 @@ function addImage(url="", height=0, width=0, source="", deck="", front="") {
     }
 
     if (source) {
-        noteSources = source;
+        document.getElementById("noteSources").value = source;
     }
 
     if (!url) {
@@ -588,7 +588,11 @@ function getNoteFromForm() {
     noteHeader = document.getElementById("noteHeader").value;
     noteFooter = document.getElementById("noteFooter").value;
     noteRemarks = document.getElementById("noteRemarks").value;
-    noteSources = (noteSources === undefined || noteSources === "") ? document.getElementById("noteSources").value : noteSources;
+    // Replace newlines and collapse whitespace
+    noteSources = document.getElementById("noteSources").value
+        .replace(/[\r\n]+/g, "<br>")  // Replace all CR/LF sequences with single space
+        .replace(/\s+/g, " ")       // Collapse consecutive whitespace
+        .trim();                    // Remove leading/trailing spaces
     noteExtra1 = document.getElementById("noteExtra1").value;
     noteExtra2 = document.getElementById("noteExtra2").value;
 }
