@@ -35,6 +35,7 @@ struct PDFKitView: UIViewRepresentable {
     @Binding var showChatSheet: Bool
     @Binding var textToProcess: String
     @Binding var autoSendMessage: Bool
+    @Binding var source: String
 
     func makeUIView(context: Context) -> PDFView {
         NSLog("✅ PDFKitView.swift -> PDFKitView.makeUIView, url : \(String(describing: url))")
@@ -883,6 +884,53 @@ struct PDFKitView: UIViewRepresentable {
                 UIRectFill(pageBounds)
                 currentPage.draw(with: .cropBox, to: UIGraphicsGetCurrentContext()!)
             }
+
+            if let document = pdfView.document {
+                var hierarchy: [String] = []
+
+                func logOutlineHierarchy(_ outline: PDFOutline) {
+                    if let destination = outline.destination, destination.page == currentPage {
+                        let fullHierarchy = hierarchy + [outline.label ?? ""]
+                        let reversedHierarchy = Array(fullHierarchy.reversed())
+                        let outlineString = reversedHierarchy
+                            .filter { !$0.isEmpty }
+                            .joined(separator: " < ")
+
+                        NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.captureCurrentPageAsImage.logOutlineHierarchy, 当前页面大纲层级: \(outlineString)")
+                        currentOutlineString = outlineString // 存储当前大纲路径
+                    }
+
+                    hierarchy.append(outline.label ?? "")
+                    for i in 0 ..< outline.numberOfChildren {
+                        if let child = outline.child(at: i) {
+                            logOutlineHierarchy(child)
+                        }
+                    }
+                    hierarchy.removeLast()
+                }
+
+                if let root = document.outlineRoot {
+                    logOutlineHierarchy(root)
+                } else {
+                    NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.captureCurrentPageAsImage, 当前 PDF 文档没有大纲目录")
+                }
+
+                let fileName = document.documentURL?.lastPathComponent ?? "unknown.pdf"
+                // 获取PDF路径、页码、坐标和大纲路径
+                let pdfPath = parent.rawPdfPath
+                let pageNumber = (pdfView.currentPage?.pageRef?.pageNumber ?? 0)
+                // 使用存储的值
+                let xRatio = 0.5
+                let yRatio = 0.5
+                let outlineString = currentOutlineString
+
+                // 格式化注释内容
+                let formattedSource = "<a href=\"NOTERPAGE:\(pdfPath)#(\(pageNumber) \(yRatio) . \(xRatio))\">\(outlineString.isEmpty ? fileName : outlineString)</a>"
+
+                self.parent.source = formattedSource
+                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.captureCurrentPageAsImage, formattedSource: \(formattedSource)")
+            }
+
             NSLog("✅ PDFKitView.swift -> Coordinator.captureCurrentPageAsImage, Screenshot captured")
             return image
         }

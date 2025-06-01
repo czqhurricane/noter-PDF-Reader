@@ -32,6 +32,7 @@ struct ContentView: View {
     @State private var textToProcess = ""
     @State private var autoSendMessage = false
     @State private var occlusionImage: UIImage? = nil // State to hold the captured image
+    @State private var occlusionSource: String = ""
     @State private var pdfViewCoordinator: PDFKitView.Coordinator? // To call coordinator methods
     @State private var shouldNavigateToOcclusion = false // Occlusion 导航状态
     @State private var toolbarScrollOffset: CGFloat = 0
@@ -68,7 +69,8 @@ struct ContentView: View {
                     selectedSearchSelection: $selectedSearchSelection,
                     showChatSheet: $showChatSheet,
                     textToProcess: $textToProcess,
-                    autoSendMessage: $autoSendMessage
+                    autoSendMessage: $autoSendMessage,
+                    source: $occlusionSource
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                 .onAppear {
@@ -278,7 +280,7 @@ struct ContentView: View {
         // OcclusionView().onDisappear { showOcclusionSheet = false }
         // For now, keeping original logic which might be intentional if OcclusionView is simple
         // Pass the image to OcclusionView
-        OcclusionView(image: occlusionImage)
+        OcclusionView(image: occlusionImage, source: occlusionSource)
     }
 
     @ViewBuilder
@@ -310,7 +312,7 @@ struct ContentView: View {
 
                     // 添加隐藏的 NavigationLink
                     NavigationLink(
-                        destination: OcclusionView(image: occlusionImage),
+                      destination: OcclusionView(image: occlusionImage, source: occlusionSource),
                         isActive: $shouldNavigateToOcclusion
                     ) {
                         EmptyView()

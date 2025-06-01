@@ -411,7 +411,7 @@ function redoDraw() {
 
 var imgHeight;
 var imgWidth;
-function addImage(url="", height=0, width=0, deck="", front="") {
+function addImage(url="", height=0, width=0, source="", deck="", front="") {
     // iOS 模拟器调试信息
     console.log('=== iOS Simulator Debug Info ===');
     console.log('Received dimensions:', { height, width });
@@ -427,6 +427,8 @@ function addImage(url="", height=0, width=0, deck="", front="") {
         innerHeight: window.innerHeight
     });
 
+    console.log('source:', source);
+
     scaleVar = 1.0;
 
     polygonStack = [];
@@ -440,11 +442,17 @@ function addImage(url="", height=0, width=0, deck="", front="") {
         localStorage.setItem("front", front);
     }
 
+    if (source) {
+        noteSources = source;
+    }
+
     if (!url) {
         try {
+            // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(477 0.5260461144321094 . 0.13326226012793177)]][[在读取 innerHTML 属性时，会返回元素所有后代的 HTML 字符串，包括元素、注释和文本节点。 而在写入 innerHTML 时，则会根据提供的字符串值以新的 DOM 子树替代元素中原来包含的所有节点。 < 15.3.6 插入标记 < 15.3 HTML5 < 第15章 DOM扩展 < JavaScript 高级程序设计 第四版.pdf]]
         document.getElementById("drawing").innerHTML = "<img id='uploadPreview' style='-webkit-transform-origin-x: 0%; -webkit-transform-origin-y: 0%;'/>";
 
             // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第三版.pdf#(710 0.17911434236615995 . 0.20357142857142857)]][[files = EventUtil.getTarget(event) .files, < 25.4.1 FileReader类型 < 25.4 File API < 第25章 新兴的API < JavaScript 高级程序设计 第三版.pdf]]
+            // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第三版.pdf#(383 0.5733438485804416 . 0.15778251599147122)]][[event = EventUtil.getEvent(event)； < 13.4.1 UI事件 < 13.4 事件类型 < 第13章 事件 < JavaScript 高级程序设计 第三版.pdf]]
         var selectedFile = event.target.files[0];
         var reader = new FileReader();
 
@@ -455,9 +463,12 @@ function addImage(url="", height=0, width=0, deck="", front="") {
         originalImageName = imgtag.title;
         console.log("Img Name "+ originalImageName );
 
+            // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第四版.pdf#(648 0.22630230572160545 . 0.1652452025586354)]][[因为这些读取方法是异步的，所以每个 FileReader 会发布几个事件，其中 3 个最有用的事件是 progress、error 和 load，分别表示还有更多数据、发生了错误和读取完成。 < 20.4.2 FileReader类型 < 20.4 File API与Blob API < 第20章 JavaScript API < JavaScript 高级程序设计 第四版.pdf]]
         reader.onload = function (event) {
+            // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第三版.pdf#(384 0.16009463722397477 . 0.22281449893390193)]][[然后，创建了一个新的图像元素，并设置了其onload事件处理程序。最后乂将这个图像添加到页面中，还设置了它的src属性。这里有一点需要格外注意：新图像元素不一定要从添加到文档后才开始 下载，只要设置了 src属性就会开始下载。 < 13.4.1 UI事件 < 13.4 事件类型 < 第13章 事件 < JavaScript 高级程序设计 第三版.pdf]]
             imgtag.src = event.target.result;
 
+            // [[NOTERPAGE:/Users/c/Library/Mobile Documents/iCloud~QReader~MarginStudy/Documents/JavaScript 高级程序设计 第三版.pdf#(382 0.5921474358974359 . 0.15043290043290045)]][[load事件 < 13.4.1 UI事件 < 13.4 事件类型 < 第13章 事件 < JavaScript 高级程序设计 第三版.pdf]]
             imgtag.onload = function () {
                 // access image size here
                 console.log(this.width);
@@ -577,7 +588,7 @@ function getNoteFromForm() {
     noteHeader = document.getElementById("noteHeader").value;
     noteFooter = document.getElementById("noteFooter").value;
     noteRemarks = document.getElementById("noteRemarks").value;
-    noteSources = document.getElementById("noteSources").value;
+    noteSources = (noteSources === undefined || noteSources === "") ? document.getElementById("noteSources").value : noteSources;
     noteExtra1 = document.getElementById("noteExtra1").value;
     noteExtra2 = document.getElementById("noteExtra2").value;
 }
@@ -604,7 +615,7 @@ function downloadAllNotes() {
         textToExport += container.children[i].value;
     }
 
-    //exportFile(textToExport, "output-all-notes.txt");
+    // exportFile(textToExport, "output-all-notes.txt");
     fileName = "output-all-notes.txt";
     showSnackbar("View Download folder");
 }
