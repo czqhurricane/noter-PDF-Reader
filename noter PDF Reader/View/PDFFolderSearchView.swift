@@ -3,11 +3,12 @@ import PDFKit
 
 struct PDFFolderSearchView: View {
     @Environment(\.presentationMode) private var presentationMode
-    @State private var searchText: String = ""
+    // 使用 AppStorage 持久化搜索文本
+    @AppStorage("lastFolderSearchText") private var searchText: String = ""
     @State private var searchResults: [FolderSearchResult] = []
     @State private var isSearching: Bool = false
 
-    var onResultSelected: (String, Int) -> Void // (filePath, pageNumber)
+    var onResultSelected: (String, Int, String) -> Void // 添加 context 参数
 
     var body: some View {
         VStack {
@@ -42,8 +43,8 @@ struct PDFFolderSearchView: View {
                 List {
                     ForEach(searchResults) { result in
                         Button(action: {
-                            onResultSelected(result.filePath, result.pageNumber)
-                            presentationMode.wrappedValue.dismiss()
+                            // 传递 context 参数
+                            onResultSelected(result.filePath, result.pageNumber, result.context)
                         }) {
                             VStack(alignment: .leading, spacing: 4) {
                                 HStack {
@@ -81,6 +82,12 @@ struct PDFFolderSearchView: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
+            }
+        }
+        .onAppear {
+            // 视图出现时执行搜索，恢复之前的搜索结果
+            if !searchText.isEmpty {
+                performSearch()
             }
         }
         .navigationTitle("PDF文件夹搜索")

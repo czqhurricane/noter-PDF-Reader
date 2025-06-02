@@ -33,6 +33,7 @@ struct PDFKitView: UIViewRepresentable {
     @Binding var forceRender: Bool
     @Binding var pdfDocument: PDFDocument?
     @Binding var selectedSearchSelection: PDFSelection?
+    @Binding var selectedFolderSearchText: String?
     @Binding var showChatSheet: Bool
     @Binding var textToProcess: String
     @Binding var autoSendMessage: Bool
@@ -197,6 +198,7 @@ struct PDFKitView: UIViewRepresentable {
                     // 确保在主线程呈现
                     DispatchQueue.main.async {
                         rootVC.present(outlineVC, animated: true)
+
                         NSLog("✅ PDFKitView.swift -> PDFKitView.updateUIView, 显示目录")
                     }
                 }
@@ -208,6 +210,18 @@ struct PDFKitView: UIViewRepresentable {
                     outlineVC.dismiss(animated: true)
                     context.coordinator.outlineVC = nil
                 }
+            }
+        }
+
+        // 处理文件夹搜索结果高亮
+        if let searchText = selectedFolderSearchText {
+            DispatchQueue.main.async {
+                self.highlightFolderSearchText(pdfView: pdfView, searchText: searchText)
+            }
+            // 重置状态，避免重复处理
+            // 确保在主线程重置状态
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.selectedFolderSearchText = nil
             }
         }
 
@@ -347,6 +361,25 @@ struct PDFKitView: UIViewRepresentable {
 
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
+    }
+
+    // 高亮文件夹搜索文本的方法
+    private func highlightFolderSearchText(pdfView: PDFView, searchText: String) {
+        guard let document = pdfView.document,
+              let currentPage = pdfView.currentPage else { return }
+
+        // 在当前页面搜索文本
+        let selections = document.findString(searchText, fromSelection: nil, withOptions: [.caseInsensitive])
+
+        // 检查是否找到匹配项
+        guard let foundSelection = selections else { return }
+
+        // 检查找到的选择是否在当前页面
+        if let page = foundSelection.pages.first, page == currentPage {
+            // 高亮显示找到的文本
+            foundSelection.color = UIColor.orange.withAlphaComponent(0.5)
+            pdfView.setCurrentSelection(foundSelection, animate: true)
+        }
     }
 
     class Coordinator: NSObject, PDFViewDelegate {

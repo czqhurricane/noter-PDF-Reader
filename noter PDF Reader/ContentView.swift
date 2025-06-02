@@ -38,6 +38,8 @@ struct ContentView: View {
     @State private var shouldNavigateToOcclusion = false // Occlusion 导航状态
     @State private var toolbarScrollOffset: CGFloat = 0
     @State private var shouldShowArrow = true
+    // 跟踪文件夹搜索的高亮文本
+    @State private var selectedFolderSearchText: String? = nil
 
     // 目录访问管理器
     @StateObject private var directoryManager = DirectoryAccessManager.shared
@@ -70,6 +72,7 @@ struct ContentView: View {
                     forceRender: $forceRender,
                     pdfDocument: $pdfDocument,
                     selectedSearchSelection: $selectedSearchSelection,
+                    selectedFolderSearchText: $selectedFolderSearchText,
                     showChatSheet: $showChatSheet,
                     textToProcess: $textToProcess,
                     autoSendMessage: $autoSendMessage,
@@ -163,12 +166,11 @@ struct ContentView: View {
                 }
 
                 Button(action: {
-                           showFolderSearchSheet = true
-                       }) {
+                    showFolderSearchSheet = true
+                }) {
                     Image(systemName: "magnifyingglass")
-                      .foregroundColor(.primary)
+                        .foregroundColor(.primary)
                 }
-
 
                 Button(action: {
                     showChatSheet = true
@@ -196,7 +198,7 @@ struct ContentView: View {
                     Button(action: {
                         showSearchSheet = true
                     }) {
-                        Image(systemName: "magnifyingglass")
+                        Image(systemName: "doc.text.magnifyingglass")
                             .foregroundColor(.primary)
                     }
 
@@ -270,7 +272,9 @@ struct ContentView: View {
 
     @ViewBuilder
     private var folderSearchSheetContent: some View {
-        PDFFolderSearchView { filePath, pageNumber in
+        PDFFolderSearchView { filePath, pageNumber, context in
+            // 提取搜索的关键词用于高亮
+            selectedFolderSearchText = extractSearchKeyword(from: context)
             // 打开指定的PDF文件并跳转到指定页面
             openPDF(at: filePath, page: pageNumber, xRatio: xRatio, yRatio: yRatio, showArrow: false)
             showFolderSearchSheet = false
@@ -364,8 +368,8 @@ struct ContentView: View {
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
-                               showFolderSearchSheet = true
-                           }) {
+                        showFolderSearchSheet = true
+                    }) {
                         Image(systemName: "magnifyingglass")
                     }
                 }
@@ -404,7 +408,7 @@ struct ContentView: View {
                             Button(action: {
                                 showSearchSheet = true // 显示 PDF 全文搜索 sheet
                             }) {
-                                Image(systemName: "magnifyingglass")
+                                Image(systemName: "doc.text.magnifyingglass")
                             }
                         }
                     }
@@ -625,7 +629,7 @@ struct ContentView: View {
     private func openPDF(at convertedPdfPath: String, page: Int, xRatio: Double, yRatio: Double, showArrow: Bool) {
         if let secureURL = directoryManager.startAccessingFile(at: convertedPdfPath) {
             pdfURL = secureURL
-            self.currentPage = page
+            currentPage = page
             self.xRatio = xRatio
             self.yRatio = yRatio
             forceRender = true
@@ -663,6 +667,16 @@ struct ContentView: View {
 
         // 执行反向替换
         return path.replacingOccurrences(of: rootPath, with: processedOriginalPath)
+    }
+
+    // 提取搜索关键词的辅助方法
+    private func extractSearchKeyword(from context: String) -> String {
+        // 从 context 中提取页码后的文本作为搜索关键词
+        if let colonIndex = context.firstIndex(of: ":") {
+            let textAfterColon = String(context[context.index(after: colonIndex)...])
+            return textAfterColon.trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return context
     }
 }
 
