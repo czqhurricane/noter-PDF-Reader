@@ -122,8 +122,10 @@ struct PDFKitView: UIViewRepresentable {
             }
         }
 
-        // 设置代理
-        pdfView.delegate = context.coordinator
+        // 确保委托设置在主线程
+        DispatchQueue.main.async {
+            pdfView.delegate = context.coordinator
+        }
 
         // Pass the pdfView instance to the coordinator so it can be accessed for screenshots
         context.coordinator.pdfView = pdfView
@@ -137,6 +139,12 @@ struct PDFKitView: UIViewRepresentable {
     }
 
     func updateUIView(_ pdfView: PDFView, context: Context) {
+        // 确保委托仍然有效
+        if pdfView.delegate == nil {
+            NSLog("⚠️ PDFKitView.swift -> updateUIView, 重新设置delegate")
+            pdfView.delegate = context.coordinator
+        }
+
         // 确保在主线程执行
         guard Thread.isMainThread else {
             DispatchQueue.main.async {
@@ -346,6 +354,9 @@ struct PDFKitView: UIViewRepresentable {
         var currentOutlineString = "" // 新增属性存储当前大纲路径
         var previousState: (url: URL, page: Int, xRatio: Double, yRatio: Double, forceRender: Bool)?
         var outlineVC: PDFOutlineViewController?
+        private var isProcessingPageChange = false
+        // 添加强引用保持parent存活
+        private let strongParent: PDFKitView
 
         // directoryManager 属性
         let directoryManager = DirectoryAccessManager.shared
@@ -364,16 +375,19 @@ struct PDFKitView: UIViewRepresentable {
 
         init(_ parent: PDFKitView) {
             self.parent = parent
+            strongParent = parent // 保持强引用
 
             super.init()
 
-            // 添加页面变化通知监听器
-            NotificationCenter.default.addObserver(
-                self,
-                selector: #selector(pageDidChange(notification:)),
-                name: Notification.Name.PDFViewPageChanged,
-                object: nil
-            )
+            // 确保在主线程添加通知观察者
+            DispatchQueue.main.async { // 添加页面变化通知监听器
+                NotificationCenter.default.addObserver(
+                    self,
+                    selector: #selector(self.pageDidChange(notification:)),
+                    name: Notification.Name.PDFViewPageChanged,
+                    object: nil
+                )
+            }
 
             // 注册自定义菜单项并设置target为self
             UIMenuController.shared.menuItems = [
@@ -517,11 +531,17 @@ struct PDFKitView: UIViewRepresentable {
             // updateArrowPosition(pdfView: pdfView)
         }
 
-        // 在析构函数中清理计时器
-        // 在析构函数中移除通知监听器
         deinit {
+            // 在析构函数中清理计时器
             arrowTimer?.invalidate()
-            NotificationCenter.default.removeObserver(self)
+
+            // 确保在主线程移除观察者
+            // 在析构函数中移除通知监听器
+            DispatchQueue.main.async {
+                NotificationCenter.default.removeObserver(self)
+            }
+
+            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.deinit, Coordinator 已释放")
         }
 
         private func showAnnotationDialog(pdfView: PDFView, selectedText: String) {
@@ -927,7 +947,7 @@ struct PDFKitView: UIViewRepresentable {
                 // 格式化注释内容
                 let formattedSource = "<a href=\"NOTERPAGE:\(pdfPath)#(\(pageNumber) \(yRatio) . \(xRatio))\">\(outlineString.isEmpty ? fileName : outlineString)</a>"
 
-                self.parent.source = formattedSource
+                parent.source = formattedSource
                 NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.captureCurrentPageAsImage, formattedSource: \(formattedSource)")
             }
 
@@ -936,25 +956,42 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         @objc private func pageDidChange(notification: Notification) {
-            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, PDF 页面切换完成")
-
-            // 确保通知来自正确的 PDFView
-            guard let pdfView = notification.object as? PDFView,
-                  pdfView == self.pdfView
-            else {
+            // 防止重复处理页面切换
+            guard !isProcessingPageChange else {
+                NSLog("⚠️ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 跳过重复的页面切换事件")
                 return
             }
 
-            // 获取当前页面号并保存到数据库
-            if let currentPage = pdfView.currentPage,
-               let document = pdfView.document
-            {
+            isProcessingPageChange = true
+
+            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, PDF 页面切换完成")
+
+            // 使用串行队列处理页面切换，避免并发问题
+            DispatchQueue.main.async { [weak self] in
+                defer { self?.isProcessingPageChange = false }
+
+                guard let self = self else {
+                    NSLog("⚠️ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, Coordinator 已释放")
+
+                    return
+                }
+                guard let pdfView = notification.object as? PDFView,
+                      let currentPage = pdfView.currentPage,
+                      let document = pdfView.document
+                else {
+                    NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 无法获取 PDF 视图或页面信息")
+
+                    return
+                }
                 let currentPageIndex = document.index(for: currentPage) + 1 // PDFKit使用0基索引，我们使用1基索引
 
                 // 保存当前页面号到数据库
-                let _ = DatabaseManager.shared.saveLastVisitedPage(pdfPath: parent.rawPdfPath, page: currentPageIndex)
+                do { let _ = DatabaseManager.shared.saveLastVisitedPage(pdfPath: self.strongParent.rawPdfPath, page: currentPageIndex)
 
-                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 已保存当前文件：\(parent.rawPdfPath)，当前页面号: \(currentPageIndex) 到数据库")
+                    NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 已保存当前文件：\(self.strongParent.rawPdfPath)，当前页面号: \(currentPageIndex) 到数据库")
+                } catch {
+                    NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 保存页面失败: \(error)")
+                }
             }
         }
     }
@@ -965,7 +1002,6 @@ class CustomPDFView: PDFView {
         super.willMove(toSuperview: newSuperview)
         if newSuperview == nil {
             NSLog("✅ PDFKitView.swift -> CustomPDFView.willMove, CustomPDFView 即将从父视图移除")
-            NSLog("✅ ")
         }
     }
 
