@@ -433,7 +433,7 @@ class DatabaseManager {
                 success = db.executeUpdate(insertSQL, withArgumentsIn: [pdfPath, page])
 
                 if success {
-                    NSLog("✅ DatabaseManager.swift -> DatabaseManager.saveLastVisitedPage, 成功保存PDF最后访问页面: \(pdfPath), 页码: \(page)")
+                    NSLog("✅ DatabaseManager.swift -> DatabaseManager.saveLastVisitedPage, 成功保存 PDF 最后访问页面: \(pdfPath), 页码: \(page)")
                 } else {
                     NSLog("❌ DatabaseManager.swift -> DatabaseManager.saveLastVisitedPage, 保存失败: \(db.lastErrorMessage())")
                 }

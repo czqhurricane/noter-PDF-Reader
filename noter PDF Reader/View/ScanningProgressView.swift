@@ -20,7 +20,8 @@ struct ScanningProgressView: View {
                   .padding()
             } else if accessManager.rootDirectoryURL != nil {
                 Text("目录扫描完成")
-                  .foregroundColor(.primary)
+                  .font(.caption)
+                  .foregroundColor(.secondary)
                   .padding()
             }
         }

@@ -52,7 +52,7 @@ enum PathConverter {
         var xRatio: Double?
         var yRatio: Double?
 
-        // Match pattern: (page yRatio . xRatio)
+        // 匹配模式：(页面 y 比例 . x 比例)
         let pattern = "(\\d+)\\s+([0-9.]+)\\s+\\.\\s+([0-9.]+)"
         if let regex = try? NSRegularExpression(pattern: pattern) {
             let nsFragment = fragment as NSString

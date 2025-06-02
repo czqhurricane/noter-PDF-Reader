@@ -1,5 +1,5 @@
-import SwiftUI
 import PDFKit
+import SwiftUI
 
 struct PDFFolderSearchView: View {
     @Environment(\.presentationMode) private var presentationMode
@@ -16,7 +16,7 @@ struct PDFFolderSearchView: View {
                 Image(systemName: "magnifyingglass")
                     .foregroundColor(.gray)
 
-                TextField("搜索PDF文件夹内容", text: $searchText)
+                TextField("搜索 PDF 文件夹内容", text: $searchText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .autocapitalization(.none)
                     .disableAutocorrection(true)
@@ -46,25 +46,23 @@ struct PDFFolderSearchView: View {
                             // 传递 context 参数
                             onResultSelected(result.filePath, result.pageNumber, result.context)
                         }) {
-                            VStack(alignment: .leading, spacing: 4) {
-                                HStack {
-                                    Text(result.fileName)
-                                        .font(.headline)
-                                        .foregroundColor(.blue)
+                            HStack {
+                                Text(result.fileName)
+                                    .font(.headline)
+                                    .foregroundColor(.blue)
 
-                                    Spacer()
+                                Spacer()
 
-                                    Text("第\(result.pageNumber)页")
-                                        .font(.caption)
-                                        .foregroundColor(.gray)
-                                }
-
-                                Text(result.context)
-                                    .lineLimit(3)
-                                    .foregroundColor(.primary)
-                                    .font(.system(size: 14))
+                                Text("第\(result.pageNumber)页")
+                                    .font(.caption)
+                                    .foregroundColor(.gray)
                             }
-                            .padding(.vertical, 4)
+
+                            Text(result.context)
+                                .lineLimit(3)
+                                .foregroundColor(.primary)
+                                .font(.system(size: 14))
+                                .padding(.vertical, 4)
                         }
                     }
                 }
@@ -90,7 +88,7 @@ struct PDFFolderSearchView: View {
                 performSearch()
             }
         }
-        .navigationTitle("PDF文件夹搜索")
+        .navigationTitle("PDF 文件夹搜索")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
@@ -114,7 +112,8 @@ struct PDFFolderSearchView: View {
 
             // 获取Cache目录
             guard let lastSelectedDirectoryString = UserDefaults.standard.string(forKey: "LastSelectedDirectory"),
-                  let lastSelectedDirectoryURL = URL(string: lastSelectedDirectoryString) else {
+                  let lastSelectedDirectoryURL = URL(string: lastSelectedDirectoryString)
+            else {
                 DispatchQueue.main.async {
                     self.isSearching = false
                 }

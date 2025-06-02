@@ -19,7 +19,7 @@ extension UIImage {
 }
 
 struct OcclusionView: View {
-    var image: UIImage? // Accept UIImage
+    var image: UIImage?
     var source: String = ""
 
     var body: some View {
@@ -36,14 +36,12 @@ struct WebViewContainer: UIViewRepresentable {
 
     func makeUIView(context: Context) -> WKWebView {
         let userContentController = WKUserContentController()
-        // Add the script message handler here, before creating the webView
+        // 在此处添加脚本消息处理程序，在创建webView之前
         userContentController.add(context.coordinator, name: "ankiDeckExport")
 
         let configuration = WKWebViewConfiguration()
         configuration.userContentController = userContentController
-        // 改进的配置
         configuration.preferences.setValue(true, forKey: "allowFileAccessFromFileURLs")
-        // configuration.preferences.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
         configuration.allowsInlineMediaPlayback = true
         configuration.mediaTypesRequiringUserActionForPlayback = []
 
@@ -92,8 +90,6 @@ extension WebViewContainer {
             self.parent = parent
         }
 
-        // MARK: - WKNavigationDelegate
-
         func webView(_: WKWebView, decidePolicyFor _: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
             decisionHandler(.allow)
         }
@@ -126,7 +122,8 @@ extension WebViewContainer {
                 NSLog("❌ OcclusionView.swift -> WebViewContainer.Coordinator.webView, Coordinator.webView.didFinish, Image is nil")
                 return
             }
-            let image = originalImage.verticallyFlipped() // 先翻转
+            // 先翻转
+            let image = originalImage.verticallyFlipped()
             guard let imageData = image.pngData(),
                   let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                   let scale = windowScene.screen.scale as CGFloat?
@@ -158,9 +155,6 @@ extension WebViewContainer {
                 }
             }
 
-            // The script message handler is now added in makeUIView
-            // No need to add it here:
-            // webView.configuration.userContentController.add(self, name: "ankiDeckExport")
             // 注入拦截下载的脚本
             let downloadScript = """
             (function() {
@@ -182,9 +176,9 @@ extension WebViewContainer {
 
             webView.evaluateJavaScript(downloadScript) { _, error in
                 if let error = error {
-                    NSLog("❌ Download script injection error: \(error.localizedDescription)")
+                    NSLog("❌ OcclusionView.swift -> WebViewContainer.Coordinator.webView, Download script injection error: \(error.localizedDescription)")
                 } else {
-                    NSLog("✅ Download script injected successfully")
+                    NSLog("✅ OcclusionView.swift -> WebViewContainer.Coordinator.webView, Download script injected successfully")
                 }
             }
         }
@@ -199,14 +193,15 @@ extension WebViewContainer {
                             let fileURL = documentsDirectory.appendingPathComponent("Anki-Deck-Export.apkg")
                             do {
                                 try data.write(to: fileURL)
-                                NSLog("✅ Anki-Deck-Export.apkg saved to: \(fileURL.path)")
+
+                                NSLog("✅ OcclusionView.swift -> WebViewContainer.Coordinator.userContentController, Anki-Deck-Export.apkg saved to: \(fileURL.path)")
 
                                 // 在主线程中显示分享界面
                                 DispatchQueue.main.async {
                                     self.shareFile(fileURL: fileURL)
                                 }
                             } catch {
-                                NSLog("❌ Error saving Anki-Deck-Export.apkg: \(error.localizedDescription)")
+                                NSLog("❌ OcclusionView.swift -> WebViewContainer.Coordinator.userContentController, Error saving Anki-Deck-Export.apkg: \(error.localizedDescription)")
                             }
                         }
                     }
@@ -217,18 +212,18 @@ extension WebViewContainer {
         private func shareFile(fileURL: URL) {
             let activityViewController = UIActivityViewController(activityItems: [fileURL], applicationActivities: nil)
 
-            // Find the topmost presented view controller
+            // 寻找最顶层的视图控制器
             if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
                let window = windowScene.windows.first,
                let rootViewController = window.rootViewController
             {
-                // Get the topmost view controller
+                // 获取最顶层的视图控制器
                 var topViewController = rootViewController
                 while let presentedViewController = topViewController.presentedViewController {
                     topViewController = presentedViewController
                 }
 
-                // For iPad, set up popover
+                // 对于iPad，设置弹出框
                 if let popover = activityViewController.popoverPresentationController {
                     popover.sourceView = topViewController.view
                     popover.sourceRect = CGRect(x: topViewController.view.bounds.midX,

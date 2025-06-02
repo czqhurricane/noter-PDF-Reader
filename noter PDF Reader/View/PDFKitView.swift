@@ -15,6 +15,14 @@ extension UIResponder {
     }
 }
 
+extension CGRect {
+    var isValid: Bool {
+        return origin.x.isFinite && origin.y.isFinite &&
+          !origin.x.isNaN && !origin.y.isNaN &&
+          size.width > 0 && size.height > 0
+    }
+}
+
 struct PDFKitView: UIViewRepresentable {
     var url: URL
     var page: Int
@@ -25,11 +33,11 @@ struct PDFKitView: UIViewRepresentable {
     var showOutlines: Bool // 显示 PDF 目录
     var shouldShowArrow: Bool
 
-    var coordinatorCallback: ((Coordinator) -> Void)? // Callback to pass the coordinator
+    var coordinatorCallback: ((Coordinator) -> Void)? // 用于传递协调器的回调函数
 
     @Binding var isPDFLoaded: Bool
     @Binding var viewPoint: CGPoint
-    @Binding var annotation: String // 绑定到ContentView的注释状态
+    @Binding var annotation: String
     @Binding var forceRender: Bool
     @Binding var pdfDocument: PDFDocument?
     @Binding var selectedSearchSelection: PDFSelection?
@@ -75,23 +83,25 @@ struct PDFKitView: UIViewRepresentable {
 
         // 方法1: 直接使用原始URL
         document = PDFDocument(url: url)
+
         if document != nil {
             NSLog("✅ PDFKitView.swift -> PDFKitView.makeUIView, 方法1成功: 使用原始URL加载PDF")
         } else {
             NSLog("❌ PDFKitView.swift -> PDFKitView.makeUIView, 方法1失败: 无法使用原始URL加载PDF")
 
-            // 方法2: 尝试使用Data加载
+            // 方法2: 尝试使用 Data 加载
             if fileExists {
                 do {
                     let data = try Data(contentsOf: url)
                     document = PDFDocument(data: data)
+
                     if document != nil {
-                        NSLog("✅ PDFKitView.swift -> PDFKitView.makeUIView, 方法2成功: 使用Data加载PDF")
+                        NSLog("✅ PDFKitView.swift -> PDFKitView.makeUIView, 方法 2 成功: 使用 Data 加载 PDF")
                     } else {
                         NSLog("❌ PDFKitView.swift -> PDFKitView.makeUIView, 方法2失败: 无法使用Data加载PDF")
                     }
                 } catch {
-                    NSLog("❌ PDFKitView.swift -> PDFKitView.makeUIView, 方法2异常: \(error.localizedDescription)")
+                    NSLog("❌ PDFKitView.swift -> PDFKitView.makeUIView, 方法 2 异常: \(error.localizedDescription)")
                 }
             }
 
@@ -101,10 +111,11 @@ struct PDFKitView: UIViewRepresentable {
                    let encodedURL = URL(string: "file://" + encodedPath)
                 {
                     document = PDFDocument(url: encodedURL)
+
                     if document != nil {
-                        NSLog("✅ PDFKitView.swift -> PDFKitView.makeUIView, 方法3成功: 使用编码URL加载PDF")
+                        NSLog("✅ PDFKitView.swift -> PDFKitView.makeUIView, 方法 3 成功: 使用编码 URL 加载 PDF")
                     } else {
-                        NSLog("❌ PDFKitView.swift -> PDFKitView.makeUIView, 方法3失败: 无法使用编码URL加载PDF")
+                        NSLog("❌ PDFKitView.swift -> PDFKitView.makeUIView, 方法 3 失败: 无法使用编码 URL 加载 PDF")
                     }
                 }
             }
@@ -117,7 +128,8 @@ struct PDFKitView: UIViewRepresentable {
 
             NSLog("✅ PDFKitView.swift -> PDFKitView.makeUIView, 成功获取 pdfView.document")
         } else {
-            NSLog("❌ PDFKitView.swift -> PDFKitView.makeUIView, 所有方法均无法加载PDF文档")
+            NSLog("❌ PDFKitView.swift -> PDFKitView.makeUIView, 所有方法均无法加载 PDF 文档")
+
             // 通知用户加载失败
             DispatchQueue.main.async {
                 self.isPDFLoaded = false
@@ -129,13 +141,13 @@ struct PDFKitView: UIViewRepresentable {
             pdfView.delegate = context.coordinator
         }
 
-        // Pass the pdfView instance to the coordinator so it can be accessed for screenshots
+        // 将pdfView实例传递给协调器，以便可以访问它进行截图
         context.coordinator.pdfView = pdfView
 
-        // Call the callback with the coordinator instance
+        // 使用协调器实例调用回调函数
         coordinatorCallback?(context.coordinator)
 
-        NSLog("✅ PDFKitView.swift -> PDFKitView.makeUIView, 返回 pdfView = PDFView()")
+        NSLog("✅ PDFKitView.swift -> PDFKitView.makeUIView, 返回 pdfView = CustomPDFView()")
 
         return pdfView
     }
@@ -143,7 +155,8 @@ struct PDFKitView: UIViewRepresentable {
     func updateUIView(_ pdfView: PDFView, context: Context) {
         // 确保委托仍然有效
         if pdfView.delegate == nil {
-            NSLog("⚠️ PDFKitView.swift -> updateUIView, 重新设置delegate")
+            NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, 重新设置 delegate")
+
             pdfView.delegate = context.coordinator
         }
 
@@ -152,12 +165,13 @@ struct PDFKitView: UIViewRepresentable {
             DispatchQueue.main.async {
                 self.updateUIView(pdfView, context: context)
             }
+
             return
         }
 
         // 检查视图状态
         guard pdfView.superview != nil else {
-            NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, PDFView没有父视图，跳过更新")
+            NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, PDFView 没有父视图，跳过更新")
 
             return
         }
@@ -165,16 +179,16 @@ struct PDFKitView: UIViewRepresentable {
         context.coordinator.parent = self
         context.coordinator.isLocationMode = isLocationMode // 更新协调器中的状态
 
-        // 处理搜索结果选择
+        // 处理 PDFSearchView 搜索结果选择
         if let selection = selectedSearchSelection {
             // 确保在主线程执行
             DispatchQueue.main.async {
-                // Navigate to the selected page
+                // 导航至所选页面
                 if let page = selection.pages.first {
                     pdfView.go(to: page)
                 }
 
-                // Highlight the selected text
+                // 高亮显示所选文本
                 selection.color = UIColor.yellow.withAlphaComponent(0.3)
                 pdfView.setCurrentSelection(selection, animate: true)
             }
@@ -187,6 +201,7 @@ struct PDFKitView: UIViewRepresentable {
         if showOutlines {
             if context.coordinator.outlineVC == nil {
                 let outlineVC = PDFOutlineViewController()
+
                 outlineVC.pdfView = pdfView
                 context.coordinator.outlineVC = outlineVC
 
@@ -204,7 +219,7 @@ struct PDFKitView: UIViewRepresentable {
                 }
             }
         } else {
-            // Dismiss outline view controller if it is presented
+            // 如果大纲视图控制器当前处于展示状态，则将其关闭
             if let outlineVC = context.coordinator.outlineVC {
                 DispatchQueue.main.async {
                     outlineVC.dismiss(animated: true)
@@ -213,13 +228,13 @@ struct PDFKitView: UIViewRepresentable {
             }
         }
 
-        // 处理文件夹搜索结果高亮
+        // 处理 PDFFolderSearchView文件夹搜索结果高亮
         if let searchText = selectedFolderSearchText {
             DispatchQueue.main.async {
                 self.highlightFolderSearchText(pdfView: pdfView, searchText: searchText)
             }
-            // 重置状态，避免重复处理
-            // 确保在主线程重置状态
+
+            // 确保在主线程重置状态，避免重复处理
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                 self.selectedFolderSearchText = nil
             }
@@ -249,27 +264,28 @@ struct PDFKitView: UIViewRepresentable {
             return
         }
 
-        // 尝试加载文档（与makeUIView中相同的逻辑）
+        // 尝试加载文档（与 makeUIView 中相同的逻辑）
         var document: PDFDocument? = nil
 
         // 尝试多种方式加载文档
         document = PDFDocument(url: url)
 
         if document != nil {
-            NSLog("✅ PDFKitView.swift -> PDFKitView.updateUIView, 方法1成功: 使用原始URL加载PDF")
+            NSLog("✅ PDFKitView.swift -> PDFKitView.updateUIView, 方法 1 成功: 使用原始 URL 加载PDF")
         } else {
-            NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, 方法1失败: 无法使用原始URL加载PDF")
+            NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, 方法 1 失败: 无法使用原始 URL 加载 PDF")
 
             do {
                 let data = try Data(contentsOf: url)
                 document = PDFDocument(data: data)
+
                 if document != nil {
-                    NSLog("✅ PDFKitView.swift -> PDFKitView.updateUIView, 方法2成功: 使用Data加载PDF")
+                    NSLog("✅ PDFKitView.swift -> PDFKitView.updateUIView, 方法 2 成功: 使用 Data 加载PDF")
                 } else {
-                    NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, 方法2失败: 无法使用Data加载PDF")
+                    NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, 方法 2 失败: 无法使用 Data 加载 PDF")
                 }
             } catch {
-                NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, 无法使用 Data 加载PDF: \(error.localizedDescription)")
+                NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, 无法使用 Data 加载 PDF: \(error.localizedDescription)")
             }
 
             if document == nil {
@@ -277,10 +293,11 @@ struct PDFKitView: UIViewRepresentable {
                    let encodedURL = URL(string: "file://" + encodedPath)
                 {
                     document = PDFDocument(url: encodedURL)
+
                     if document != nil {
-                        NSLog("✅ PDFKitView.swift -> PDFKitView.updateUIView, 方法3成功: 使用编码URL加载PDF")
+                        NSLog("✅ PDFKitView.swift -> PDFKitView.updateUIView, 方法 3 成功: 使用编码 URL 加载 PDF")
                     } else {
-                        NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, 方法3失败: 无法使用编码URL加载PDF")
+                        NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, 方法 3 失败: 无法使用编码 URL 加载 PDF")
                     }
                 }
             }
@@ -294,7 +311,7 @@ struct PDFKitView: UIViewRepresentable {
 
             navigateToPage(pdfView, context: context)
         } else {
-            NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, 所有方法均无法加载PDF文档")
+            NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, 所有方法均无法加载 PDF 文档")
 
             DispatchQueue.main.async {
                 self.isPDFLoaded = false
@@ -303,7 +320,7 @@ struct PDFKitView: UIViewRepresentable {
     }
 
     // 提取导航到指定页面的逻辑为单独的方法
-    func navigateToPage(_ pdfView: PDFView, context: Context) {
+    private func navigateToPage(_ pdfView: PDFView, context: Context) {
         guard let document = pdfView.document else { return }
 
         if let targetPage = document.page(at: page - 1) {
@@ -363,7 +380,7 @@ struct PDFKitView: UIViewRepresentable {
         Coordinator(self)
     }
 
-    // 高亮文件夹搜索文本的方法
+    // 高亮 PDFFolderSearchView 文件夹搜索文本的方法
     private func highlightFolderSearchText(pdfView: PDFView, searchText: String) {
         guard let document = pdfView.document,
               let currentPage = pdfView.currentPage else { return }
@@ -384,6 +401,9 @@ struct PDFKitView: UIViewRepresentable {
 
     class Coordinator: NSObject, PDFViewDelegate {
         let arrowLayer = CAShapeLayer()
+        // directoryManager 属性
+        let directoryManager = DirectoryAccessManager.shared
+
         var xRatio: Double { parent.xRatio }
         var yRatio: Double { parent.yRatio }
         var parent: PDFKitView
@@ -391,13 +411,8 @@ struct PDFKitView: UIViewRepresentable {
         var currentOutlineString = "" // 新增属性存储当前大纲路径
         var previousState: (url: URL, page: Int, xRatio: Double, yRatio: Double, forceRender: Bool)?
         var outlineVC: PDFOutlineViewController?
+
         private var isProcessingPageChange = false
-        // 添加强引用保持parent存活
-        private let strongParent: PDFKitView
-
-        // directoryManager 属性
-        let directoryManager = DirectoryAccessManager.shared
-
         // 计时器的属性
         private var arrowTimer: Timer?
         private var lastTapXRatio: Double = 0
@@ -408,20 +423,29 @@ struct PDFKitView: UIViewRepresentable {
         // 否是翻译模式标识
         private var isTranslationMode: Bool = false
 
-        weak var pdfView: PDFView? // Add a weak reference to the PDFView
+        // 向 PDFView 添加一个弱引用
+        weak var pdfView: PDFView?
 
         init(_ parent: PDFKitView) {
             self.parent = parent
-            strongParent = parent // 保持强引用
 
             super.init()
 
             // 确保在主线程添加通知观察者
-            DispatchQueue.main.async { // 添加页面变化通知监听器
+            DispatchQueue.main.async {
+                // 添加页面变化通知观察者
                 NotificationCenter.default.addObserver(
                     self,
                     selector: #selector(self.pageDidChange(notification:)),
                     name: Notification.Name.PDFViewPageChanged,
+                    object: nil
+                )
+
+                // 添加文本选择通知观察者
+                NotificationCenter.default.addObserver(
+                    self,
+                    selector: #selector(self.handleTextSelection(_:)),
+                    name: Notification.Name.PDFViewSelectionChanged,
                     object: nil
                 )
             }
@@ -456,14 +480,6 @@ struct PDFKitView: UIViewRepresentable {
 
             // 设置初始大小
             arrowLayer.bounds = CGRect(x: 0, y: 0, width: arrowSize, height: arrowSize)
-
-            // 文本选择通知监听
-            NotificationCenter.default.addObserver(
-                self,
-                selector: #selector(handleTextSelection(_:)),
-                name: .PDFViewSelectionChanged,
-                object: nil
-            )
         }
 
         func convertToViewCoordinates(pdfView: PDFView) -> CGPoint? {
@@ -477,10 +493,28 @@ struct PDFKitView: UIViewRepresentable {
 
             let pageSize = page.bounds(for: .mediaBox).size
 
-            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.convertToViewCoordinates, PDF页面尺寸 pageSize  = \(pageSize)")
+            // 添加对页面大小的验证
+            guard pageSize.width > 0 && pageSize.height > 0 &&
+                pageSize.width.isFinite && pageSize.height.isFinite
+            else {
+                NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.convertToViewCoordinates, Invalid page size: \(pageSize)")
+
+                return nil
+            }
+
+            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.convertToViewCoordinates, PDF 页面尺寸 pageSize  = \(pageSize)")
 
             let xRatio = self.xRatio
             let yRatio = self.yRatio
+
+            // 添加对比例值的验证
+            guard xRatio.isFinite && yRatio.isFinite &&
+                !xRatio.isNaN && !yRatio.isNaN
+            else {
+                NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.convertToViewCoordinates,  Invalid ratio values: xRatio=\(xRatio), yRatio=\(yRatio)")
+
+                return nil
+            }
 
             // PDF page 页面坐标系（左下角原点）转换为 PDFView 视图坐标系
             let pdfPoint = CGPoint(
@@ -490,8 +524,25 @@ struct PDFKitView: UIViewRepresentable {
 
             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.convertToViewCoordinates, PDF page 坐标点 pdfPoint = \(pdfPoint), xRatio = \(xRatio), yRatio = \(yRatio)")
 
+            // 验证 pdfPoint
+            guard pdfPoint.x.isFinite && pdfPoint.y.isFinite &&
+                !pdfPoint.x.isNaN && !pdfPoint.y.isNaN
+            else {
+                NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.convertToViewCoordinates, Invalid pdfPoint: \(pdfPoint)")
+                return nil
+            }
+
             // 转换为 PDFView 的坐标系
             let viewPoint = pdfView.convert(pdfPoint, from: page)
+
+            // 在返回前验证 viewPoint
+            guard viewPoint.x.isFinite && viewPoint.y.isFinite &&
+                !viewPoint.x.isNaN && !viewPoint.y.isNaN
+            else {
+                NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.convertToViewCoordinates, Invalid viewPoint after conversion: \(viewPoint)")
+
+                return nil
+            }
 
             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.convertToViewCoordinates, 转换后的 pdfView 视图坐标点 viewPoint = \(viewPoint)")
 
@@ -501,6 +552,15 @@ struct PDFKitView: UIViewRepresentable {
         func updateArrowPosition(pdfView: PDFView) {
             guard let position = convertToViewCoordinates(pdfView: pdfView) else {
                 NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.updateArrowPosition, 无法获取位置 position  = convertToViewCoordinates(pdfView: pdfView)")
+
+                return
+            }
+
+            // 额外安全检查
+            guard position.x.isFinite && position.y.isFinite &&
+                !position.x.isNaN && !position.y.isNaN
+            else {
+                NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.updateArrowPosition, Invalid position values: \(position)")
 
                 return
             }
@@ -554,8 +614,6 @@ struct PDFKitView: UIViewRepresentable {
 
         func pdfViewDidEndPageChange(_: PDFView) {
             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pdfViewDidEndPageChange, PDF 页面切换完成")
-
-            // updateArrowPosition(pdfView: pdfView)
         }
 
         func pdfViewDidEndDisplayingPage(_: PDFView, page: PDFPage) {
@@ -564,16 +622,13 @@ struct PDFKitView: UIViewRepresentable {
 
         func pdfViewDidLayoutSubviews(_: PDFView) {
             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pdfViewDidLayoutSubviews, PDF 视图完成子视图布局")
-
-            // updateArrowPosition(pdfView: pdfView)
         }
 
         deinit {
             // 在析构函数中清理计时器
             arrowTimer?.invalidate()
 
-            // 确保在主线程移除观察者
-            // 在析构函数中移除通知监听器
+            // 确保在主线程移除通知观察者
             DispatchQueue.main.async {
                 NotificationCenter.default.removeObserver(self)
             }
@@ -582,7 +637,7 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         private func showAnnotationDialog(pdfView: PDFView, selectedText: String) {
-            // 创建自定义视图控制器而不是使用UIAlertController
+            // 创建自定义视图控制器而不是使用 UIAlertController
             let customVC = UIViewController()
             customVC.modalPresentationStyle = .formSheet
             customVC.preferredContentSize = CGSize(width: 350, height: 250)
@@ -689,6 +744,7 @@ struct PDFKitView: UIViewRepresentable {
 
             cancelButton.addAction(UIAction { [weak customVC] _ in
                 customVC?.dismiss(animated: true)
+
                 NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.showAnnotationDialog, 注释输入已取消")
             }, for: .touchUpInside)
 
@@ -741,7 +797,7 @@ struct PDFKitView: UIViewRepresentable {
         @objc func handleTap(_ recognizer: UITapGestureRecognizer) {
             guard let pdfView = recognizer.view as? CustomPDFView else { return }
 
-            // Then check location mode
+            // 检查获取位置模式
             guard isLocationMode else {
                 return
             }
@@ -749,19 +805,20 @@ struct PDFKitView: UIViewRepresentable {
             let location = recognizer.location(in: pdfView)
             guard let page = pdfView.currentPage else { return }
 
-            // Convert tap location to PDF page coordinates
+            // 将点击位置转换为 pdfView 坐标
             let pdfPoint = pdfView.convert(location, to: page)
             let pageBounds = page.bounds(for: .mediaBox)
 
-            // Calculate ratios
+            // 计算比率
             let xRatio = Double(pdfPoint.x / pageBounds.width)
-            let yRatio = Double(1 - (pdfPoint.y / pageBounds.height)) // Flip Y axis
+            // 翻转 y 轴
+            let yRatio = Double(1 - (pdfPoint.y / pageBounds.height))
 
             // 保存到存储属性
             lastTapXRatio = xRatio
             lastTapYRatio = yRatio
 
-            // Update position and show arrow
+            // 更新位置并显示箭头
             parent.xRatio = xRatio
             parent.yRatio = yRatio
 
@@ -771,7 +828,7 @@ struct PDFKitView: UIViewRepresentable {
 
             updateArrowPosition(pdfView: pdfView)
 
-            // Log outline hierarchy
+            // 获取 PDF 大纲层次结构
             if let document = pdfView.document {
                 var hierarchy: [String] = []
 
@@ -803,7 +860,7 @@ struct PDFKitView: UIViewRepresentable {
                 }
             }
 
-            // Reset auto-hide timer
+            // 重置自动隐藏计时器
             arrowTimer?.invalidate()
             arrowTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { _ in
                 CATransaction.begin()
@@ -812,11 +869,11 @@ struct PDFKitView: UIViewRepresentable {
                 CATransaction.commit()
             }
 
-            // Check for text selection first
+            // 首先检查文本选择
             if let selectedText = pdfView.currentSelection?.string, !selectedText.isEmpty {
                 showAnnotationDialog(pdfView: pdfView, selectedText: selectedText)
             } else {
-                // Show annotation dialog
+                // 显示注释对话框
                 showAnnotationDialog(pdfView: pdfView, selectedText: "")
             }
         }
@@ -825,8 +882,10 @@ struct PDFKitView: UIViewRepresentable {
         @objc func handleTextSelection(_ notification: Notification) {
             guard let pdfView = notification.object as? CustomPDFView else { return }
             guard let selection = pdfView.currentSelection else { return }
-            guard let selectedText = selection.string, !selectedText.isEmpty else { // 隐藏菜单如果当前没有选择文本
+            // 隐藏菜单如果当前没有选择文本
+            guard let selectedText = selection.string, !selectedText.isEmpty else {
                 UIMenuController.shared.hideMenu()
+
                 return
             }
 
@@ -845,23 +904,37 @@ struct PDFKitView: UIViewRepresentable {
 
                 let selectionRect = selection.bounds(for: currentPage)
                 let convertedRect = pdfView.convert(selectionRect, from: currentPage)
+                let validRect = convertedRect.isValid ? convertedRect : CGRect(x: pdfView.bounds.midX, y: pdfView.bounds.midY, width: 100, height: 30)
+
+                // 验证转换后的矩形坐标是否有效
+                guard convertedRect.origin.x.isFinite &&
+                    convertedRect.origin.y.isFinite &&
+                    !convertedRect.origin.x.isNaN &&
+                    !convertedRect.origin.y.isNaN &&
+                    convertedRect.size.width > 0 &&
+                    convertedRect.size.height > 0
+                else {
+                    NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.handleTextSelection, Invalid selection rectangle: \(convertedRect)")
+                    return
+                }
+
                 // 延迟显示菜单，确保选择状态稳定
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                     // 检查是否仍然有文本被选中，避免在选择消失后显示菜单
                     if let selectionString = pdfView.currentSelection?.string, !selectionString.isEmpty {
-                        UIMenuController.shared.showMenu(from: pdfView, rect: convertedRect)
+                        UIMenuController.shared.showMenu(from: pdfView, rect: validRect)
                     }
                 }
             }
         }
 
-        // 处理翻译操作
+        // 处理“翻译”菜单项的点击事件
         @objc func translateSelectedText(_: Any) {
             isTranslationMode = true
             showChatView()
         }
 
-        // 添加新的方法来处理"翻译整页"菜单项的点击事件
+        // 处理“翻译整页”菜单项的点击事件
         @objc func translateWholePage(_: Any) {
             DispatchQueue.main.async {
                 self.parent.showChatSheet = true
@@ -870,16 +943,16 @@ struct PDFKitView: UIViewRepresentable {
             }
         }
 
-        // 处理对话操作
+        // 处理“对话”菜单项的点击事件
         @objc func chatWithSelectedText(_: Any) {
             isTranslationMode = false
             showChatView()
         }
 
-        // 处理高亮操作
+        // 处理“高亮”菜单项的点击事件
         @objc func highlightSelectedText(_: Any?) {
             // 获取当前PDFView和选中内容
-            guard let pdfView = UIResponder.currentFirstResponder as? PDFView,
+            guard let pdfView = UIResponder.currentFirstResponder as? CustomPDFView,
                   let currentSelection = pdfView.currentSelection,
                   let page = currentSelection.pages.first else { return }
 
@@ -914,7 +987,6 @@ struct PDFKitView: UIViewRepresentable {
                     // 在主线程更新UI或显示成功消息
                     DispatchQueue.main.async {
                         NSLog("✅ PDFKitView.swift -> highlightSelectedText, 成功将高亮保存到PDF文件")
-                        // 可以在这里添加成功提示，如果需要
                     }
                 }
             }
@@ -932,6 +1004,7 @@ struct PDFKitView: UIViewRepresentable {
         func captureCurrentPageAsImage() -> UIImage? {
             guard let pdfView = pdfView, let currentPage = pdfView.currentPage else {
                 NSLog("❌ PDFKitView.swift -> Coordinator.captureCurrentPageAsImage, PDFView or currentPage is nil")
+
                 return nil
             }
             let pageBounds = currentPage.bounds(for: .cropBox)
@@ -954,7 +1027,8 @@ struct PDFKitView: UIViewRepresentable {
                             .joined(separator: " < ")
 
                         NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.captureCurrentPageAsImage.logOutlineHierarchy, 当前页面大纲层级: \(outlineString)")
-                        currentOutlineString = outlineString // 存储当前大纲路径
+                        // 存储当前大纲路径
+                        currentOutlineString = outlineString
                     }
 
                     hierarchy.append(outline.label ?? "")
@@ -985,17 +1059,19 @@ struct PDFKitView: UIViewRepresentable {
                 let formattedSource = "<a href=\"NOTERPAGE:\(pdfPath)#(\(pageNumber) \(yRatio) . \(xRatio))\">\(outlineString.isEmpty ? fileName : outlineString)</a>"
 
                 parent.source = formattedSource
+
                 NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.captureCurrentPageAsImage, formattedSource: \(formattedSource)")
             }
-
             NSLog("✅ PDFKitView.swift -> Coordinator.captureCurrentPageAsImage, Screenshot captured")
+
             return image
         }
 
         @objc private func pageDidChange(notification: Notification) {
             // 防止重复处理页面切换
             guard !isProcessingPageChange else {
-                NSLog("⚠️ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 跳过重复的页面切换事件")
+                NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 跳过重复的页面切换事件")
+
                 return
             }
 
@@ -1008,7 +1084,7 @@ struct PDFKitView: UIViewRepresentable {
                 defer { self?.isProcessingPageChange = false }
 
                 guard let self = self else {
-                    NSLog("⚠️ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, Coordinator 已释放")
+                    NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, Coordinator 已释放")
 
                     return
                 }
@@ -1045,7 +1121,7 @@ class CustomPDFView: PDFView {
     override func didMoveToSuperview() {
         super.didMoveToSuperview()
         if superview != nil {
-            NSLog("✅ PDFKitView.swift -> CustomPDFView.didMoveToSuperview, CustomPDFView已添加到父视图")
+            NSLog("✅ PDFKitView.swift -> CustomPDFView.didMoveToSuperview, CustomPDFView 已添加到父视图")
         }
     }
 

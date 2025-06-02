@@ -19,7 +19,6 @@ class NetworkManager {
             "temperature": 0.7
         ]
 
-        // dictinoary data lai json ma convert garako
         do {
             let jsonData = try JSONSerialization.data(withJSONObject: requestBody, options: [])
             request.httpBody = jsonData  //requestbody lai json banara pathako

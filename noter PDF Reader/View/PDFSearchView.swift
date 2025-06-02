@@ -15,7 +15,7 @@ struct PDFSearchView: View {
     var body: some View {
         VStack {
             HStack {
-                Image(systemName: "magnifyingglass")
+                Image(systemName: "doc.text.magnifyingglass")
                     .foregroundColor(.gray)
 
                 TextField("搜索 PDF 内容", text: $searchText)
@@ -86,7 +86,7 @@ struct PDFSearchView: View {
                 performSearch()
             }
         }
-        .navigationTitle("PDF搜索")
+        .navigationTitle("PDF 搜索")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {

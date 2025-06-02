@@ -6,8 +6,8 @@ class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITable
     private var outlineItems: [PDFOutline] = []
     private var filteredOutlineItems: [PDFOutline] = [] // 过滤后的目录项
     private let tableView = UITableView()
-    private let searchBar = UISearchBar() // 添加搜索栏
-    private var searchText: String = "" // 搜索文本
+    private let searchBar = UISearchBar()               // 添加搜索栏
+    private var searchText: String = ""                 // 搜索文本
 
     // 用于持久化搜索状态的文档标识符
     private var documentIdentifier: String {
@@ -124,8 +124,6 @@ class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITable
         }
     }
 
-    // MARK: - UITableViewDataSource
-
     func tableView(_: UITableView, numberOfRowsInSection _: Int) -> Int {
         return filteredOutlineItems.count
     }
@@ -146,8 +144,6 @@ class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITable
         return cell
     }
 
-    // MARK: - UITableViewDelegate
-
     func tableView(_: UITableView, didSelectRowAt indexPath: IndexPath) {
         let outline = filteredOutlineItems[indexPath.row]
 
@@ -167,8 +163,6 @@ class PDFOutlineViewController: UIViewController, UITableViewDataSource, UITable
 
         NSLog("✅ PDFOutlineViewController.swift -> PDFOutlineViewController.tableView, 发送通知 UpdateShowOutlines")
     }
-
-    // MARK: - UISearchBarDelegate
 
     func searchBar(_ searchBar: UISearchBar, textDidChange searchText: String) {
         self.searchText = searchText

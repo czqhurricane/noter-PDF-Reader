@@ -60,8 +60,8 @@ struct ChatView: View {
                                             .foregroundColor(.black)
                                             .cornerRadius(10)
                                             .padding(.leading, 24)
-                                            .frame(maxWidth: .infinity, alignment: .leading) // 添加这一行
-                                            .fixedSize(horizontal: false, vertical: true) // 添加这一行
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                            .fixedSize(horizontal: false, vertical: true)
 
                                         Button(action: {
                                             UIPasteboard.general.string = message.text
@@ -186,9 +186,9 @@ extension String {
 struct SelectableText: UIViewRepresentable {
     var text: String
     var textColor: UIColor = .black
-    var fontSize: CGFloat = 24// Add this parameter
+    var fontSize: CGFloat = 24 // Add this parameter
 
-    func makeUIView(context: Context) -> UITextView {
+    func makeUIView(context _: Context) -> UITextView {
         let textView = UITextView()
         textView.isEditable = false
         textView.isSelectable = true
@@ -204,7 +204,7 @@ struct SelectableText: UIViewRepresentable {
         return textView
     }
 
-    func updateUIView(_ uiView: UITextView, context: Context) {
+    func updateUIView(_ uiView: UITextView, context _: Context) {
         // 设置文本
         uiView.text = text
 
@@ -227,7 +227,7 @@ struct SelectableText: UIViewRepresentable {
 
         // 添加宽度约束，强制文本在指定宽度内换行
         NSLayoutConstraint.activate([
-            uiView.widthAnchor.constraint(equalToConstant: containerWidth)
+            uiView.widthAnchor.constraint(equalToConstant: containerWidth),
         ])
 
         // 强制布局更新

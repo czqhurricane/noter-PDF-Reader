@@ -11,7 +11,6 @@ struct PDFSearchResult: Identifiable {
     init(selection: PDFSelection) {
         self.selection = selection
         self.page = selection.pages.first?.pageRef?.pageNumber ?? 0
-        // Fix: Get the page label directly without referencing self
         let pageNumber = selection.pages.first?.pageRef?.pageNumber ?? 0
         self.pageLabel = selection.pages.first?.label ?? "\(pageNumber + 1)"
         self.text = selection.string ?? ""

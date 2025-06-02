@@ -44,7 +44,8 @@ class ChatViewModel: ObservableObject {
             // 如果没有 API Key，添加提示消息
             let noKeyMessage = Message(text: "请在设置中配置 DeepSeek API Key", isUser: false)
             messages.append(noKeyMessage)
-            saveMessages() // 保存消息历史
+            // 保存消息历史
+            saveMessages()
         }
     }
 

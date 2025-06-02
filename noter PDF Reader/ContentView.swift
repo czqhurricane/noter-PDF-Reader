@@ -12,8 +12,8 @@ struct ContentView: View {
     @State private var yRatio: Double = 0.0
     @State private var showAnnotationsSheet = false // 显示保存的注释列表视图
     @State private var showFolderSearchSheet = false
-    @State private var showOutlines = false // 显示 PDF 目录
-    @State private var showSearchSheet = false // 显示 PDF 全文搜索 sheet
+    @State private var showOutlines = false         // 显示 PDF 目录
+    @State private var showSearchSheet = false      // 显示 PDF 全文搜索 sheet
     @State private var showPDFPicker = false
     @State private var showLinkInputSheet = false
     @State private var showChatSheet = false
@@ -21,21 +21,21 @@ struct ContentView: View {
     @State private var linkText: String = ""
     @State private var rootFolderURL: URL? = UserDefaults.standard.url(forKey: "RootFolder")
     @State private var isPDFLoaded = false
-    @State private var viewPoint: CGPoint = .zero // 用于传递箭头图层坐标至 ArrowAnnotationView
+    @State private var viewPoint: CGPoint = .zero   // 用于传递箭头图层坐标至 ArrowAnnotationView
     @State private var pdfLoadError: String? = nil
     @State private var originalPathInput: String = UserDefaults.standard.string(forKey: "OriginalPath") ?? ""
-    @State private var annotation: String = "" // 存储用户输入的注释
-    @State private var isLocationMode = false // 是否添加注释的状态变量
+    @State private var annotation: String = ""      // 存储用户输入的注释
+    @State private var isLocationMode = false       // 是否添加注释的状态变量
     @State private var forceRender = true
     @State private var pdfDocument: PDFDocument?
     // 添加新的状态变量用于跟踪当前选中的搜索结果
     @State private var selectedSearchSelection: PDFSelection? = nil
     @State private var textToProcess = ""
     @State private var autoSendMessage = false
-    @State private var occlusionImage: UIImage? = nil // State to hold the captured image
+    @State private var occlusionImage: UIImage? = nil              // State to hold the captured image
     @State private var occlusionSource: String = ""
     @State private var pdfViewCoordinator: PDFKitView.Coordinator? // To call coordinator methods
-    @State private var shouldNavigateToOcclusion = false // Occlusion 导航状态
+    @State private var shouldNavigateToOcclusion = false           // Occlusion 导航状态
     @State private var toolbarScrollOffset: CGFloat = 0
     @State private var shouldShowArrow = true
     // 跟踪文件夹搜索的高亮文本
@@ -48,7 +48,6 @@ struct ContentView: View {
     // 添加搜索状态管理
     @AppStorage("lastSearchText") private var lastSearchText: String = ""
 
-    // Helper view for displaying the PDF
     @ViewBuilder
     private var pdfDisplaySection: some View {
         if let url = pdfURL {
@@ -62,10 +61,9 @@ struct ContentView: View {
                     rawPdfPath: rawPdfPath,
                     showOutlines: showOutlines,
                     shouldShowArrow: shouldShowArrow,
-                    // Pass a callback to get the coordinator instance
                     coordinatorCallback: { coordinator in
                         self.pdfViewCoordinator = coordinator
-                    },
+                    },                              // 传递一个回调函数以获取协调器实例
                     isPDFLoaded: $isPDFLoaded,
                     viewPoint: $viewPoint,
                     annotation: $annotation,
@@ -272,12 +270,14 @@ struct ContentView: View {
 
     @ViewBuilder
     private var folderSearchSheetContent: some View {
-        PDFFolderSearchView { filePath, pageNumber, context in
-            // 提取搜索的关键词用于高亮
-            selectedFolderSearchText = extractSearchKeyword(from: context)
-            // 打开指定的PDF文件并跳转到指定页面
-            openPDF(at: filePath, page: pageNumber, xRatio: xRatio, yRatio: yRatio, showArrow: false)
-            showFolderSearchSheet = false
+        NavigationView {
+            PDFFolderSearchView { filePath, pageNumber, context in
+                // 提取搜索的关键词用于高亮
+                selectedFolderSearchText = extractSearchKeyword(from: context)
+                // 打开指定的PDF文件并跳转到指定页面
+                openPDF(at: filePath, page: pageNumber, xRatio: xRatio, yRatio: yRatio, showArrow: false)
+                showFolderSearchSheet = false
+            }
         }
     }
 
@@ -302,11 +302,6 @@ struct ContentView: View {
 
     @ViewBuilder
     private var occlusionSheetContent: some View {
-        // OcclusionView() // Assuming OcclusionView handles its own dismissal or this was intended
-        // To ensure the sheet dismisses if OcclusionView doesn't handle it:
-        // OcclusionView().onDisappear { showOcclusionSheet = false }
-        // For now, keeping original logic which might be intentional if OcclusionView is simple
-        // Pass the image to OcclusionView
         OcclusionView(image: occlusionImage, source: occlusionSource)
     }
 
@@ -316,14 +311,12 @@ struct ContentView: View {
             .onAppear {
                 NSLog("✅ ContentView.swift -> ContentView.body, PDF 选择器 sheet 显示")
             }
-        // .onDisappear is handled by anySheetBinding's setter now
     }
 
     @ViewBuilder
     private var linkInputSheetContent: some View {
         LinkInputView(linkText: $linkText, onSubmit: {
             processMetanoteLink(linkText)
-            // showLinkInputSheet = false // Handled by anySheetBinding's setter
         })
     }
 
@@ -477,7 +470,7 @@ struct ContentView: View {
                     NSLog("✅ ContentView.swift -> ContentView.body, 应用初始化完成后发送 OpenPDFNotification 通知")
                 }
 
-                // Lock orientation to portrait initially
+                // 初始锁定屏幕方向为竖屏
                 UIDevice.current.setValue(UIInterfaceOrientation.portrait.rawValue, forKey: "orientation")
 
                 // 确保数据库已打开
@@ -486,13 +479,13 @@ struct ContentView: View {
                     let _ = DatabaseManager.shared.openDatabase(with: directoryManager, at: dbPath)
                 }
             }.onDisappear {
-                // Reset orientation lock
+                // 重置方向锁定
                 UIDevice.current.setValue(UIInterfaceOrientation.unknown.rawValue, forKey: "orientation")
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
         .statusBar(hidden: false)
-        .ignoresSafeArea(.all, edges: .all) // Use full screen space
+        .ignoresSafeArea(.all, edges: .all) // 使用全屏空间
     }
 
     private func setupNotifications() {
@@ -629,6 +622,7 @@ struct ContentView: View {
     private func openPDF(at convertedPdfPath: String, page: Int, xRatio: Double, yRatio: Double, showArrow: Bool) {
         if let secureURL = directoryManager.startAccessingFile(at: convertedPdfPath) {
             pdfURL = secureURL
+            rawPdfPath = self.convertToRawPath(convertedPdfPath)
             currentPage = page
             self.xRatio = xRatio
             self.yRatio = yRatio
@@ -638,7 +632,7 @@ struct ContentView: View {
             // 保存PDF访问记录到数据库
             let _ = DatabaseManager.shared.saveLastVisitedPage(pdfPath: rawPdfPath, page: page)
 
-            NSLog("✅ ContentView.swift -> ContentView.openPDF, 成功打开PDF文件: \(convertedPdfPath)")
+            NSLog("✅ ContentView.swift -> ContentView.openPDF, 即将打开 PDF 文件: \(convertedPdfPath)")
         } else {
             pdfURL = nil
             pdfLoadError = "无法访问文件，请重新选择目录"

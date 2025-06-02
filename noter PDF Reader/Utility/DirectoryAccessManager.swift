@@ -200,9 +200,9 @@ class DirectoryAccessManager: ObservableObject {
         // 开始访问资源
         let success = url.startAccessingSecurityScopedResource()
         if success {
-            NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.startAccessingFile, 成功开始访问文件: \(path)")
+            NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.startAccessingFile, 成功获取安全访问权限: \(path)")
         } else {
-            NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.startAccessingFile, 无法开始访问文件: \(path)")
+            NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.startAccessingFile, 无法获取安全访问权限: \(path)")
         }
 
         return success ? url : nil

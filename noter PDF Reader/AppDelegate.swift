@@ -31,10 +31,10 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
         let docsDir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first!
         let logFile = docsDir.appendingPathComponent("noterPDFReaderDebug.log")
 
-        // Create empty log file
+        // 创建空日志文件
         try? "".write(to: logFile, atomically: true, encoding: .utf8)
 
-        // Redirect stderr
+        // 重定向标准错误输出
         freopen(logFile.path.cString(using: .ascii), "a+", stderr)
     }
 }
