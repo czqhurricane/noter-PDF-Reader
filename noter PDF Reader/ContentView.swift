@@ -11,6 +11,7 @@ struct ContentView: View {
     @State private var xRatio: Double = 0.0
     @State private var yRatio: Double = 0.0
     @State private var showAnnotationsSheet = false // 显示保存的注释列表视图
+    @State private var showFolderSearchSheet = false
     @State private var showOutlines = false // 显示 PDF 目录
     @State private var showSearchSheet = false // 显示 PDF 全文搜索 sheet
     @State private var showPDFPicker = false
@@ -127,11 +128,12 @@ struct ContentView: View {
 
     private var anySheetBinding: Binding<Bool> {
         Binding<Bool>(
-            get: { showConfigSheet || showAnnotationsSheet || showChatSheet || showSearchSheet || showPDFPicker || showLinkInputSheet },
+            get: { showConfigSheet || showAnnotationsSheet || showFolderSearchSheet || showChatSheet || showSearchSheet || showPDFPicker || showLinkInputSheet },
             set: {
                 if !$0 {
                     showConfigSheet = false
                     showAnnotationsSheet = false
+                    showFolderSearchSheet = false
                     showChatSheet = false
                     showSearchSheet = false
                     showPDFPicker = false
@@ -159,6 +161,14 @@ struct ContentView: View {
                     Image(systemName: "note.text")
                         .foregroundColor(.primary)
                 }
+
+                Button(action: {
+                           showFolderSearchSheet = true
+                       }) {
+                    Image(systemName: "magnifyingglass")
+                      .foregroundColor(.primary)
+                }
+
 
                 Button(action: {
                     showChatSheet = true
@@ -259,6 +269,15 @@ struct ContentView: View {
     }
 
     @ViewBuilder
+    private var folderSearchSheetContent: some View {
+        PDFFolderSearchView { filePath, pageNumber in
+            // 打开指定的PDF文件并跳转到指定页面
+            openPDF(at: filePath, page: pageNumber, xRatio: xRatio, yRatio: yRatio, showArrow: false)
+            showFolderSearchSheet = false
+        }
+    }
+
+    @ViewBuilder
     private var chatSheetContent: some View {
         ChatView(initialText: textToProcess, autoSend: autoSendMessage)
     }
@@ -345,6 +364,13 @@ struct ContentView: View {
                 }
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button(action: {
+                               showFolderSearchSheet = true
+                           }) {
+                        Image(systemName: "magnifyingglass")
+                    }
+                }
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: {
                         showChatSheet = true // 显示 Chat sheet
                     }) {
                         Image(systemName: "bubble.left.and.bubble.right")
@@ -418,6 +444,8 @@ struct ContentView: View {
                         configSheetContent
                     } else if showAnnotationsSheet {
                         annotationsSheetContent
+                    } else if showFolderSearchSheet {
+                        folderSearchSheetContent
                     } else if showChatSheet {
                         chatSheetContent
                     } else if showSearchSheet {

@@ -11,6 +11,90 @@ class DatabaseManager {
         dbQueue = nil
     }
 
+    // 初始化数据库表结构
+    func initializeDatabase(at path: String) -> Bool {
+        NSLog("✅ DatabaseManager.swift -> DatabaseManager.initializeDatabase, 开始初始化数据库: \(path)")
+
+        guard let queue = FMDatabaseQueue(path: path) else {
+            NSLog("❌ DatabaseManager.swift -> DatabaseManager.initializeDatabase, 无法创建数据库队列: \(path)")
+
+            return false
+        }
+
+        var success = true
+
+        queue.inDatabase { db in
+            // 创建 sync_times 表
+            let createSyncTimesTable = """
+            CREATE TABLE IF NOT EXISTS sync_times (
+                file TEXT UNIQUE PRIMARY KEY,
+                last_sync_time TEXT NOT NULL
+            )
+            """
+
+            // 创建 files 表
+            let createFilesTable = """
+            CREATE TABLE IF NOT EXISTS files (
+                file TEXT UNIQUE PRIMARY KEY,
+                title TEXT NOT NULL
+            )
+            """
+
+            // 创建 annotations 表
+            let createAnnotationsTable = """
+            CREATE TABLE IF NOT EXISTS annotations (
+                id TEXT NOT NULL PRIMARY KEY,
+                file TEXT NOT NULL,
+                page INTEGER NOT NULL,
+                edges TEXT NOT NULL,
+                type TEXT NOT NULL,
+                color TEXT NOT NULL,
+                contents TEXT,
+                subject TEXT,
+                created TEXT NOT NULL,
+                modified TEXT NOT NULL,
+                outlines TEXT,
+                FOREIGN KEY (file) REFERENCES files (file) ON DELETE CASCADE
+            )
+            """
+
+            // 创建索引
+            let createIndex = """
+            CREATE INDEX IF NOT EXISTS annotations_file_page ON annotations (file, page)
+            """
+
+            // 执行表创建语句
+            if !db.executeStatements(createSyncTimesTable) {
+                NSLog("❌ DatabaseManager.swift -> DatabaseManager.initializeDatabase, 创建 sync_times 表失败: \(db.lastErrorMessage())")
+                success = false
+                return
+            }
+
+            if !db.executeStatements(createFilesTable) {
+                NSLog("❌ DatabaseManager.swift -> DatabaseManager.initializeDatabase, 创建 files 表失败: \(db.lastErrorMessage())")
+                success = false
+                return
+            }
+
+            if !db.executeStatements(createAnnotationsTable) {
+                NSLog("❌ DatabaseManager.swift -> DatabaseManager.initializeDatabase, 创建 annotations 表失败: \(db.lastErrorMessage())")
+                success = false
+                return
+            }
+
+            if !db.executeStatements(createIndex) {
+                NSLog("❌ DatabaseManager.swift -> DatabaseManager.initializeDatabase, 创建索引失败: \(db.lastErrorMessage())")
+                success = false
+                return
+            }
+
+            NSLog("✅ DatabaseManager.swift -> DatabaseManager.initializeDatabase, 数据库表结构创建成功")
+        }
+
+        queue.close()
+        return success
+    }
+
     // 在 DatabaseManager 中
     func openDatabase(with directoryManager: DirectoryAccessManager, at path: String) -> Bool {
         NSLog("✅ DatabaseManager.swift -> DatabaseManager.openDatabase, 尝试打开数据库: \(path)")
@@ -397,6 +481,23 @@ class DatabaseManager {
         }
 
         return lastPage
+    }
+
+    // 根据文件标题获取文件路径
+    func getFilePathByTitle(_ title: String) -> String? {
+        var filePath: String?
+
+        dbQueue?.inDatabase { db in
+            let sql = "SELECT file FROM files WHERE title = ? LIMIT 1"
+            if let resultSet = db.executeQuery(sql, withArgumentsIn: [title]) {
+                if resultSet.next() {
+                    filePath = resultSet.string(forColumn: "file")
+                }
+                resultSet.close()
+            }
+        }
+
+        return filePath
     }
 }
 

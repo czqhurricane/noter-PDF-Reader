@@ -34,6 +34,7 @@
 		02DD37612DD1F91B004892E9 /* DirectoryAccessManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02DD37602DD1F91B004892E9 /* DirectoryAccessManager.swift */; };
 		02F073852DE5068800809345 /* ConfigView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02F073842DE5068800809345 /* ConfigView.swift */; };
 		02F073882DE60C5200809345 /* OcclusionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02F073872DE60C5100809345 /* OcclusionView.swift */; };
+		02FFF05F2DEE0DF800470AB9 /* PDFFolderSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02FFF05E2DEE0DF800470AB9 /* PDFFolderSearchView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -66,6 +67,7 @@
 		02DD37602DD1F91B004892E9 /* DirectoryAccessManager.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = DirectoryAccessManager.swift; sourceTree = "<group>"; };
 		02F073842DE5068800809345 /* ConfigView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ConfigView.swift; sourceTree = "<group>"; };
 		02F073872DE60C5100809345 /* OcclusionView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = OcclusionView.swift; sourceTree = "<group>"; };
+		02FFF05E2DEE0DF800470AB9 /* PDFFolderSearchView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PDFFolderSearchView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -134,6 +136,7 @@
 		028029742DE08D2700182C02 /* View */ = {
 			isa = PBXGroup;
 			children = (
+				02FFF05E2DEE0DF800470AB9 /* PDFFolderSearchView.swift */,
 				02F073872DE60C5100809345 /* OcclusionView.swift */,
 				02BB0A492DE0999E00E42A91 /* ChatView.swift */,
 				025FCAA92DDE6F3D00102A44 /* PDFOutlineViewController.swift */,
@@ -258,6 +261,7 @@
 				02BB0A442DE0998B00E42A91 /* NetworkManager.swift in Sources */,
 				0262EBAE2DCB66EF00E9CBC8 /* PDFKitView.swift in Sources */,
 				029B41A62DDB846800EE0236 /* DatabaseManager.swift in Sources */,
+				02FFF05F2DEE0DF800470AB9 /* PDFFolderSearchView.swift in Sources */,
 				025107892DDFA95F009BE1EA /* PDFPicker.swift in Sources */,
 				02F073852DE5068800809345 /* ConfigView.swift in Sources */,
 				02F073882DE60C5200809345 /* OcclusionView.swift in Sources */,

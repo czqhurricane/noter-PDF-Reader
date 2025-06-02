@@ -1,3 +1,4 @@
+import FMDB
 import Foundation
 import UIKit
 
@@ -24,6 +25,7 @@ class DirectoryAccessManager: ObservableObject {
 
         // 检查是否存在pdf-annotations.db文件
         let dataBasePath = url.appendingPathComponent("pdf-annotations.db").path
+        let databaseURL = url.appendingPathComponent("pdf-annotations.db")
 
         if FileManager.default.fileExists(atPath: dataBasePath) {
             NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 在目录中找到数据库文件: \(dataBasePath)")
@@ -34,8 +36,29 @@ class DirectoryAccessManager: ObservableObject {
                 object: nil,
                 userInfo: ["dataBasePath": dataBasePath]
             )
+
+            // 清空并重新填充files表
+            updateFilesTable(at: dataBasePath, rootURL: url)
         } else {
-            NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 在目录中未找到数据库文件")
+            NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 在目录中未找到数据库文件，开始创建")
+
+            // 创建数据库文件并初始化表结构
+            if DatabaseManager.shared.initializeDatabase(at: dataBasePath) {
+                NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 成功创建并初始化数据库: \(dataBasePath)")
+
+                // 发送通知，通知加载新创建的数据库
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("LoadAnnotationsDatabase"),
+                    object: nil,
+                    userInfo: ["dataBasePath": dataBasePath]
+                )
+            } else {
+                NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 创建数据库失败: \(dataBasePath)")
+
+                DispatchQueue.main.async {
+                    self.errorMessage = "创建数据库失败"
+                }
+            }
         }
 
         // 获取永久访问权限
@@ -256,5 +279,63 @@ class DirectoryAccessManager: ObservableObject {
         }
 
         return isReadable
+    }
+
+    // 更新数据库中的files表
+    private func updateFilesTable(at dbPath: String, rootURL: URL) {
+        guard let dbQueue = FMDatabaseQueue(path: dbPath) else {
+            NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.updateFilesTable, 无法打开数据库")
+
+            return
+        }
+
+        dbQueue.inDatabase { db in
+            // 创建files表（如果不存在）
+            let createTableSQL = """
+            CREATE TABLE IF NOT EXISTS files (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file TEXT NOT NULL,
+                title TEXT NOT NULL
+            )
+            """
+
+            if !db.executeStatements(createTableSQL) {
+                NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.updateFilesTable, 创建 files 表失败")
+
+                return
+            }
+
+            // 清空files表
+            if !db.executeUpdate("DELETE FROM files", withArgumentsIn: []) {
+                NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.updateFilesTable, 清空 files 表失败")
+
+                return
+            }
+
+            // 遍历所有PDF文件并插入到files表
+            let fileManager = FileManager.default
+            let enumerator = fileManager.enumerator(at: rootURL,
+                                                    includingPropertiesForKeys: [.isRegularFileKey],
+                                                    options: [.skipsHiddenFiles],
+                                                    errorHandler: nil)
+
+            if let allURLs = enumerator?.allObjects as? [URL] {
+                for fileURL in allURLs {
+                    if fileURL.pathExtension.lowercased() == "pdf" {
+                        let filePath = fileURL.path
+                        let fileName = fileURL.deletingPathExtension().lastPathComponent
+
+                        let insertSQL = "INSERT INTO files (file, title) VALUES (?, ?)"
+                        if !db.executeUpdate(insertSQL, withArgumentsIn: [filePath, fileName]) {
+                            NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.updateFilesTable, 插入文件记录失败: \(filePath)")
+                        }
+                    }
+                }
+            }
+
+            NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.updateFilesTable, files表更新完成")
+        }
+
+        dbQueue.close()
     }
 }

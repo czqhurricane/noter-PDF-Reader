@@ -1,4 +1,5 @@
 import SwiftUI
+import PDFKit
 
 struct ConfigView: View {
     // 从 ContentView 转移的状态变量
@@ -7,6 +8,7 @@ struct ConfigView: View {
     @State private var showDirectoryPicker = false
     @State private var isSharePresented: Bool = false
     @State private var logFileURL: URL? = nil
+    @State private var isRebuildingIndex = false
 
     // 目录访问管理器
     @ObservedObject var directoryManager: DirectoryAccessManager
@@ -69,6 +71,28 @@ struct ConfigView: View {
                     Text("API Key 用于 DeepSeek 模型的访问，请妥善保管")
                         .font(.caption)
                         .foregroundColor(.gray)
+                }
+
+                Section(header: Text("PDF 文件夹搜索设置")) {
+                    Button(action: {
+                        rebuildSearchIndex()
+                    }) {
+                        HStack {
+                            Image(systemName: "arrow.clockwise")
+                            Text("重建索引")
+                        }
+                    }
+                    .disabled(isRebuildingIndex)
+
+                    if isRebuildingIndex {
+                        HStack {
+                            ProgressView()
+                                .scaleEffect(0.8)
+                            Text("正在重建索引...")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                    }
                 }
 
                 Section(header: Text("日志")) {
@@ -156,6 +180,102 @@ struct ConfigView: View {
 
                 uiViewController.present(activityVC, animated: true)
             }
+        }
+    }
+
+    // 重建搜索索引
+    private func rebuildSearchIndex() {
+        isRebuildingIndex = true
+
+        DispatchQueue.global(qos: .userInitiated).async {
+            // 获取FileBookmarks
+            guard let fileBookmarks = UserDefaults.standard.dictionary(forKey: "FileBookmarks") as? [String: Data] else {
+                DispatchQueue.main.async {
+                    self.isRebuildingIndex = false
+                }
+                return
+            }
+
+            // 获取LastSelectedDirectory
+            guard let lastSelectedDirectoryString = UserDefaults.standard.string(forKey: "LastSelectedDirectory"),
+                  let lastSelectedDirectoryURL = URL(string: lastSelectedDirectoryString)
+            else {
+                DispatchQueue.main.async {
+                    self.isRebuildingIndex = false
+                }
+                return
+            }
+
+            // 创建Cache目录
+            let cacheDirectory = lastSelectedDirectoryURL.appendingPathComponent("Cache")
+            try? FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true, attributes: nil)
+
+            // 遍历所有PDF文件
+            for (filePath, bookmarkData) in fileBookmarks {
+                if filePath.lowercased().hasSuffix(".pdf") {
+                    autoreleasepool {
+                        self.processPDFFile(filePath: filePath, bookmarkData: bookmarkData, cacheDirectory: cacheDirectory)
+                    }
+                }
+            }
+
+            DispatchQueue.main.async {
+                self.isRebuildingIndex = false
+
+                NSLog("✅ ConfigView.swift -> ConfigView.rebuildSearchIndex, 索引重建完成")
+            }
+        }
+    }
+
+    // 处理单个PDF文件
+    private func processPDFFile(filePath: String, bookmarkData: Data, cacheDirectory: URL) {
+        do {
+            // 从书签恢复URL
+            var isStale = false
+            let fileURL = try URL(resolvingBookmarkData: bookmarkData, options: .withoutUI, relativeTo: nil, bookmarkDataIsStale: &isStale)
+
+            // 开始访问安全范围资源
+            let shouldStopAccessing = fileURL.startAccessingSecurityScopedResource()
+            defer {
+                if shouldStopAccessing {
+                    fileURL.stopAccessingSecurityScopedResource()
+                }
+            }
+
+            // 创建PDFDocument
+            guard let pdfDocument = PDFDocument(url: fileURL) else {
+                NSLog("❌ ConfigView.swift -> processPDFFile, 无法打开PDF文件: \(filePath)")
+
+                return
+            }
+
+            var textLines: [String] = []
+
+            // 遍历每一页
+            for pageIndex in 0 ..< pdfDocument.pageCount {
+                guard let page = pdfDocument.page(at: pageIndex) else { continue }
+
+                let pageText = page.string ?? ""
+                let lines = pageText.components(separatedBy: "\n")
+
+                for line in lines {
+                    let trimmedLine = line.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if trimmedLine.count > 1 {
+                        textLines.append("\(pageIndex + 1): \(trimmedLine)")
+                    }
+                }
+            }
+
+            // 保存到txt文件
+            let fileName = fileURL.deletingPathExtension().lastPathComponent
+            let txtFileURL = cacheDirectory.appendingPathComponent("\(fileName).txt")
+            let content = textLines.joined(separator: "\n")
+
+            try content.write(to: txtFileURL, atomically: true, encoding: .utf8)
+
+            NSLog("✅ ConfigView.swift -> ConfigView.processPDFFile, 成功创建索引文件: \(txtFileURL.path)")
+        } catch {
+        NSLog("❌ ConfigView.swift -> ConfigView.processPDFFile, 处理PDF文件失败: \(error.localizedDescription)")
         }
     }
 }
