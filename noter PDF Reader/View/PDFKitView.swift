@@ -23,6 +23,7 @@ struct PDFKitView: UIViewRepresentable {
     var isLocationMode: Bool // 是否处于位置选择模式
     var rawPdfPath: String // PDF 在电脑端的路径
     var showOutlines: Bool // 显示 PDF 目录
+    var shouldShowArrow: Bool
 
     var coordinatorCallback: ((Coordinator) -> Void)? // Callback to pass the coordinator
 
@@ -295,44 +296,46 @@ struct PDFKitView: UIViewRepresentable {
             pdfView.go(to: targetPage)
 
             // 增加延迟，确保 PDF 视图完全加载
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                pdfView.layoutDocumentView()
-                pdfView.layoutIfNeeded()
-                pdfView.documentView?.layoutIfNeeded()
+            if shouldShowArrow {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    pdfView.layoutDocumentView()
+                    pdfView.layoutIfNeeded()
+                    pdfView.documentView?.layoutIfNeeded()
 
-                if let currentPage = pdfView.currentPage {
-                    let pdfSize = currentPage.bounds(for: .mediaBox).size
-                    self.isPDFLoaded = true
-                    self.viewPoint = context.coordinator.convertToViewCoordinates(pdfView: pdfView) ?? .zero
+                    if let currentPage = pdfView.currentPage {
+                        let pdfSize = currentPage.bounds(for: .mediaBox).size
+                        self.isPDFLoaded = true
+                        self.viewPoint = context.coordinator.convertToViewCoordinates(pdfView: pdfView) ?? .zero
 
-                    // 确保 documentView 存在
-                    if let docView = pdfView.documentView {
-                        NSLog("✅ PDFKitView.swift -> PDFKitView.navigateToPage, 成功获取 documentView，尺寸: \(docView.bounds.size)")
+                        // 确保 documentView 存在
+                        if let docView = pdfView.documentView {
+                            NSLog("✅ PDFKitView.swift -> PDFKitView.navigateToPage, 成功获取 documentView，尺寸: \(docView.bounds.size)")
 
-                        // 添加箭头图层（先移除再添加，避免重复）
-                        context.coordinator.arrowLayer.removeFromSuperlayer()
-                        docView.layer.addSublayer(context.coordinator.arrowLayer)
+                            // 添加箭头图层（先移除再添加，避免重复）
+                            context.coordinator.arrowLayer.removeFromSuperlayer()
+                            docView.layer.addSublayer(context.coordinator.arrowLayer)
 
-                        // 初始化位置
-                        context.coordinator.updateArrowPosition(pdfView: pdfView)
+                            // 初始化位置
+                            context.coordinator.updateArrowPosition(pdfView: pdfView)
 
-                        // 调试信息
-                        NSLog("✅ PDFKitView.swift -> PDFKitView.navigateToPage, 添加箭头图层，PDF尺寸 pdfSize = \(pdfSize)")
+                            // 调试信息
+                            NSLog("✅ PDFKitView.swift -> PDFKitView.navigateToPage, 添加箭头图层，PDF尺寸 pdfSize = \(pdfSize)")
+                        } else {
+                            NSLog("❌ PDFKitView.swift -> PDFKitView.navigateToPage, docView = pdfView.documentView 为 nil，即使在延迟后")
+                            // 添加箭头图层（先移除再添加，避免重复）
+                            context.coordinator.arrowLayer.removeFromSuperlayer()
+                            // pdfView.documentView 为 nil 的情况下，直接使用 pdfView 替代 docView
+                            pdfView.layer.addSublayer(context.coordinator.arrowLayer)
+                            context.coordinator.updateArrowPosition(pdfView: pdfView)
+
+                            // 调试信息
+                            NSLog("✅ PDFKitView.swift -> PDFKitView.navigateToPage, 添加箭头图层，PDF尺寸 pdfSize = \(pdfSize)")
+                        }
                     } else {
-                        NSLog("❌ PDFKitView.swift -> PDFKitView.navigateToPage, docView = pdfView.documentView 为 nil，即使在延迟后")
-                        // 添加箭头图层（先移除再添加，避免重复）
-                        context.coordinator.arrowLayer.removeFromSuperlayer()
-                        // pdfView.documentView 为 nil 的情况下，直接使用 pdfView 替代 docView
-                        pdfView.layer.addSublayer(context.coordinator.arrowLayer)
-                        context.coordinator.updateArrowPosition(pdfView: pdfView)
+                        NSLog("❌ PDFKitView.swift -> PDFKitView.navigateToPage, 跳转后无法获取当前页面")
 
-                        // 调试信息
-                        NSLog("✅ PDFKitView.swift -> PDFKitView.navigateToPage, 添加箭头图层，PDF尺寸 pdfSize = \(pdfSize)")
+                        isPDFLoaded = false
                     }
-                } else {
-                    NSLog("❌ PDFKitView.swift -> PDFKitView.navigateToPage, 跳转后无法获取当前页面")
-
-                    isPDFLoaded = false
                 }
             }
         } else {
@@ -987,9 +990,9 @@ struct PDFKitView: UIViewRepresentable {
                 let currentPageIndex = document.index(for: currentPage) + 1 // PDFKit使用0基索引，我们使用1基索引
 
                 // 保存当前页面号到数据库
-                do { let _ = DatabaseManager.shared.saveLastVisitedPage(pdfPath: self.strongParent.rawPdfPath, page: currentPageIndex)
+                do { let _ = DatabaseManager.shared.saveLastVisitedPage(pdfPath: self.parent.rawPdfPath, page: currentPageIndex)
 
-                    NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 已保存当前文件：\(self.strongParent.rawPdfPath)，当前页面号: \(currentPageIndex) 到数据库")
+                    NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 已保存当前文件：\(self.parent.rawPdfPath)，当前页面号: \(currentPageIndex) 到数据库")
                 } catch {
                     NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 保存页面失败: \(error)")
                 }

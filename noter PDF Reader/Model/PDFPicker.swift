@@ -42,8 +42,6 @@ struct PDFPicker: UIViewControllerRepresentable {
                 userInfo: [
                     "pdfPath": pendingPDFPath!,
                     "currentPage": 1,
-                    "xRatio": 0.5,
-                    "yRatio": 0.5,
                 ]
             )
 

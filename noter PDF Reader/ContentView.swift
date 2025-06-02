@@ -36,6 +36,7 @@ struct ContentView: View {
     @State private var pdfViewCoordinator: PDFKitView.Coordinator? // To call coordinator methods
     @State private var shouldNavigateToOcclusion = false // Occlusion 导航状态
     @State private var toolbarScrollOffset: CGFloat = 0
+    @State private var shouldShowArrow = true
 
     // 目录访问管理器
     @StateObject private var directoryManager = DirectoryAccessManager.shared
@@ -57,6 +58,7 @@ struct ContentView: View {
                     isLocationMode: isLocationMode, // 传递注释模式状态
                     rawPdfPath: rawPdfPath,
                     showOutlines: showOutlines,
+                    shouldShowArrow: shouldShowArrow,
                     // Pass a callback to get the coordinator instance
                     coordinatorCallback: { coordinator in
                         self.pdfViewCoordinator = coordinator
@@ -505,7 +507,7 @@ struct ContentView: View {
             NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenPDFNotification 通知参数 - 转换路径: \(self.convertedPdfPath), 页码: \(self.currentPage), yRatio: \(self.yRatio), xRatio: \(self.xRatio)")
             NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenPDFNotification 通知参数 - 文件路径: \(String(describing: self.pdfURL)), 页码: \(self.currentPage), yRatio: \(self.yRatio), xRatio: \(self.xRatio)")
 
-            openPDF(at: self.convertedPdfPath, currentPage: page, xRatio: xRatio, yRatio: yRatio)
+            openPDF(at: self.convertedPdfPath, page: page, xRatio: xRatio, yRatio: yRatio, showArrow: true)
         }
 
         // 监听数据库加载通知
@@ -550,9 +552,7 @@ struct ContentView: View {
         ) { notification in
             guard let userInfo = notification.userInfo,
                   let pdfPath = userInfo["pdfPath"] as? String,
-                  let currentPage = userInfo["currentPage"] as? Int,
-                  let xRatio = userInfo["xRatio"] as? Double,
-                  let yRatio = userInfo["yRatio"] as? Double
+                  let currentPage = userInfo["currentPage"] as? Int
             else {
                 return
             }
@@ -564,8 +564,7 @@ struct ContentView: View {
 
             NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenSelectedPDF 观察者, 接收到打开 PDF 请求，原始路径: \(pdfPath), 反转换路径: \(rawPdfPath)，最后访问页面号：\(lastVisitedPage)")
 
-            // 调用 openPDF 方法打开文件
-            openPDF(at: pdfPath, currentPage: lastVisitedPage, xRatio: xRatio, yRatio: yRatio)
+            openPDF(at: pdfPath, page: lastVisitedPage, xRatio: xRatio, yRatio: yRatio, showArrow: false)
         }
     }
 
@@ -591,20 +590,21 @@ struct ContentView: View {
         NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 转换路径: \(convertedPdfPath), 页码: \(currentPage), yRatio: \(yRatio), xRatio: \(xRatio)")
         NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 文件路径: \(String(describing: pdfURL)), 页码: \(currentPage), yRatio: \(yRatio), xRatio: \(xRatio)")
 
-        openPDF(at: convertedPdfPath, currentPage: result.page!, xRatio: result.x!, yRatio: result.y!)
+        openPDF(at: convertedPdfPath, page: result.page!, xRatio: result.x!, yRatio: result.y!, showArrow: true)
     }
 
     // 打开PDF文件的方法
-    private func openPDF(at convertedPdfPath: String, currentPage: Int, xRatio: Double, yRatio: Double) {
+    private func openPDF(at convertedPdfPath: String, page: Int, xRatio: Double, yRatio: Double, showArrow: Bool) {
         if let secureURL = directoryManager.startAccessingFile(at: convertedPdfPath) {
             pdfURL = secureURL
-            self.currentPage = currentPage
+            self.currentPage = page
             self.xRatio = xRatio
             self.yRatio = yRatio
             forceRender = true
+            shouldShowArrow = showArrow
 
             // 保存PDF访问记录到数据库
-            let _ = DatabaseManager.shared.saveLastVisitedPage(pdfPath: rawPdfPath, page: currentPage)
+            let _ = DatabaseManager.shared.saveLastVisitedPage(pdfPath: rawPdfPath, page: page)
 
             NSLog("✅ ContentView.swift -> ContentView.openPDF, 成功打开PDF文件: \(convertedPdfPath)")
         } else {
