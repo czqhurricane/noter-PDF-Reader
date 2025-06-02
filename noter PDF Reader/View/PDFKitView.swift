@@ -165,19 +165,20 @@ struct PDFKitView: UIViewRepresentable {
 
         // 处理搜索结果选择
         if let selection = selectedSearchSelection {
-            // Navigate to the selected page
-            if let page = selection.pages.first {
-                pdfView.go(to: page)
-            }
-
-            // Highlight the selected text - Fix: Use UIColor.yellow instead of just .yellow
-            selection.color = UIColor.yellow.withAlphaComponent(0.3)
-            pdfView.setCurrentSelection(selection, animate: true)
-
-            // Reset selection state
+            // 确保在主线程执行
             DispatchQueue.main.async {
-                selectedSearchSelection = nil
+                // Navigate to the selected page
+                if let page = selection.pages.first {
+                    pdfView.go(to: page)
+                }
+
+                // Highlight the selected text
+                selection.color = UIColor.yellow.withAlphaComponent(0.3)
+                pdfView.setCurrentSelection(selection, animate: true)
             }
+
+            // 立即重置状态，避免重复处理
+            selectedSearchSelection = nil
         }
 
         // 处理目录显示

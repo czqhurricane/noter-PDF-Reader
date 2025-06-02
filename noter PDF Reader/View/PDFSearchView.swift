@@ -44,8 +44,8 @@ struct PDFSearchView: View {
                 List {
                     ForEach(searchResults) { result in
                         Button(action: {
+                            // 先调用回调函数
                             onResultSelected(result)
-                            presentationMode.wrappedValue.dismiss()
                         }) {
                             HStack {
                                 Text("第\(result.pageLabel)页")
@@ -125,7 +125,8 @@ struct PDFSearchView: View {
 private func getContextString(from result: PDFSearchResult) -> String {
     // Since selection is not optional in PDFSearchResult, we don't need to check it
     guard let page = result.selection.pages.first,
-          let text = result.selection.string else {
+          let text = result.selection.string
+    else {
         return result.text
     }
 
@@ -142,9 +143,9 @@ private func getContextString(from result: PDFSearchResult) -> String {
     let contextEnd = pageText.index(range.upperBound, offsetBy: 50, limitedBy: pageText.endIndex) ?? pageText.endIndex
 
     // 获取上下文文本
-    let prefix = String(pageText[contextStart..<range.lowerBound])
+    let prefix = String(pageText[contextStart ..< range.lowerBound])
     let match = String(pageText[range])
-    let suffix = String(pageText[range.upperBound..<contextEnd])
+    let suffix = String(pageText[range.upperBound ..< contextEnd])
 
     // 组合上下文，使用 ... 表示截断
     return "\(contextStart > pageText.startIndex ? "..." : "")\(prefix)\(match)\(suffix)\(contextEnd < pageText.endIndex ? "..." : "")"

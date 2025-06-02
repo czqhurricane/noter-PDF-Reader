@@ -269,6 +269,8 @@ struct ContentView: View {
                 selectedSearchSelection = result.selection
                 // 保存最后选择的搜索结果页码
                 UserDefaults.standard.set(result.page, forKey: "lastSearchPage")
+                // 立即关闭搜索sheet
+                showSearchSheet = false
             }
         }
     }
@@ -312,7 +314,7 @@ struct ContentView: View {
 
                     // 添加隐藏的 NavigationLink
                     NavigationLink(
-                      destination: OcclusionView(image: occlusionImage, source: occlusionSource),
+                        destination: OcclusionView(image: occlusionImage, source: occlusionSource),
                         isActive: $shouldNavigateToOcclusion
                     ) {
                         EmptyView()
@@ -417,9 +419,7 @@ struct ContentView: View {
                     } else if showChatSheet {
                         chatSheetContent
                     } else if showSearchSheet {
-                        NavigationView {
-                            searchSheetContent
-                        }
+                        searchSheetContent
                     } else if showPDFPicker {
                         pdfPickerSheetContent
                     } else if showLinkInputSheet {
