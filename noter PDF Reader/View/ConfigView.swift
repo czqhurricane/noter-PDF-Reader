@@ -1,5 +1,5 @@
-import SwiftUI
 import PDFKit
+import SwiftUI
 
 struct ConfigView: View {
     // 从 ContentView 转移的状态变量
@@ -92,6 +92,10 @@ struct ConfigView: View {
                                 .font(.caption)
                                 .foregroundColor(.gray)
                         }
+                    } else {
+                        Text("重建索引完成")
+                            .font(.caption)
+                            .foregroundColor(.gray)
                     }
                 }
 
@@ -214,7 +218,12 @@ struct ConfigView: View {
             for (filePath, bookmarkData) in fileBookmarks {
                 if filePath.lowercased().hasSuffix(".pdf") {
                     autoreleasepool {
-                        self.processPDFFile(filePath: filePath, bookmarkData: bookmarkData, cacheDirectory: cacheDirectory)
+                        // 检查是否已存在对应的txt文件
+                        if !self.txtFileExists(for: filePath, in: cacheDirectory) {
+                            self.processPDFFile(filePath: filePath, bookmarkData: bookmarkData, cacheDirectory: cacheDirectory)
+                        } else {
+                            NSLog("✅ ConfigView.swift -> ConfigView.rebuildSearchIndex, 跳过已存在的索引文件: \(filePath)")
+                        }
                     }
                 }
             }
@@ -275,8 +284,15 @@ struct ConfigView: View {
 
             NSLog("✅ ConfigView.swift -> ConfigView.processPDFFile, 成功创建索引文件: \(txtFileURL.path)")
         } catch {
-        NSLog("❌ ConfigView.swift -> ConfigView.processPDFFile, 处理PDF文件失败: \(error.localizedDescription)")
+            NSLog("❌ ConfigView.swift -> ConfigView.processPDFFile, 处理PDF文件失败: \(error.localizedDescription)")
         }
+    }
+
+    // 检查txt文件是否已存在的辅助方法
+    private func txtFileExists(for pdfFilePath: String, in cacheDirectory: URL) -> Bool {
+        let fileName = URL(fileURLWithPath: pdfFilePath).deletingPathExtension().lastPathComponent
+        let txtFileURL = cacheDirectory.appendingPathComponent("\(fileName).txt")
+        return FileManager.default.fileExists(atPath: txtFileURL.path)
     }
 }
 
