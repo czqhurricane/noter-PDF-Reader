@@ -30,6 +30,9 @@ class DirectoryAccessManager: ObservableObject {
         if FileManager.default.fileExists(atPath: dataBasePath) {
             NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 在目录中找到数据库文件: \(dataBasePath)")
 
+            // 清空并重新填充files表
+            updateFilesTable(at: dataBasePath, rootURL: url)
+
             // 发送通知，通知加载数据库
             NotificationCenter.default.post(
                 name: NSNotification.Name("LoadAnnotationsDatabase"),
@@ -37,14 +40,14 @@ class DirectoryAccessManager: ObservableObject {
                 userInfo: ["dataBasePath": dataBasePath]
             )
 
-            // 清空并重新填充files表
-            updateFilesTable(at: dataBasePath, rootURL: url)
         } else {
             NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 在目录中未找到数据库文件，开始创建")
 
             // 创建数据库文件并初始化表结构
             if DatabaseManager.shared.initializeDatabase(at: dataBasePath) {
                 NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 成功创建并初始化数据库: \(dataBasePath)")
+                // 清空并重新填充files表
+                updateFilesTable(at: dataBasePath, rootURL: url)
 
                 // 发送通知，通知加载新创建的数据库
                 NotificationCenter.default.post(
@@ -324,10 +327,12 @@ class DirectoryAccessManager: ObservableObject {
                     if fileURL.pathExtension.lowercased() == "pdf" {
                         let filePath = fileURL.path
                         let fileName = fileURL.deletingPathExtension().lastPathComponent
+                        // 将 filePath 转换为 rawPath
+                        let rawPath = convertToRawPath(filePath)
 
                         let insertSQL = "INSERT INTO files (file, title) VALUES (?, ?)"
-                        if !db.executeUpdate(insertSQL, withArgumentsIn: [filePath, fileName]) {
-                            NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.updateFilesTable, 插入文件记录失败: \(filePath)")
+                        if !db.executeUpdate(insertSQL, withArgumentsIn: [rawPath, fileName]) {
+                            NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.updateFilesTable, 插入文件记录失败: \(rawPath)")
                         }
                     }
                 }
@@ -337,5 +342,27 @@ class DirectoryAccessManager: ObservableObject {
         }
 
         dbQueue.close()
+    }
+
+    private func convertToRawPath(_ path: String) -> String {
+        // 获取当前的 rootDirectoryURL
+        let rootPath: String
+
+        if let rootURL = rootDirectoryURL {
+            rootPath = rootURL.path
+        } else if let cachedPath = UserDefaults.standard.string(forKey: "LastSuccessfulRootPath") {
+            rootPath = cachedPath
+        } else {
+            return path // 无法转换，返回原始路径
+        }
+
+        // 获取原始路径
+        var processedOriginalPath = PathConverter.originalPath
+        if processedOriginalPath.hasSuffix("/") {
+            processedOriginalPath.removeLast()
+        }
+
+        // 执行反向替换
+        return path.replacingOccurrences(of: rootPath, with: processedOriginalPath)
     }
 }

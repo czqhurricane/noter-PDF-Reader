@@ -140,9 +140,11 @@ struct PDFFolderSearchView: View {
 
                                     // 从数据库获取文件路径
                                     if let filePath = getFilePathFromDatabase(fileName: fileName) {
+                                        let convertedPath = PathConverter.convertNoterPagePath(filePath, rootDirectoryURL: lastSelectedDirectoryURL)
+
                                         let result = FolderSearchResult(
                                             fileName: fileName,
-                                            filePath: filePath,
+                                            filePath: convertedPath,
                                             pageNumber: pageNumber,
                                             context: line
                                         )
