@@ -3,6 +3,18 @@ import Foundation
 class NetworkManager {
     // DeepSeek API 调用方法
     func sendToDeepSeek(message: String, apiKey: String, completion: @escaping (Result<String, Error>) -> Void) {
+        guard !apiKey.isEmpty else {
+            completion(.failure(NSError(domain: "NetworkManager", code: -1, userInfo: [NSLocalizedDescriptionKey: "API Key不能为空"])))
+
+            return
+        }
+
+        guard !message.isEmpty else {
+            completion(.failure(NSError(domain: "NetworkManager", code: -2, userInfo: [NSLocalizedDescriptionKey: "消息内容不能为空"])))
+
+            return
+        }
+
         // DeepSeek API 端点
         let url = URL(string: "https://api.deepseek.com/v1/chat/completions")!
         var request = URLRequest(url: url)

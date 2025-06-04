@@ -142,29 +142,30 @@ class DatabaseManager {
             return annotations
         }
 
-        // 首先检查表是否存在
-        var tableExists = false
+        // 添加事务处理
+        queue.inTransaction { db, rollback in
+            do {
+                // 检查表是否存在
+                let tableExistsQuery = "SELECT name FROM sqlite_master WHERE type='table' AND name='annotations'"
+                let tableResult = try db.executeQuery(tableExistsQuery, values: nil)
 
-        queue.inDatabase { db in
-            let result = db.executeQuery("SELECT name FROM sqlite_master WHERE type='table' AND name='annotations'", withArgumentsIn: [])
-            tableExists = result?.next() ?? false
-            result?.close()
-        }
+                guard tableResult.next() else {
+                    NSLog("❌ DatabaseManager.swift -> DatabaseManager.queryAnnotations, annotations表不存在")
 
-        if !tableExists {
-            NSLog("❌ DatabaseManager.swift -> DatabaseManager.queryAnnotations, annotations表不存在")
+                    tableResult.close()
+                    return
+                }
+                tableResult.close()
 
-            return annotations
-        }
+                // 查询注释数据
+                let queryString = """
+                SELECT id, file, page, edges, type, color, contents, subject, created, modified, outlines
+                FROM annotations
+                ORDER BY created DESC
+                """
 
-        // 查询注释数据
-        queue.inDatabase { db in
-            let queryString = """
-            SELECT id, file, page, edges, type, color, contents, subject, created, modified, outlines
-            FROM annotations
-            """
+                let results = try db.executeQuery(queryString, values: nil)
 
-            if let results = try? db.executeQuery(queryString, values: nil) {
                 while results.next() {
                     let id = results.string(forColumn: "id") ?? ""
                     let file = results.string(forColumn: "file") ?? ""
@@ -198,8 +199,9 @@ class DatabaseManager {
                 results.close()
 
                 NSLog("✅ DatabaseManager.swift -> DatabaseManager.queryAnnotations, 成功查询到 \(annotations.count) 条注释")
-            } else {
-                NSLog("❌ DatabaseManager.swift -> DatabaseManager.queryAnnotations, 查询失败 ")
+            } catch {
+                NSLog("❌ DatabaseManager.swift -> DatabaseManager.queryAnnotations, 查询失败: \(error.localizedDescription)")
+                rollback.pointee = true
             }
         }
 

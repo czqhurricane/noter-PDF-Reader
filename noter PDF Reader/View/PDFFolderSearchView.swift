@@ -1,4 +1,3 @@
-import PDFKit
 import SwiftUI
 
 struct PDFFolderSearchView: View {
@@ -7,6 +6,8 @@ struct PDFFolderSearchView: View {
     @AppStorage("lastFolderSearchText") private var searchText: String = ""
     @State private var searchResults: [FolderSearchResult] = []
     @State private var isSearching: Bool = false
+    // 添加防抖定时器
+    @State private var searchTimer: Timer?
 
     var onResultSelected: (String, Int, String) -> Void // 添加 context 参数
 
@@ -21,13 +22,20 @@ struct PDFFolderSearchView: View {
                     .autocapitalization(.none)
                     .disableAutocorrection(true)
                     .onChange(of: searchText) { _ in
+                        // 取消之前的定时器
+                        searchTimer?.invalidate()
+
+                        // 创建新的防抖定时器
+                        searchTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
                         performSearch()
+                    }
                     }
 
                 if !searchText.isEmpty {
                     Button(action: {
                         searchText = ""
                         searchResults = []
+                        searchTimer?.invalidate()
                     }) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.gray)
@@ -87,6 +95,10 @@ struct PDFFolderSearchView: View {
             if !searchText.isEmpty {
                 performSearch()
             }
+        }
+        .onDisappear {
+            // 视图消失时取消定时器
+            searchTimer?.invalidate()
         }
         .navigationTitle("PDF 文件夹搜索")
         .navigationBarTitleDisplayMode(.inline)

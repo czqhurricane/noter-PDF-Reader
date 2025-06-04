@@ -9,6 +9,8 @@ struct PDFSearchView: View {
     // 使用 UserDefaults 来保存搜索结果
     @State private var searchResults: [PDFSearchResult] = []
     @State private var isSearching: Bool = false
+    // 添加防抖定时器
+    @State private var searchTimer: Timer?
 
     var onResultSelected: (PDFSearchResult) -> Void
 
@@ -23,12 +25,19 @@ struct PDFSearchView: View {
                     .autocapitalization(.none) // 禁用自动首字母大写
                     .disableAutocorrection(true)
                     .onChange(of: searchText) { _ in
+                        // 取消之前的定时器
+                        searchTimer?.invalidate()
+
+                        // 创建新的防抖定时器
+                        searchTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
                         performSearch()
+                    }
                     }
                 if !searchText.isEmpty {
                     Button(action: {
                         searchText = ""
                         searchResults = []
+                        searchTimer?.invalidate()
                     }) {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundColor(.gray)
@@ -85,6 +94,10 @@ struct PDFSearchView: View {
             if !searchText.isEmpty {
                 performSearch()
             }
+        }
+        .onDisappear {
+            // 视图消失时取消定时器
+            searchTimer?.invalidate()
         }
         .navigationTitle("PDF 搜索")
         .navigationBarTitleDisplayMode(.inline)

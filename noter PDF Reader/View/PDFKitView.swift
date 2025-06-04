@@ -629,7 +629,6 @@ struct PDFKitView: UIViewRepresentable {
         deinit {
             // 在析构函数中清理计时器
             arrowTimer?.invalidate()
-            autoHideTimer = nil
             // 确保在主线程移除通知观察者
             DispatchQueue.main.async {
                 NotificationCenter.default.removeObserver(self)

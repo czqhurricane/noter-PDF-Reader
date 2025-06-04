@@ -8,6 +8,8 @@ class AnnotationListViewModel: ObservableObject {
     @Published var searchText: String = ""
     @Published var filteredFormattedAnnotations: [String] = []
     @Published var formattedAnnotations: [String] = []
+    // 添加防抖动搜索
+    private var searchWorkItem: DispatchWorkItem?
 
     // 使用 DirectoryAccessManager 单例
     private let directoryManager = DirectoryAccessManager.shared
@@ -53,10 +55,23 @@ class AnnotationListViewModel: ObservableObject {
     }
 
     func updateSearchResults() {
-        formatAnnotations()
-        filterAnnotations()
+        // 取消之前的搜索任务
+        searchWorkItem?.cancel()
 
-        NSLog("✅ AnnotationListViewModel.swift -> AnnotationListViewModel.updateSearchResults, 更新搜索结果")
+        // 创建新的搜索任务
+        let workItem = DispatchWorkItem { [weak self] in
+            self?.formatAnnotations()
+            self?.filterAnnotations()
+
+            DispatchQueue.main.async {
+                NSLog("✅ AnnotationListViewModel.swift -> AnnotationListViewModel.updateSearchResults, 更新搜索结果")
+            }
+        }
+
+        searchWorkItem = workItem
+
+        // 延迟执行搜索，避免频繁搜索
+        DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.3, execute: workItem)
     }
 
     func formatAnnotations() {
@@ -82,7 +97,6 @@ class AnnotationListViewModel: ObservableObject {
             }
         }
     }
-
 
     // 删除单个注释
     func deleteAnnotation(withId id: String) -> Bool {
