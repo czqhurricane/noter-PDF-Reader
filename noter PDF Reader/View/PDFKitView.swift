@@ -191,6 +191,11 @@ struct PDFKitView: UIViewRepresentable {
                 // 高亮显示所选文本
                 selection.color = UIColor.yellow.withAlphaComponent(0.3)
                 pdfView.setCurrentSelection(selection, animate: true)
+
+                // 5秒后取消选中
+                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                    pdfView.setCurrentSelection(nil, animate: true)
+                }
             }
 
             // 立即重置状态，避免重复处理
@@ -396,6 +401,11 @@ struct PDFKitView: UIViewRepresentable {
             // 高亮显示找到的文本
             foundSelection.color = UIColor.orange.withAlphaComponent(0.5)
             pdfView.setCurrentSelection(foundSelection, animate: true)
+
+            // 5秒后取消选中
+            DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                pdfView.setCurrentSelection(nil, animate: true)
+            }
         }
     }
 
