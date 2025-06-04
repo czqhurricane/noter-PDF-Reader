@@ -635,6 +635,9 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         deinit {
+            // 立即隐藏菜单
+            UIMenuController.shared.hideMenu()
+
             // 在析构函数中清理计时器
             arrowTimer?.invalidate()
 
@@ -891,7 +894,12 @@ struct PDFKitView: UIViewRepresentable {
         // 处理文本选择
         @objc func handleTextSelection(_ notification: Notification) {
             guard let pdfView = notification.object as? CustomPDFView else { return }
-            guard let selection = pdfView.currentSelection else { return }
+            guard let selection = pdfView.currentSelection else {
+                // 如果没有选择，立即隐藏菜单
+                UIMenuController.shared.hideMenu()
+
+                return
+            }
             // 隐藏菜单如果当前没有选择文本
             guard let selectedText = selection.string, !selectedText.isEmpty else {
                 UIMenuController.shared.hideMenu()
@@ -930,7 +938,8 @@ struct PDFKitView: UIViewRepresentable {
                 }
 
                 // 确保 pdfView 在视图层次结构中并有一个有效的窗口
-                guard pdfView.window != nil, pdfView.superview != nil else {
+                guard pdfView.window != nil, pdfView.superview != nil,
+                      pdfView.window?.rootViewController != nil else {
                     NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.handleTextSelection, PDFView 不在视图层次结构中或没有窗口")
 
                     return
@@ -938,6 +947,18 @@ struct PDFKitView: UIViewRepresentable {
 
                 // 延迟显示菜单，确保选择状态稳定
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    [weak self, weak pdfView] in
+
+                    // 检查对象是否仍然存在
+                    guard let self = self, let pdfView = pdfView else { return }
+
+                    // 再次检查视图层次结构
+                    guard pdfView.window != nil,
+                          pdfView.superview != nil,
+                          pdfView.window?.rootViewController != nil else {
+                        return
+                    }
+
                     // 检查是否仍然有文本被选中，避免在选择消失后显示菜单
                     if let selectionString = pdfView.currentSelection?.string, !selectionString.isEmpty {
                         UIMenuController.shared.showMenu(from: pdfView, rect: validRect)
@@ -945,6 +966,9 @@ struct PDFKitView: UIViewRepresentable {
 
                     // 5秒后自动隐藏菜单
                     DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                        // 检查视图是否仍然有效
+                        guard pdfView.window != nil else { return }
+
                         pdfView.setCurrentSelection(nil, animate: true)
                         UIMenuController.shared.hideMenu()
                     }
@@ -976,7 +1000,8 @@ struct PDFKitView: UIViewRepresentable {
         // 处理“高亮”菜单项的点击事件
         @objc func highlightSelectedText(_: Any?) {
             // 获取当前PDFView和选中内容
-            guard let pdfView = UIResponder.currentFirstResponder as? CustomPDFView,
+            guard let currentResponder = UIResponder.currentFirstResponder,
+                  let pdfView = currentResponder as? CustomPDFView,
                   let currentSelection = pdfView.currentSelection,
                   let page = currentSelection.pages.first else { return }
 
@@ -1092,6 +1117,12 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         @objc private func pageDidChange(notification: Notification) {
+            // 页面切换时立即隐藏菜单并清除选择
+            UIMenuController.shared.hideMenu()
+            if let pdfView = notification.object as? PDFView {
+                pdfView.setCurrentSelection(nil, animate: false)
+            }
+
             // 防止重复处理页面切换
             guard !isProcessingPageChange else {
                 NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 跳过重复的页面切换事件")
@@ -1138,6 +1169,10 @@ class CustomPDFView: PDFView {
     override func willMove(toSuperview newSuperview: UIView?) {
         super.willMove(toSuperview: newSuperview)
         if newSuperview == nil {
+            // 视图即将被移除时，清理菜单状态
+            UIMenuController.shared.hideMenu()
+            self.setCurrentSelection(nil, animate: false)
+
             NSLog("✅ PDFKitView.swift -> CustomPDFView.willMove, CustomPDFView 即将从父视图移除")
         }
     }
