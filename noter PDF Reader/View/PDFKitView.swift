@@ -460,14 +460,6 @@ struct PDFKitView: UIViewRepresentable {
                 )
             }
 
-            // 注册自定义菜单项并设置target为self
-            // UIMenuController.shared.menuItems = [
-            //     UIMenuItem(title: "翻译", action: #selector(Coordinator.translateSelectedText(_:))),
-            //     UIMenuItem(title: "翻译整页", action: #selector(Coordinator.translateWholePage(_:))),
-            //     UIMenuItem(title: "对话", action: #selector(Coordinator.chatWithSelectedText(_:))),
-            //     UIMenuItem(title: "高亮", action: #selector(Coordinator.highlightSelectedText(_:))),
-            // ]
-
             // 配置箭头样式
             arrowLayer.fillColor = UIColor.red.cgColor
 
@@ -635,16 +627,15 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         deinit {
-            // 立即隐藏菜单
-            UIMenuController.shared.hideMenu()
-
             // 在析构函数中清理计时器
             arrowTimer?.invalidate()
-
+            autoHideTimer = nil
             // 确保在主线程移除通知观察者
             DispatchQueue.main.async {
                 NotificationCenter.default.removeObserver(self)
             }
+            // 清理CAShapeLayer
+            arrowLayer.removeFromSuperlayer()
 
             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.deinit, Coordinator 已释放")
         }
@@ -968,7 +959,7 @@ struct PDFKitView: UIViewRepresentable {
                 weak var weakDocument = document
 
                 // 使用后台队列执行保存操作
-                DispatchQueue.global(qos: .userInitiated).async {
+                DispatchQueue.main.async {
                     // 确保document仍然有效
                     guard let strongDocument = weakDocument else { return }
 
@@ -1059,8 +1050,6 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         @objc private func pageDidChange(notification: Notification) {
-            // 页面切换时立即隐藏菜单并清除选择
-            UIMenuController.shared.hideMenu()
             if let pdfView = notification.object as? PDFView {
                 pdfView.setCurrentSelection(nil, animate: false)
             }
@@ -1108,34 +1097,106 @@ struct PDFKitView: UIViewRepresentable {
 }
 
 class CustomPDFView: PDFView {
-    private var contextMenuInteraction: UIContextMenuInteraction?
-
-    override func awakeFromNib() {
-        super.awakeFromNib()
-        setupContextMenu()
-    }
+    private var longPressGesture: UILongPressGestureRecognizer?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
-        setupContextMenu()
+        setupCustomMenu()
     }
 
     required init?(coder: NSCoder) {
         super.init(coder: coder)
-        setupContextMenu()
+        setupCustomMenu()
     }
 
-    private func setupContextMenu() {
-        contextMenuInteraction = UIContextMenuInteraction(delegate: self)
-        addInteraction(contextMenuInteraction!)
+    private func setupCustomMenu() {
+        // 移除之前的手势识别器
+        if let existingGesture = longPressGesture {
+            removeGestureRecognizer(existingGesture)
+        }
+
+        // 添加长按手势识别器
+        longPressGesture = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
+        longPressGesture?.minimumPressDuration = 0.5
+        addGestureRecognizer(longPressGesture!)
+    }
+
+    @objc private func handleLongPress(_ gesture: UILongPressGestureRecognizer) {
+        guard gesture.state == .began else { return }
+
+        // 检查是否有文本被选中
+        guard let selection = currentSelection,
+              let selectedText = selection.string,
+              !selectedText.isEmpty else {
+            return
+        }
+
+        // 确保成为第一响应者
+        becomeFirstResponder()
+
+        // 显示自定义菜单
+        showCustomMenu()
+    }
+
+    private func showCustomMenu() {
+        guard let coordinator = delegate as? PDFKitView.Coordinator else { return }
+
+        // 找到最顶层的view controller
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let window = windowScene.windows.first,
+              let rootViewController = window.rootViewController else {
+            return
+        }
+
+        var topViewController = rootViewController
+        while let presentedViewController = topViewController.presentedViewController {
+            topViewController = presentedViewController
+        }
+
+        // 创建UIAlertController作为菜单
+        let alertController = UIAlertController(title: nil, message: nil, preferredStyle: .actionSheet)
+
+        // 添加菜单项
+        let translateAction = UIAlertAction(title: "翻译", style: .default) { _ in
+            coordinator.translateSelectedText(self)
+        }
+
+        let translateWholePageAction = UIAlertAction(title: "翻译整页", style: .default) { _ in
+            coordinator.translateWholePage(self)
+        }
+
+        let chatAction = UIAlertAction(title: "对话", style: .default) { _ in
+            coordinator.chatWithSelectedText(self)
+        }
+
+        let highlightAction = UIAlertAction(title: "高亮", style: .default) { _ in
+            coordinator.highlightSelectedText(self)
+        }
+
+        let cancelAction = UIAlertAction(title: "取消", style: .cancel, handler: nil)
+
+        alertController.addAction(translateAction)
+        alertController.addAction(translateWholePageAction)
+        alertController.addAction(chatAction)
+        alertController.addAction(highlightAction)
+        alertController.addAction(cancelAction)
+
+        // 为iPad设置popover
+        if let popover = alertController.popoverPresentationController {
+            popover.sourceView = self
+            popover.sourceRect = CGRect(x: bounds.midX, y: bounds.midY, width: 0, height: 0)
+            popover.permittedArrowDirections = []
+        }
+
+        // 呈现菜单
+        topViewController.present(alertController, animated: true)
     }
 
     override func willMove(toSuperview newSuperview: UIView?) {
         super.willMove(toSuperview: newSuperview)
         if newSuperview == nil {
-            // 视图即将被移除时，清理菜单状态
-            setCurrentSelection(nil, animate: false)
-
+            // 视图即将被移除时，清理选择状态
+            self.setCurrentSelection(nil, animate: false)
             NSLog("✅ PDFKitView.swift -> CustomPDFView.willMove, CustomPDFView 即将从父视图移除")
         }
     }
@@ -1143,64 +1204,9 @@ class CustomPDFView: PDFView {
     override func didMoveToSuperview() {
         super.didMoveToSuperview()
         if superview != nil {
-
             NSLog("✅ PDFKitView.swift -> CustomPDFView.didMoveToSuperview, CustomPDFView 已添加到父视图")
         }
     }
 
     override var canBecomeFirstResponder: Bool { true }
-}
-
-extension CustomPDFView: UIContextMenuInteractionDelegate {
-    func contextMenuInteraction(_: UIContextMenuInteraction, configurationForMenuAtLocation _: CGPoint) -> UIContextMenuConfiguration? {
-        // 检查是否有文本被选中
-        guard let selection = currentSelection,
-              let selectedText = selection.string,
-              !selectedText.isEmpty
-        else {
-            return nil
-        }
-
-        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
-            guard let self = self,
-                  let coordinator = self.delegate as? PDFKitView.Coordinator
-            else {
-                return UIMenu(title: "", children: [])
-            }
-
-            let translateAction = UIAction(
-                title: "翻译",
-                image: UIImage(systemName: "translate")
-            ) { _ in
-                coordinator.translateSelectedText(self)
-            }
-
-            let translateWholePageAction = UIAction(
-                title: "翻译整页",
-                image: UIImage(systemName: "doc.text")
-            ) { _ in
-                coordinator.translateWholePage(self)
-            }
-
-            let chatAction = UIAction(
-                title: "对话",
-                image: UIImage(systemName: "message")
-            ) { _ in
-                coordinator.chatWithSelectedText(self)
-            }
-
-            let highlightAction = UIAction(
-                title: "高亮",
-                image: UIImage(systemName: "highlighter")
-            ) { _ in
-                coordinator.highlightSelectedText(self)
-            }
-
-            return UIMenu(title: "", children: [translateAction, translateWholePageAction, chatAction, highlightAction])
-        }
-    }
-
-    func contextMenuInteraction(_: UIContextMenuInteraction, willPerformPreviewActionForMenuWith _: UIContextMenuConfiguration, animator _: UIContextMenuInteractionCommitAnimating) {
-        // 可选：处理预览动作
-    }
 }
