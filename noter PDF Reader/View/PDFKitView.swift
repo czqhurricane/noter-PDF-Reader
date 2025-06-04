@@ -18,8 +18,8 @@ extension UIResponder {
 extension CGRect {
     var isValid: Bool {
         return origin.x.isFinite && origin.y.isFinite &&
-          !origin.x.isNaN && !origin.y.isNaN &&
-          size.width > 0 && size.height > 0
+            !origin.x.isNaN && !origin.y.isNaN &&
+            size.width > 0 && size.height > 0
     }
 }
 
@@ -925,6 +925,14 @@ struct PDFKitView: UIViewRepresentable {
                     convertedRect.size.height > 0
                 else {
                     NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.handleTextSelection, Invalid selection rectangle: \(convertedRect)")
+
+                    return
+                }
+
+                // 确保 pdfView 在视图层次结构中并有一个有效的窗口
+                guard pdfView.window != nil, pdfView.superview != nil else {
+                    NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.handleTextSelection, PDFView 不在视图层次结构中或没有窗口")
+
                     return
                 }
 
@@ -933,6 +941,12 @@ struct PDFKitView: UIViewRepresentable {
                     // 检查是否仍然有文本被选中，避免在选择消失后显示菜单
                     if let selectionString = pdfView.currentSelection?.string, !selectionString.isEmpty {
                         UIMenuController.shared.showMenu(from: pdfView, rect: validRect)
+                    }
+
+                    // 5秒后自动隐藏菜单
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
+                        pdfView.setCurrentSelection(nil, animate: true)
+                        UIMenuController.shared.hideMenu()
                     }
                 }
             }
