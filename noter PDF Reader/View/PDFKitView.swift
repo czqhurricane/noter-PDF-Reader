@@ -461,12 +461,12 @@ struct PDFKitView: UIViewRepresentable {
             }
 
             // 注册自定义菜单项并设置target为self
-            UIMenuController.shared.menuItems = [
-                UIMenuItem(title: "翻译", action: #selector(Coordinator.translateSelectedText(_:))),
-                UIMenuItem(title: "翻译整页", action: #selector(Coordinator.translateWholePage(_:))),
-                UIMenuItem(title: "对话", action: #selector(Coordinator.chatWithSelectedText(_:))),
-                UIMenuItem(title: "高亮", action: #selector(Coordinator.highlightSelectedText(_:))),
-            ]
+            // UIMenuController.shared.menuItems = [
+            //     UIMenuItem(title: "翻译", action: #selector(Coordinator.translateSelectedText(_:))),
+            //     UIMenuItem(title: "翻译整页", action: #selector(Coordinator.translateWholePage(_:))),
+            //     UIMenuItem(title: "对话", action: #selector(Coordinator.chatWithSelectedText(_:))),
+            //     UIMenuItem(title: "高亮", action: #selector(Coordinator.highlightSelectedText(_:))),
+            // ]
 
             // 配置箭头样式
             arrowLayer.fillColor = UIColor.red.cgColor
@@ -895,15 +895,11 @@ struct PDFKitView: UIViewRepresentable {
         @objc func handleTextSelection(_ notification: Notification) {
             guard let pdfView = notification.object as? CustomPDFView else { return }
             guard let selection = pdfView.currentSelection else {
-                // 如果没有选择，立即隐藏菜单
-                UIMenuController.shared.hideMenu()
-
                 return
             }
+
             // 隐藏菜单如果当前没有选择文本
             guard let selectedText = selection.string, !selectedText.isEmpty else {
-                UIMenuController.shared.hideMenu()
-
                 return
             }
 
@@ -919,60 +915,6 @@ struct PDFKitView: UIViewRepresentable {
             if let currentPage = pdfView.currentPage {
                 // 保存页面的文本
                 pageText = currentPage.string ?? "default value"
-
-                let selectionRect = selection.bounds(for: currentPage)
-                let convertedRect = pdfView.convert(selectionRect, from: currentPage)
-                let validRect = convertedRect.isValid ? convertedRect : CGRect(x: pdfView.bounds.midX, y: pdfView.bounds.midY, width: 100, height: 30)
-
-                // 验证转换后的矩形坐标是否有效
-                guard convertedRect.origin.x.isFinite &&
-                    convertedRect.origin.y.isFinite &&
-                    !convertedRect.origin.x.isNaN &&
-                    !convertedRect.origin.y.isNaN &&
-                    convertedRect.size.width > 0 &&
-                    convertedRect.size.height > 0
-                else {
-                    NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.handleTextSelection, Invalid selection rectangle: \(convertedRect)")
-
-                    return
-                }
-
-                // 确保 pdfView 在视图层次结构中并有一个有效的窗口
-                guard pdfView.window != nil, pdfView.superview != nil,
-                      pdfView.window?.rootViewController != nil else {
-                    NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.handleTextSelection, PDFView 不在视图层次结构中或没有窗口")
-
-                    return
-                }
-
-                // 延迟显示菜单，确保选择状态稳定
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    [weak self, weak pdfView] in
-
-                    // 检查对象是否仍然存在
-                    guard let self = self, let pdfView = pdfView else { return }
-
-                    // 再次检查视图层次结构
-                    guard pdfView.window != nil,
-                          pdfView.superview != nil,
-                          pdfView.window?.rootViewController != nil else {
-                        return
-                    }
-
-                    // 检查是否仍然有文本被选中，避免在选择消失后显示菜单
-                    if let selectionString = pdfView.currentSelection?.string, !selectionString.isEmpty {
-                        UIMenuController.shared.showMenu(from: pdfView, rect: validRect)
-                    }
-
-                    // 5秒后自动隐藏菜单
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-                        // 检查视图是否仍然有效
-                        guard pdfView.window != nil else { return }
-
-                        pdfView.setCurrentSelection(nil, animate: true)
-                        UIMenuController.shared.hideMenu()
-                    }
-                }
             }
         }
 
@@ -1166,12 +1108,33 @@ struct PDFKitView: UIViewRepresentable {
 }
 
 class CustomPDFView: PDFView {
+    private var contextMenuInteraction: UIContextMenuInteraction?
+
+    override func awakeFromNib() {
+        super.awakeFromNib()
+        setupContextMenu()
+    }
+
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+        setupContextMenu()
+    }
+
+    required init?(coder: NSCoder) {
+        super.init(coder: coder)
+        setupContextMenu()
+    }
+
+    private func setupContextMenu() {
+        contextMenuInteraction = UIContextMenuInteraction(delegate: self)
+        addInteraction(contextMenuInteraction!)
+    }
+
     override func willMove(toSuperview newSuperview: UIView?) {
         super.willMove(toSuperview: newSuperview)
         if newSuperview == nil {
             // 视图即将被移除时，清理菜单状态
-            UIMenuController.shared.hideMenu()
-            self.setCurrentSelection(nil, animate: false)
+            setCurrentSelection(nil, animate: false)
 
             NSLog("✅ PDFKitView.swift -> CustomPDFView.willMove, CustomPDFView 即将从父视图移除")
         }
@@ -1180,46 +1143,64 @@ class CustomPDFView: PDFView {
     override func didMoveToSuperview() {
         super.didMoveToSuperview()
         if superview != nil {
+
             NSLog("✅ PDFKitView.swift -> CustomPDFView.didMoveToSuperview, CustomPDFView 已添加到父视图")
         }
     }
 
     override var canBecomeFirstResponder: Bool { true }
+}
 
-    // 必须声明显式的 @objc 方法来支持 iOS 14
-    @objc func translateSelectedText(_ sender: Any?) {
-        // 直接通过父视图的coordinator调用方法
-        if let coordinator = delegate as? PDFKitView.Coordinator {
-            coordinator.translateSelectedText(sender!)
+extension CustomPDFView: UIContextMenuInteractionDelegate {
+    func contextMenuInteraction(_: UIContextMenuInteraction, configurationForMenuAtLocation _: CGPoint) -> UIContextMenuConfiguration? {
+        // 检查是否有文本被选中
+        guard let selection = currentSelection,
+              let selectedText = selection.string,
+              !selectedText.isEmpty
+        else {
+            return nil
+        }
+
+        return UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { [weak self] _ in
+            guard let self = self,
+                  let coordinator = self.delegate as? PDFKitView.Coordinator
+            else {
+                return UIMenu(title: "", children: [])
+            }
+
+            let translateAction = UIAction(
+                title: "翻译",
+                image: UIImage(systemName: "translate")
+            ) { _ in
+                coordinator.translateSelectedText(self)
+            }
+
+            let translateWholePageAction = UIAction(
+                title: "翻译整页",
+                image: UIImage(systemName: "doc.text")
+            ) { _ in
+                coordinator.translateWholePage(self)
+            }
+
+            let chatAction = UIAction(
+                title: "对话",
+                image: UIImage(systemName: "message")
+            ) { _ in
+                coordinator.chatWithSelectedText(self)
+            }
+
+            let highlightAction = UIAction(
+                title: "高亮",
+                image: UIImage(systemName: "highlighter")
+            ) { _ in
+                coordinator.highlightSelectedText(self)
+            }
+
+            return UIMenu(title: "", children: [translateAction, translateWholePageAction, chatAction, highlightAction])
         }
     }
 
-    @objc func translateWholePage(_ sender: Any?) {
-        // 直接通过父视图的coordinator调用方法
-        if let coordinator = delegate as? PDFKitView.Coordinator {
-            coordinator.translateWholePage(sender!)
-        }
-    }
-
-    @objc func chatWithSelectedText(_ sender: Any?) {
-        // 直接通过父视图的coordinator调用方法
-        if let coordinator = delegate as? PDFKitView.Coordinator {
-            coordinator.chatWithSelectedText(sender!)
-        }
-    }
-
-    @objc func highlightSelectedText(_ sender: Any?) {
-        // 直接通过父视图的coordinator调用方法
-        if let coordinator = delegate as? PDFKitView.Coordinator {
-            coordinator.highlightSelectedText(sender!)
-        }
-    }
-
-    override func canPerformAction(_ action: Selector, withSender sender: Any?) -> Bool {
-        // 使用明确的 #selector 语法来确保兼容性
-        if action == #selector(translateSelectedText(_:)) || action == #selector(translateWholePage(_:)) || action == #selector(chatWithSelectedText(_:)) || action == #selector(highlightSelectedText(_:)) {
-            return true
-        }
-        return super.canPerformAction(action, withSender: sender)
+    func contextMenuInteraction(_: UIContextMenuInteraction, willPerformPreviewActionForMenuWith _: UIContextMenuConfiguration, animator _: UIContextMenuInteractionCommitAnimating) {
+        // 可选：处理预览动作
     }
 }
