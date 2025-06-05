@@ -36,17 +36,17 @@ class AnnotationListViewModel: ObservableObject {
             }
 
             // 查询注释
-            self.annotationDatas = DatabaseManager.shared.queryAnnotations()
+            let annotations = DatabaseManager.shared.queryAnnotations()
 
             NSLog("✅ AnnotationListViewModel.swift -> AnnotationListViewModel.loadAnnotationsFromDatabase, 查询到 \(self.annotationDatas.count) 条注释")
 
             // 关闭数据库
             DatabaseManager.shared.closeDatabase()
 
-            self.updateSearchResults()
-
             // 在主线程更新UI
             DispatchQueue.main.async {
+                self.annotationDatas = annotations
+                self.updateSearchResults()
                 self.isLoading = false
 
                 NSLog("✅ AnnotationListViewModel.swift -> AnnotationListViewModel.loadAnnotationsFromDatabase, 搜索到 \(self.filteredFormattedAnnotations.count) 条注释")
@@ -60,10 +60,15 @@ class AnnotationListViewModel: ObservableObject {
 
         // 创建新的搜索任务
         let workItem = DispatchWorkItem { [weak self] in
-            self?.formatAnnotations()
-            self?.filterAnnotations()
+            guard let self = self else { return }
+
+            let formatted = self.formatAnnotations()
+            let filtered = self.filterAnnotations(formatted: formatted)
 
             DispatchQueue.main.async {
+                self.formattedAnnotations = formatted
+                self.filteredFormattedAnnotations = filtered
+
                 NSLog("✅ AnnotationListViewModel.swift -> AnnotationListViewModel.updateSearchResults, 更新搜索结果")
             }
         }
@@ -74,25 +79,26 @@ class AnnotationListViewModel: ObservableObject {
         DispatchQueue.global(qos: .userInitiated).asyncAfter(deadline: .now() + 0.3, execute: workItem)
     }
 
-    func formatAnnotations() {
-        formattedAnnotations.removeAll()
+    // 修改：返回数值而非修改属性
+    private func formatAnnotations() -> [String] {
+        var results = [String]()
 
         for annotation in annotationDatas {
-            let formattedAnnotation = DatabaseManager.shared.formatAnnotationForNoterPage(annotation)
-            if !formattedAnnotation.isEmpty {
-                formattedAnnotations.append(formattedAnnotation)
+            let formatted = DatabaseManager.shared.formatAnnotationForNoterPage(annotation)
+            if !formatted.isEmpty {
+                results.append(formatted)
             }
         }
+
+        return results
     }
 
-    // 过滤注释
-    func filterAnnotations() {
-        filteredFormattedAnnotations.removeAll()
-
+    // 修改：返回数值而非修改属性
+    private func filterAnnotations(formatted: [String]) -> [String] {
         if searchText.isEmpty {
-            filteredFormattedAnnotations = formattedAnnotations
+            return formatted
         } else {
-            filteredFormattedAnnotations = formattedAnnotations.filter {
+            return formatted.filter {
                 $0.lowercased().contains(searchText.lowercased())
             }
         }
