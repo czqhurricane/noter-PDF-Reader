@@ -90,11 +90,8 @@ struct PDFSearchView: View {
             }
         }
         .onAppear {
-            // 视图出现时恢复搜索结果和执行搜索
+            // 视图出现时恢复搜索结果
             loadPersistedSearchResults()
-            if !searchText.isEmpty {
-                performSearch()
-            }
         }
         .onDisappear {
             // 视图消失时保存搜索结果和取消定时器
