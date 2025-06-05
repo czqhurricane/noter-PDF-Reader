@@ -46,20 +46,43 @@ class DirectoryAccessManager: ObservableObject {
             // 创建数据库文件并初始化表结构
             if DatabaseManager.shared.initializeDatabase(at: dataBasePath) {
                 NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 成功创建并初始化数据库: \(dataBasePath)")
-                // 清空并重新填充files表
-                updateFilesTable(at: dataBasePath, rootURL: url)
 
-                // 发送通知，通知加载新创建的数据库
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("LoadAnnotationsDatabase"),
-                    object: nil,
-                    userInfo: ["dataBasePath": dataBasePath]
-                )
+                // 添加延迟确保数据库初始化完成
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) { [weak self] in
+                    guard let self = self else { return }
+
+                    // 清空并重新填充files表
+                    self.updateFilesTable(at: dataBasePath, rootURL: url)
+
+                    // 发送通知，通知加载新创建的数据库
+                    NotificationCenter.default.post(
+                      name: NSNotification.Name("LoadAnnotationsDatabase"),
+                      object: nil,
+                      userInfo: ["dataBasePath": dataBasePath]
+                    )
+                }
             } else {
                 NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 创建数据库失败: \(dataBasePath)")
 
-                DispatchQueue.main.async {
-                    self.errorMessage = "创建数据库失败"
+                // 添加重试逻辑
+                DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) { [weak self] in
+                    guard let self = self else { return }
+
+                    NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 尝试重新创建数据库")
+
+                    if DatabaseManager.shared.initializeDatabase(at: dataBasePath) {
+                        self.updateFilesTable(at: dataBasePath, rootURL: url)
+
+                        NotificationCenter.default.post(
+                          name: NSNotification.Name("LoadAnnotationsDatabase"),
+                          object: nil,
+                          userInfo: ["dataBasePath": dataBasePath]
+                        )
+                    } else {
+                        DispatchQueue.main.async {
+                            self.errorMessage = "创建数据库失败，请重试"
+                        }
+                    }
                 }
             }
         }
@@ -296,8 +319,7 @@ class DirectoryAccessManager: ObservableObject {
             // 创建files表（如果不存在）
             let createTableSQL = """
             CREATE TABLE IF NOT EXISTS files (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                file TEXT NOT NULL,
+                file TEXT UNIQUE PRIMARY KEY,
                 title TEXT NOT NULL
             )
             """
