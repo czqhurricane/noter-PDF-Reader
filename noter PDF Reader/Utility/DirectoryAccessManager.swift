@@ -366,7 +366,7 @@ class DirectoryAccessManager: ObservableObject {
         dbQueue.close()
     }
 
-    private func convertToRawPath(_ path: String) -> String {
+    func convertToRawPath(_ path: String) -> String {
         // 获取当前的 rootDirectoryURL
         let rootPath: String
 

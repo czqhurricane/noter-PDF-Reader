@@ -234,7 +234,6 @@ struct PDFKitView: UIViewRepresentable {
             }
         }
 
-
         let currentState = (url: url, page: page, xRatio: xRatio, yRatio: yRatio, forceRender: forceRender)
 
         if context.coordinator.previousState == nil ||
@@ -407,21 +406,18 @@ struct PDFKitView: UIViewRepresentable {
         var xRatio: Double { parent.xRatio }
         var yRatio: Double { parent.yRatio }
         var parent: PDFKitView
-        var isLocationMode: Bool = false // 添加这个属性
+        var isLocationMode: Bool = false
         var currentOutlineString = "" // 新增属性存储当前大纲路径
         var previousState: (url: URL, page: Int, xRatio: Double, yRatio: Double, forceRender: Bool)?
         var outlineVC: PDFOutlineViewController?
 
         private var isProcessingPageChange = false
-        // 计时器的属性
-        private var arrowTimer: Timer?
+        private var arrowTimer: Timer? // 计时器的属性
         private var lastTapXRatio: Double = 0
         private var lastTapYRatio: Double = 0
-        // 存储选中文本的属性
-        private var selectedText: String = ""
+        private var selectedText: String = "" // 存储选中文本的属性
         private var pageText: String = ""
-        // 否是翻译模式标识
-        private var isTranslationMode: Bool = false
+        private var isTranslationMode: Bool = false // 否是翻译模式标识
 
         // 向 PDFView 添加一个弱引用
         weak var pdfView: PDFView?
@@ -1133,9 +1129,7 @@ class CustomPDFView: PDFView {
         // 找到最顶层的view controller
         guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
               let window = windowScene.windows.first,
-              let rootViewController = window.rootViewController else {
-            return
-        }
+              let rootViewController = window.rootViewController else { return }
 
         var topViewController = rootViewController
         while let presentedViewController = topViewController.presentedViewController {

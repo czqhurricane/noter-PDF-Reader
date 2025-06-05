@@ -129,6 +129,7 @@ struct PDFFolderSearchView: View {
                 DispatchQueue.main.async {
                     self.isSearching = false
                 }
+
                 return
             }
 
@@ -148,14 +149,14 @@ struct PDFFolderSearchView: View {
                             if let colonIndex = line.firstIndex(of: ":") {
                                 let pageString = String(line[..<colonIndex])
                                 if let pageNumber = Int(pageString) {
-                                    let fileName = txtFile.deletingPathExtension().lastPathComponent
+                                    let pdfFileName = txtFile.deletingPathExtension().lastPathComponent
 
                                     // 从数据库获取文件路径
-                                    if let filePath = getFilePathFromDatabase(fileName: fileName) {
+                                    if let filePath = getFilePathFromDatabase(fileName: pdfFileName) {
                                         let convertedPath = PathConverter.convertNoterPagePath(filePath, rootDirectoryURL: lastSelectedDirectoryURL)
 
                                         let result = FolderSearchResult(
-                                            fileName: fileName,
+                                            fileName: pdfFileName,
                                             filePath: convertedPath,
                                             pageNumber: pageNumber,
                                             context: line

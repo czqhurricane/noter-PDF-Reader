@@ -470,7 +470,7 @@ class DatabaseManager {
                         if queryResult.next() {
                             lastPage = Int(queryResult.int(forColumn: "last_page"))
 
-                            NSLog("✅ DatabaseManager.swift -> DatabaseManager.getLastVisitedPage, 找到PDF最后访问页面: \(pdfPath), 页码: \(lastPage ?? 0)")
+                            NSLog("✅ DatabaseManager.swift -> DatabaseManager.getLastVisitedPage, 找到 PDF 最后访问页面: \(pdfPath), 页码: \(lastPage ?? 0)")
                         } else {
                             NSLog("✅ DatabaseManager.swift -> DatabaseManager.getLastVisitedPage, 未找到PDF访问记录: \(pdfPath)")
                         }
