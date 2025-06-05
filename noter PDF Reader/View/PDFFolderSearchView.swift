@@ -27,8 +27,8 @@ struct PDFFolderSearchView: View {
 
                         // 创建新的防抖定时器
                         searchTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
-                        performSearch()
-                    }
+                            performSearch()
+                        }
                     }
 
                 if !searchText.isEmpty {
@@ -91,13 +91,15 @@ struct PDFFolderSearchView: View {
             }
         }
         .onAppear {
-            // 视图出现时执行搜索，恢复之前的搜索结果
+            // 视图出现时恢复搜索结果和执行搜索
+            loadPersistedSearchResults()
             if !searchText.isEmpty {
                 performSearch()
             }
         }
         .onDisappear {
-            // 视图消失时取消定时器
+            // 视图消失时保存搜索结果和取消定时器
+            saveSearchResults()
             searchTimer?.invalidate()
         }
         .navigationTitle("PDF 文件夹搜索")
@@ -114,6 +116,7 @@ struct PDFFolderSearchView: View {
     private func performSearch() {
         guard !searchText.isEmpty else {
             searchResults = []
+            saveSearchResults() // 清空时也保存
             return
         }
 
@@ -174,7 +177,25 @@ struct PDFFolderSearchView: View {
             DispatchQueue.main.async {
                 self.searchResults = results
                 self.isSearching = false
+                self.saveSearchResults() // 搜索完成后保存结果
             }
+        }
+    }
+
+    // 保存搜索结果到UserDefaults
+    private func saveSearchResults() {
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(searchResults.map { SerializableFolderSearchResult(from: $0) }) {
+            UserDefaults.standard.set(encoded, forKey: "persistedFolderSearchResults")
+        }
+    }
+
+    // 从UserDefaults加载搜索结果
+    private func loadPersistedSearchResults() {
+        guard let data = UserDefaults.standard.data(forKey: "persistedFolderSearchResults") else { return }
+        let decoder = JSONDecoder()
+        if let decoded = try? decoder.decode([SerializableFolderSearchResult].self, from: data) {
+            searchResults = decoded.map { $0.toFolderSearchResult() }
         }
     }
 
@@ -182,6 +203,30 @@ struct PDFFolderSearchView: View {
         // 这里需要查询数据库获取文件路径
         // 由于DatabaseManager是单例，我们可以直接使用
         return DatabaseManager.shared.getFilePathByTitle(fileName)
+    }
+}
+
+// 可序列化的FolderSearchResult结构
+struct SerializableFolderSearchResult: Codable {
+    let fileName: String
+    let filePath: String
+    let pageNumber: Int
+    let context: String
+
+    init(from result: FolderSearchResult) {
+        fileName = result.fileName
+        filePath = result.filePath
+        pageNumber = result.pageNumber
+        context = result.context
+    }
+
+    func toFolderSearchResult() -> FolderSearchResult {
+        return FolderSearchResult(
+            fileName: fileName,
+            filePath: filePath,
+            pageNumber: pageNumber,
+            context: context
+        )
     }
 }
 
