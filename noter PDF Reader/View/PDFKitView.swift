@@ -40,7 +40,7 @@ struct PDFKitView: UIViewRepresentable {
     @Binding var annotation: String
     @Binding var forceRender: Bool
     @Binding var pdfDocument: PDFDocument?
-    @Binding var selectedSearchSelection: PDFSelection?
+    @Binding var selectedSearchSelection: String?
     @Binding var selectedFolderSearchText: String?
     @Binding var showChatSheet: Bool
     @Binding var textToProcess: String
@@ -179,29 +179,6 @@ struct PDFKitView: UIViewRepresentable {
         context.coordinator.parent = self
         context.coordinator.isLocationMode = isLocationMode // 更新协调器中的状态
 
-        // 处理 PDFSearchView 搜索结果选择
-        if let selection = selectedSearchSelection {
-            // 确保在主线程执行
-            DispatchQueue.main.async {
-                // 导航至所选页面
-                if let page = selection.pages.first {
-                    pdfView.go(to: page)
-                }
-
-                // 高亮显示所选文本
-                selection.color = UIColor.yellow.withAlphaComponent(0.3)
-                pdfView.setCurrentSelection(selection, animate: true)
-
-                // 5秒后取消选中
-                DispatchQueue.main.asyncAfter(deadline: .now() + 5.0) {
-                    pdfView.setCurrentSelection(nil, animate: true)
-                }
-            }
-
-            // 立即重置状态，避免重复处理
-            selectedSearchSelection = nil
-        }
-
         // 处理目录显示
         if showOutlines {
             if context.coordinator.outlineVC == nil {
@@ -236,7 +213,7 @@ struct PDFKitView: UIViewRepresentable {
         // 处理 PDFFolderSearchView文件夹搜索结果高亮
         if let searchText = selectedFolderSearchText {
             DispatchQueue.main.async {
-                self.highlightFolderSearchText(pdfView: pdfView, searchText: searchText)
+                self.highlightSearchText(pdfView: pdfView, searchText: searchText)
             }
 
             // 确保在主线程重置状态，避免重复处理
@@ -244,6 +221,19 @@ struct PDFKitView: UIViewRepresentable {
                 self.selectedFolderSearchText = nil
             }
         }
+
+        // 处理 PDFSearchView文件夹搜索结果高亮
+        if let searchText = selectedSearchSelection {
+            DispatchQueue.main.async {
+                self.highlightSearchText(pdfView: pdfView, searchText: searchText)
+            }
+
+            // 确保在主线程重置状态，避免重复处理
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                self.selectedSearchSelection = nil
+            }
+        }
+
 
         let currentState = (url: url, page: page, xRatio: xRatio, yRatio: yRatio, forceRender: forceRender)
 
@@ -386,7 +376,7 @@ struct PDFKitView: UIViewRepresentable {
     }
 
     // 高亮 PDFFolderSearchView 文件夹搜索文本的方法
-    private func highlightFolderSearchText(pdfView: PDFView, searchText: String) {
+    private func highlightSearchText(pdfView: PDFView, searchText: String) {
         guard let document = pdfView.document,
               let currentPage = pdfView.currentPage else { return }
 

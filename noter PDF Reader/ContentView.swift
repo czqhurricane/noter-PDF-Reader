@@ -10,10 +10,10 @@ struct ContentView: View {
     @State private var currentPage: Int = 1
     @State private var xRatio: Double = 0.0
     @State private var yRatio: Double = 0.0
-    @State private var showAnnotationsSheet = false // 显示保存的注释列表视图
+    @State private var showAnnotationsSheet = false                           // 显示保存的注释列表视图
     @State private var showFolderSearchSheet = false
-    @State private var showOutlines = false         // 显示 PDF 目录
-    @State private var showSearchSheet = false      // 显示 PDF 全文搜索 sheet
+    @State private var showOutlines = false                                   // 显示 PDF 目录
+    @State private var showSearchSheet = false                                // 显示 PDF 全文搜索 sheet
     @State private var showPDFPicker = false
     @State private var showLinkInputSheet = false
     @State private var showChatSheet = false
@@ -21,32 +21,25 @@ struct ContentView: View {
     @State private var linkText: String = ""
     @State private var rootFolderURL: URL? = UserDefaults.standard.url(forKey: "RootFolder")
     @State private var isPDFLoaded = false
-    @State private var viewPoint: CGPoint = .zero   // 用于传递箭头图层坐标至 ArrowAnnotationView
+    @State private var viewPoint: CGPoint = .zero                             // 用于传递箭头图层坐标至 ArrowAnnotationView
     @State private var pdfLoadError: String? = nil
     @State private var originalPathInput: String = UserDefaults.standard.string(forKey: "OriginalPath") ?? ""
-    @State private var annotation: String = ""      // 存储用户输入的注释
-    @State private var isLocationMode = false       // 是否添加注释的状态变量
+    @State private var annotation: String = ""                                // 存储用户输入的注释
+    @State private var isLocationMode = false                                 // 是否添加注释的状态变量
     @State private var forceRender = true
     @State private var pdfDocument: PDFDocument?
-    // 添加新的状态变量用于跟踪当前选中的搜索结果
-    @State private var selectedSearchSelection: PDFSelection? = nil
+    @State private var selectedSearchSelection: String? = nil                 // 跟踪当前选中的搜索结果
     @State private var textToProcess = ""
     @State private var autoSendMessage = false
-    @State private var occlusionImage: UIImage? = nil              // State to hold the captured image
+    @State private var occlusionImage: UIImage? = nil                         // State to hold the captured image
     @State private var occlusionSource: String = ""
-    @State private var pdfViewCoordinator: PDFKitView.Coordinator? // To call coordinator methods
-    @State private var shouldNavigateToOcclusion = false           // Occlusion 导航状态
+    @State private var pdfViewCoordinator: PDFKitView.Coordinator?            // To call coordinator methods
+    @State private var shouldNavigateToOcclusion = false                      // Occlusion 导航状态
     @State private var toolbarScrollOffset: CGFloat = 0
     @State private var shouldShowArrow = true
-    // 跟踪文件夹搜索的高亮文本
-    @State private var selectedFolderSearchText: String? = nil
-
-    // 目录访问管理器
-    @StateObject private var directoryManager = DirectoryAccessManager.shared
+    @State private var selectedFolderSearchText: String? = nil                // 跟踪文件夹搜索的高亮文本
+    @StateObject private var directoryManager = DirectoryAccessManager.shared // 目录访问管理器
     @StateObject var annotationListViewModel = AnnotationListViewModel()
-
-    // 添加搜索状态管理
-    @AppStorage("lastSearchText") private var lastSearchText: String = ""
 
     @ViewBuilder
     private var pdfDisplaySection: some View {
@@ -63,7 +56,7 @@ struct ContentView: View {
                     shouldShowArrow: shouldShowArrow,
                     coordinatorCallback: { coordinator in
                         self.pdfViewCoordinator = coordinator
-                    },                              // 传递一个回调函数以获取协调器实例
+                    }, // 传递一个回调函数以获取协调器实例
                     isPDFLoaded: $isPDFLoaded,
                     viewPoint: $viewPoint,
                     annotation: $annotation,
@@ -289,11 +282,11 @@ struct ContentView: View {
     @ViewBuilder
     private var searchSheetContent: some View {
         NavigationView {
-            PDFSearchView(pdfDocument: $pdfDocument) { result in
+            PDFSearchView(pdfDocument: $pdfDocument) { filePath, pageNumber, context in
                 // 更新选中的搜索结果
-                selectedSearchSelection = result.selection
-                // 保存最后选择的搜索结果页码
-                UserDefaults.standard.set(result.page, forKey: "lastSearchPage")
+                selectedSearchSelection = extractSearchKeyword(from: context)
+                // 打开指定的PDF文件并跳转到指定页面
+                openPDF(at: filePath, page: pageNumber, xRatio: xRatio, yRatio: yRatio, showArrow: false)
                 // 立即关闭搜索sheet
                 showSearchSheet = false
             }
@@ -622,7 +615,7 @@ struct ContentView: View {
     private func openPDF(at convertedPdfPath: String, page: Int, xRatio: Double, yRatio: Double, showArrow: Bool) {
         if let secureURL = directoryManager.startAccessingFile(at: convertedPdfPath) {
             pdfURL = secureURL
-            rawPdfPath = self.convertToRawPath(convertedPdfPath)
+            rawPdfPath = convertToRawPath(convertedPdfPath)
             currentPage = page
             self.xRatio = xRatio
             self.yRatio = yRatio

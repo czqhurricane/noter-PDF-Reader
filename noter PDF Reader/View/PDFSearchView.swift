@@ -12,7 +12,7 @@ struct PDFSearchView: View {
     // 添加防抖定时器
     @State private var searchTimer: Timer?
 
-    var onResultSelected: (PDFSearchResult) -> Void
+    var onResultSelected: (String, Int, String) -> Void
 
     var body: some View {
         VStack {
@@ -54,16 +54,16 @@ struct PDFSearchView: View {
                     ForEach(searchResults) { result in
                         Button(action: {
                             // 先调用回调函数
-                            onResultSelected(result)
+                            onResultSelected(result.filePath, result.pageNumber, result.context)
                         }) {
                             HStack {
-                                Text("第\(result.pageLabel)页")
+                                Text("第\(result.pageNumber)页")
                                     .font(.headline)
                                     .foregroundColor(.blue)
                                     .frame(width: 80, alignment: .leading)
 
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(getContextString(from: result))
+                                    Text(result.context)
                                         .lineLimit(3)
                                         .foregroundColor(.primary)
                                         .font(.system(size: 14))
@@ -90,8 +90,20 @@ struct PDFSearchView: View {
             }
         }
         .onAppear {
-            // 视图出现时恢复搜索结果
-            loadPersistedSearchResults()
+            // Get path string instead of URL
+            guard let lastPDFPath = UserDefaults.standard.string(forKey: "LastPDFSearchFile"),
+                  let currentPDFPath = pdfDocument?.documentURL?.path
+            else {
+                performSearch()
+                return
+            }
+
+            // Compare path strings
+            if lastPDFPath != currentPDFPath {
+                performSearch()
+            } else {
+                loadPersistedSearchResults()
+            }
         }
         .onDisappear {
             // 视图消失时保存搜索结果和取消定时器
@@ -110,7 +122,7 @@ struct PDFSearchView: View {
     }
 
     private func performSearch() {
-        guard let document = pdfDocument, !searchText.isEmpty else {
+        guard !searchText.isEmpty else {
             searchResults = []
             saveSearchResults() // 清空时也保存
             return
@@ -118,19 +130,105 @@ struct PDFSearchView: View {
 
         isSearching = true
 
-        // 在后台线程执行搜索，避免UI卡顿
         DispatchQueue.global(qos: .userInitiated).async {
-            let searchResults = document.findString(searchText, withOptions: .caseInsensitive)
+            var results: [PDFSearchResult] = []
 
-            // 回到主线程更新UI
+            // 获取 Cache 目录
+            guard let lastSelectedDirectoryString = UserDefaults.standard.string(forKey: "LastSelectedDirectory"),
+                  let lastSelectedDirectoryURL = URL(string: lastSelectedDirectoryString),
+                  let document = pdfDocument,
+                  let documentURL = document.documentURL
+            else {
+                DispatchQueue.main.async {
+                    self.isSearching = false
+                }
+
+                return
+            }
+
+            let cacheDirectory = lastSelectedDirectoryURL.appendingPathComponent("Cache")
+
+            // 确保Cache目录存在
+            do {
+                if !FileManager.default.fileExists(atPath: cacheDirectory.path) {
+                    try FileManager.default.createDirectory(at: cacheDirectory, withIntermediateDirectories: true)
+                }
+            } catch {
+                NSLog("❌ PDFSearchView.swift -> PDFSearchView.performSearch, 创建 Cache 目录失败: \(error.localizedDescription)")
+                DispatchQueue.main.async {
+                    self.isSearching = false
+                }
+                return
+            }
+
+            // 获取PDF文件名（不含扩展名）
+            let pdfFileName = documentURL.deletingPathExtension().lastPathComponent
+            let txtFileURL = cacheDirectory.appendingPathComponent("\(pdfFileName).txt")
+
+            // 检查txt文件是否存在，不存在则创建
+            if !FileManager.default.fileExists(atPath: txtFileURL.path) {
+                // 创建txt文件
+                createTxtFile(from: document, at: txtFileURL)
+            }
+
+            // 从txt文件中搜索
+            do {
+                let content = try String(contentsOf: txtFileURL, encoding: .utf8)
+                let lines = content.components(separatedBy: "\n")
+
+                for line in lines {
+                    if line.lowercased().contains(searchText.lowercased()) {
+                        // 解析页码和内容
+                        if let colonIndex = line.firstIndex(of: ":") {
+                            let pageString = String(line[..<colonIndex])
+                            if let pageNumber = Int(pageString) {
+                                if let filePath = getFilePathFromDatabase(fileName: pdfFileName) {
+                                    let convertedPath = PathConverter.convertNoterPagePath(filePath, rootDirectoryURL: lastSelectedDirectoryURL)
+
+                                    let result = PDFSearchResult(
+                                        fileName: pdfFileName,
+                                        filePath: convertedPath,
+                                        pageNumber: pageNumber,
+                                        context: line
+                                    )
+                                    results.append(result)
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch {
+                NSLog("❌ PDFSearchView.swift -> PDFSearchView.performSearch, 读取 txt 文件失败: \(error.localizedDescription)")
+            }
+
             DispatchQueue.main.async {
-                self.searchResults = searchResults.map { PDFSearchResult(selection: $0) }
+                self.searchResults = results
                 self.isSearching = false
                 self.saveSearchResults() // 搜索完成后保存结果
-
-                // 保存最后一次搜索时间
-                UserDefaults.standard.set(Date(), forKey: "lastSearchTime")
+                UserDefaults.standard.set(documentURL.path, forKey: "LastPDFSearchFile")
             }
+        }
+    }
+
+    // 创建 txt 文件，存储 PDF 内容
+    private func createTxtFile(from document: PDFDocument, at fileURL: URL) {
+        var content = ""
+
+        // 遍历所有页面
+        for i in 0 ..< document.pageCount {
+            if let page = document.page(at: i),
+               let pageText = page.string
+            {
+                // 格式：页码:内容
+                content += "\(i):\(pageText)\n"
+            }
+        }
+
+        // 写入文件
+        do {
+            try content.write(to: fileURL, atomically: true, encoding: .utf8)
+        } catch {
+            NSLog("❌ PDFSearchView.swift -> PDFSearchView.createTxtFile, 创建 txt 文件失败: \(error.localizedDescription)")
         }
     }
 
@@ -147,76 +245,37 @@ struct PDFSearchView: View {
         guard let data = UserDefaults.standard.data(forKey: "persistedPDFSearchResults") else { return }
         let decoder = JSONDecoder()
         if let decoded = try? decoder.decode([SerializablePDFSearchResult].self, from: data) {
-            // 注意：由于 PDFSelection 无法序列化，这里只能恢复基本信息
-            // 实际的 PDFSelection 需要重新创建或在用户点击时重新搜索
-            searchResults = decoded.compactMap { $0.toPDFSearchResult(document: pdfDocument) }
+            searchResults = decoded.map { $0.toPDFSearchResult() }
         }
+    }
+
+    private func getFilePathFromDatabase(fileName: String) -> String? {
+        // 这里需要查询数据库获取文件路径
+        // 由于DatabaseManager是单例，我们可以直接使用
+        return DatabaseManager.shared.getFilePathByTitle(fileName)
     }
 }
 
 // 可序列化的PDFSearchResult结构
 struct SerializablePDFSearchResult: Codable {
-    let page: Int
-    let pageLabel: String
-    let text: String
+    let fileName: String
+    let filePath: String
+    let pageNumber: Int
+    let context: String
 
     init(from result: PDFSearchResult) {
-        page = result.page
-        pageLabel = result.pageLabel
-        text = result.text
+        fileName = result.fileName
+        filePath = result.filePath
+        pageNumber = result.pageNumber
+        context = result.context
     }
 
-    func toPDFSearchResult(document: PDFDocument?) -> PDFSearchResult? {
-        // 由于 PDFSelection 无法直接序列化，这里需要重新创建
-        // 或者返回一个简化版本，在用户点击时重新搜索定位
-        guard let document = document,
-              let pdfPage = document.page(at: page)
-        else {
-            return nil
-        }
-
-        // 使用 PDFDocument 的 findString 方法而不是 PDFPage
-        let selections = document.findString(text, withOptions: .caseInsensitive)
-
-        // 过滤出属于当前页面的选择
-        for selection in selections {
-            if let selectionPage = selection.pages.first,
-               selectionPage == pdfPage
-            {
-                return PDFSearchResult(selection: selection)
-            }
-        }
-
-        return nil
+    func toPDFSearchResult() -> PDFSearchResult {
+        return PDFSearchResult(
+            fileName: fileName,
+            filePath: filePath,
+            pageNumber: pageNumber,
+            context: context
+        )
     }
-}
-
-// 添加一个帮助方法来获取上下文
-private func getContextString(from result: PDFSearchResult) -> String {
-    // Since selection is not optional in PDFSearchResult, we don't need to check it
-    guard let page = result.selection.pages.first,
-          let text = result.selection.string
-    else {
-        return result.text
-    }
-
-    // 获取整页文本
-    let pageText = page.string ?? ""
-
-    // 找到搜索文本在页面中的位置
-    guard let range = pageText.range(of: text) else {
-        return result.text
-    }
-
-    // 计算上下文范围（前后50个字符）
-    let contextStart = pageText.index(range.lowerBound, offsetBy: -50, limitedBy: pageText.startIndex) ?? pageText.startIndex
-    let contextEnd = pageText.index(range.upperBound, offsetBy: 50, limitedBy: pageText.endIndex) ?? pageText.endIndex
-
-    // 获取上下文文本
-    let prefix = String(pageText[contextStart ..< range.lowerBound])
-    let match = String(pageText[range])
-    let suffix = String(pageText[range.upperBound ..< contextEnd])
-
-    // 组合上下文，使用 ... 表示截断
-    return "\(contextStart > pageText.startIndex ? "..." : "")\(prefix)\(match)\(suffix)\(contextEnd < pageText.endIndex ? "..." : "")"
 }

@@ -3,16 +3,15 @@ import PDFKit
 
 struct PDFSearchResult: Identifiable {
     let id = UUID()
-    let page: Int
-    let pageLabel: String
-    let text: String
-    let selection: PDFSelection
+    let fileName: String
+    let filePath: String
+    let pageNumber: Int
+    let context: String
 
-    init(selection: PDFSelection) {
-        self.selection = selection
-        self.page = selection.pages.first?.pageRef?.pageNumber ?? 0
-        let pageNumber = selection.pages.first?.pageRef?.pageNumber ?? 0
-        self.pageLabel = selection.pages.first?.label ?? "\(pageNumber + 1)"
-        self.text = selection.string ?? ""
+    init(fileName: String, filePath: String, pageNumber: Int, context: String) {
+        self.fileName = fileName
+        self.filePath = filePath
+        self.pageNumber = pageNumber
+        self.context = context
     }
 }
