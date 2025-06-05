@@ -30,8 +30,8 @@ struct PDFSearchView: View {
 
                         // 创建新的防抖定时器
                         searchTimer = Timer.scheduledTimer(withTimeInterval: 0.3, repeats: false) { _ in
-                        performSearch()
-                    }
+                            performSearch()
+                        }
                     }
                 if !searchText.isEmpty {
                     Button(action: {
@@ -90,13 +90,15 @@ struct PDFSearchView: View {
             }
         }
         .onAppear {
-            // 视图出现时执行搜索，恢复之前的搜索结果
+            // 视图出现时恢复搜索结果和执行搜索
+            loadPersistedSearchResults()
             if !searchText.isEmpty {
                 performSearch()
             }
         }
         .onDisappear {
-            // 视图消失时取消定时器
+            // 视图消失时保存搜索结果和取消定时器
+            saveSearchResults()
             searchTimer?.invalidate()
         }
         .navigationTitle("PDF 搜索")
@@ -113,6 +115,7 @@ struct PDFSearchView: View {
     private func performSearch() {
         guard let document = pdfDocument, !searchText.isEmpty else {
             searchResults = []
+            saveSearchResults() // 清空时也保存
             return
         }
 
@@ -126,11 +129,68 @@ struct PDFSearchView: View {
             DispatchQueue.main.async {
                 self.searchResults = searchResults.map { PDFSearchResult(selection: $0) }
                 self.isSearching = false
+                self.saveSearchResults() // 搜索完成后保存结果
 
                 // 保存最后一次搜索时间
                 UserDefaults.standard.set(Date(), forKey: "lastSearchTime")
             }
         }
+    }
+
+    // 保存搜索结果到UserDefaults
+    private func saveSearchResults() {
+        let encoder = JSONEncoder()
+        if let encoded = try? encoder.encode(searchResults.map { SerializablePDFSearchResult(from: $0) }) {
+            UserDefaults.standard.set(encoded, forKey: "persistedPDFSearchResults")
+        }
+    }
+
+    // 从UserDefaults加载搜索结果
+    private func loadPersistedSearchResults() {
+        guard let data = UserDefaults.standard.data(forKey: "persistedPDFSearchResults") else { return }
+        let decoder = JSONDecoder()
+        if let decoded = try? decoder.decode([SerializablePDFSearchResult].self, from: data) {
+            // 注意：由于 PDFSelection 无法序列化，这里只能恢复基本信息
+            // 实际的 PDFSelection 需要重新创建或在用户点击时重新搜索
+            searchResults = decoded.compactMap { $0.toPDFSearchResult(document: pdfDocument) }
+        }
+    }
+}
+
+// 可序列化的PDFSearchResult结构
+struct SerializablePDFSearchResult: Codable {
+    let page: Int
+    let pageLabel: String
+    let text: String
+
+    init(from result: PDFSearchResult) {
+        page = result.page
+        pageLabel = result.pageLabel
+        text = result.text
+    }
+
+    func toPDFSearchResult(document: PDFDocument?) -> PDFSearchResult? {
+        // 由于 PDFSelection 无法直接序列化，这里需要重新创建
+        // 或者返回一个简化版本，在用户点击时重新搜索定位
+        guard let document = document,
+              let pdfPage = document.page(at: page)
+        else {
+            return nil
+        }
+
+        // 使用 PDFDocument 的 findString 方法而不是 PDFPage
+        let selections = document.findString(text, withOptions: .caseInsensitive)
+
+        // 过滤出属于当前页面的选择
+        for selection in selections {
+            if let selectionPage = selection.pages.first,
+               selectionPage == pdfPage
+            {
+                return PDFSearchResult(selection: selection)
+            }
+        }
+
+        return nil
     }
 }
 
