@@ -537,12 +537,12 @@ struct ContentView: View {
             guard let userInfo = notification.userInfo,
                   let dataBasePath = userInfo["dataBasePath"] as? String
             else {
-                NSLog("❌ ContentView.swift -> ContentView.setupNotifications, loadAnnotationsDatabaseNotification 通知中缺少数据库路径")
+                NSLog("❌ ContentView.swift -> ContentView.setupNotifications, LoadAnnotationsDatabase 通知中缺少数据库路径")
 
                 return
             }
 
-            NSLog("✅ ContentView.swift -> ContentView.setupNotifications, loadAnnotationsDatabaseNotification 收到加载数据库通知，数据库路径：\(dataBasePath)")
+            NSLog("✅ ContentView.swift -> ContentView.setupNotifications, LoadAnnotationsDatabase 收到加载数据库通知，数据库路径：\(dataBasePath)")
 
             annotationListViewModel.loadAnnotationsFromDatabase(dataBasePath)
         }

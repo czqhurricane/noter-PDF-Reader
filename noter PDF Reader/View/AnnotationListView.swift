@@ -62,9 +62,9 @@ struct AnnotationListView: View {
                                         }
                                         // 添加超链接按钮
                                         Button(action: {
-                                                   let htmlLink = convertAnnotationToHtmlLink(annotation)
-                                                   UIPasteboard.general.string = htmlLink
-                                               }) {
+                                            let htmlLink = convertAnnotationToHtmlLink(annotation)
+                                            UIPasteboard.general.string = htmlLink
+                                        }) {
                                             Text("拷贝超链接")
                                             Image(systemName: "link")
                                         }
@@ -199,34 +199,38 @@ struct AnnotationListView: View {
 
     // 显示提示信息
     private func showToast(message: String) {
-        let keyWindow = UIApplication.shared.windows.first { $0.isKeyWindow }
-        if let keyWindow = keyWindow {
-            let toastLabel = UILabel()
-            toastLabel.backgroundColor = UIColor.black.withAlphaComponent(0.7)
-            toastLabel.textColor = UIColor.white
-            toastLabel.textAlignment = .center
-            toastLabel.font = UIFont.systemFont(ofSize: 14)
-            toastLabel.text = message
-            toastLabel.alpha = 1.0
-            toastLabel.layer.cornerRadius = 10
-            toastLabel.clipsToBounds = true
-
-            keyWindow.addSubview(toastLabel)
-            toastLabel.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                toastLabel.centerXAnchor.constraint(equalTo: keyWindow.centerXAnchor),
-                toastLabel.bottomAnchor.constraint(equalTo: keyWindow.safeAreaLayoutGuide.bottomAnchor, constant: -100),
-                toastLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 150),
-                toastLabel.heightAnchor.constraint(equalToConstant: 40),
-            ])
-
-            // 2秒后淡出
-            UIView.animate(withDuration: 0.5, delay: 2.0, options: .curveEaseOut, animations: {
-                toastLabel.alpha = 0.0
-            }, completion: { _ in
-                toastLabel.removeFromSuperview()
-            })
+        // 将已弃用的 Windows API 替换为基于场景的适当方法
+        guard let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+              let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow })
+        else {
+            return
         }
+
+        let toastLabel = UILabel()
+        toastLabel.backgroundColor = UIColor.black.withAlphaComponent(0.7)
+        toastLabel.textColor = UIColor.white
+        toastLabel.textAlignment = .center
+        toastLabel.font = UIFont.systemFont(ofSize: 14)
+        toastLabel.text = message
+        toastLabel.alpha = 1.0
+        toastLabel.layer.cornerRadius = 10
+        toastLabel.clipsToBounds = true
+
+        keyWindow.addSubview(toastLabel)
+        toastLabel.translatesAutoresizingMaskIntoConstraints = false
+        NSLayoutConstraint.activate([
+            toastLabel.centerXAnchor.constraint(equalTo: keyWindow.centerXAnchor),
+            toastLabel.bottomAnchor.constraint(equalTo: keyWindow.safeAreaLayoutGuide.bottomAnchor, constant: -100),
+            toastLabel.widthAnchor.constraint(greaterThanOrEqualToConstant: 150),
+            toastLabel.heightAnchor.constraint(equalToConstant: 40),
+        ])
+
+        // 2秒后淡出
+        UIView.animate(withDuration: 0.5, delay: 2.0, options: .curveEaseOut, animations: {
+            toastLabel.alpha = 0.0
+        }, completion: { _ in
+            toastLabel.removeFromSuperview()
+        })
     }
 
     private func extractAndHandleNOTERPAGE(from annotation: String) {
