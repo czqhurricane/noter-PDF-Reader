@@ -62,6 +62,8 @@
 	<array>
 		<string>NOTERPAGE</string>
 		<string>noterpage</string>
+    <string>VIDEO</string>
+		<string>video</string>
 	</array>
 	<key>CFBundleURLTypes</key>
 	<array>
@@ -74,6 +76,8 @@
 			<array>
 				<string>NOTERPAGE</string>
 				<string>noterpage</string>
+        <string>VIDEO</string>
+				<string>video</string>
 			</array>
 		</dict>
 	</array>

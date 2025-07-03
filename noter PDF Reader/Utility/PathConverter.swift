@@ -66,4 +66,82 @@ enum PathConverter {
 
         return (pdfPath, page, xRatio, yRatio)
     }
+
+    static func parseVideoLink(_ url: String) -> (videoUrl: String, start: String?, end: String?)? {
+        guard url.hasPrefix("video:"),
+              let decodedString = url.removingPercentEncoding
+        else {
+            return nil
+        }
+
+        let rest = String(decodedString.dropFirst(6)) // Remove "video:" prefix
+        let parts = rest.split(separator: "#", maxSplits: 1).map(String.init)
+        guard !parts.isEmpty else { return nil }
+
+        var videoUrl = parts[0]
+        var start: String?
+        var end: String?
+
+        if parts.count > 1 {
+            let fragment = parts[1]
+            let timeParts = fragment.split(separator: "-", maxSplits: 1).map(String.init)
+
+            if timeParts.count == 1 {
+                start = timeParts[0]
+            } else if timeParts.count == 2 {
+                start = timeParts[0]
+                end = timeParts[1]
+            }
+
+            // 将时间戳转换为秒数并添加到 URL 中
+            if let startTime = start, let seconds = convertTimeToSeconds(startTime) {
+                // 检查 URL 是否已经包含参数
+                if videoUrl.contains("?") {
+                    // 如果 URL 已经包含参数，添加 &t=
+                    videoUrl += "&t=\(seconds)"
+                } else {
+                    // 如果 URL 不包含参数，添加 ?t=
+                    videoUrl += "?t=\(seconds)"
+                }
+            }
+        }
+
+        NSLog("✅ PathConverter.swift -> PathConverter.parseVideoLink, 解析结果 - 视频 URL: \(videoUrl), start: \(start), end: \(end)")
+        return (videoUrl, start, end)
+    }
+
+    // 将时间格式（如 0:12:15）转换为秒数
+    static func convertTimeToSeconds(_ timeString: String) -> Int? {
+        let components = timeString.components(separatedBy: ":")
+        var seconds = 0
+
+        if components.count == 3 { // 格式为 h:m:s
+            if let hours = Int(components[0]),
+               let minutes = Int(components[1]),
+               let secs = Int(components[2])
+            {
+                seconds = hours * 3600 + minutes * 60 + secs
+            } else {
+                return nil
+            }
+        } else if components.count == 2 { // 格式为 m:s
+            if let minutes = Int(components[0]),
+               let secs = Int(components[1])
+            {
+                seconds = minutes * 60 + secs
+            } else {
+                return nil
+            }
+        } else if components.count == 1 { // 格式为 s
+            if let secs = Int(components[0]) {
+                seconds = secs
+            } else {
+                return nil
+            }
+        } else {
+            return nil
+        }
+
+        return seconds
+    }
 }

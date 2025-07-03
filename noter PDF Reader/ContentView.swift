@@ -587,6 +587,21 @@ struct ContentView: View {
     }
 
     private func processMetanoteLink(_ link: String) {
+        // 首先，尝试将其解析为视频链接
+        if let videoResult = PathConverter.parseVideoLink(link) {
+            // 我们有一个视频链接：在外部打开视频网址
+            let videoUrlString = videoResult.videoUrl
+            if let videoUrl = URL(string: videoUrlString) {
+                UIApplication.shared.open(videoUrl, options: [:], completionHandler: nil)
+
+                NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 视频链接: \(videoUrl)")
+            } else {
+                NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 无效的视频链接: \(videoUrlString)")
+            }
+
+            return
+        }
+
         guard let result = PathConverter.parseNoterPageLink(link) else {
             NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 无效的 Metanote 链接")
 
