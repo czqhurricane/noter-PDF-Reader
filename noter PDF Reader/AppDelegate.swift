@@ -6,6 +6,9 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     func application(_: UIApplication, didFinishLaunchingWithOptions _: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         setupLogging()
 
+        // 初始化 DirectoryAccessManager
+        DirectoryAccessManager.shared.restoreSavedBookmarks()
+
         NSLog("✅ AppDelegate.swift -> AppDelegate.application, 应用程序已启动 - didFinishLaunchingWithOptions")
 
         return true
