@@ -94,14 +94,14 @@ enum PathConverter {
             }
 
             // 将时间戳转换为秒数并添加到 URL 中
-            if let startTime = start?.trimmingCharacters(in: .whitespacesAndNewlines), let seconds = convertTimeToSeconds(startTime) {
+            if let startTimeString = start?.trimmingCharacters(in: .whitespacesAndNewlines), let startSeconds = convertTimeToSeconds(startTimeString) {
                 // 检查 URL 是否已经包含参数
                 if videoUrlString.contains("?") {
                     // 如果 URL 已经包含参数，添加 &t=
-                    videoUrlString += "&t=\(seconds)"
+                    videoUrlString += "&t=\(startSeconds)"
                 } else {
                     // 如果 URL 不包含参数，添加 ?t=
-                    videoUrlString += "?t=\(seconds)"
+                    videoUrlString += "?t=\(startSeconds)"
                 }
             }
         }

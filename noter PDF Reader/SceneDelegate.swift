@@ -75,33 +75,38 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                 }
 
                 // 将时间戳转换为秒数并添加到 URL 中
-                if let startTime = start?.trimmingCharacters(in: .whitespacesAndNewlines), let seconds = convertTimeToSeconds(startTime) {
+                if let startTimeString = start?.trimmingCharacters(in: .whitespacesAndNewlines), let startSeconds = convertTimeToSeconds(startTimeString) {
                     // 检查 URL 是否已经包含参数
                     if videoUrlString.contains("?") {
                         // 如果 URL 已经包含参数，添加 &t=
-                        videoUrlString += "&t=\(seconds)"
+                        videoUrlString += "&t=\(startSeconds)"
                     } else {
                         // 如果 URL 不包含参数，添加 ?t=
-                        videoUrlString += "?t=\(seconds)"
+                        videoUrlString += "?t=\(startSeconds)"
                     }
                 }
 
                 if videoUrlString.hasPrefix("/") {
-                    let result = PathConverter.convertNoterPagePath(videoUrlString, rootDirectoryURL: URL(fileURLWithPath: lastSuccessfulRootPath!))
-                    // 解析时间参数
                     var startTime: Double = 0
+                    var endTime: Double = 0
                     var localVideoUrl: URL
+
+                    let result = PathConverter.convertNoterPagePath(videoUrlString, rootDirectoryURL: URL(fileURLWithPath: lastSuccessfulRootPath!))
+                    if let endTimeString = end?.trimmingCharacters(in: .whitespacesAndNewlines), let endSeconds = convertTimeToSeconds(endTimeString) {
+                        endTime = Double(endSeconds)
+                    }
+                    // 解析时间参数
                     if result.contains("?t=") {
                         let components = result.components(separatedBy: "?t=")
-                        if components.count > 1, let timeValue = components.last, let seconds = Double(timeValue) {
-                            startTime = seconds
+                        if components.count > 1, let startTimeValue = components.last, let startSeconds = Double(startTimeValue) {
+                            startTime = startSeconds
                             localVideoUrl = URL(string: components[0]) ?? URL(fileURLWithPath: components[0])
                             // 使用我们的 VideoPlayerView 打开
-                            let videoPlayerView = VideoPlayerView(videoURL: localVideoUrl, startTime: startTime)
+                            let videoPlayerView = VideoPlayerView(videoURL: localVideoUrl, startTime: startTime, endTime: endTime)
                             let hostingController = UIHostingController(rootView: videoPlayerView)
                             UIApplication.shared.windows.first?.rootViewController?.present(hostingController, animated: true)
 
-                            NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 本地视频链接: \(components[0])，本地视频 URL: \(localVideoUrl), 开始时间: \(startTime)秒")
+                            NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 本地视频链接: \(components[0])，本地视频 URL: \(localVideoUrl), 开始时间: \(startTime)秒，结束时间：\(endTime)秒")
                         }
                     } else {
                         localVideoUrl = URL(string: result) ?? URL(fileURLWithPath: result)
