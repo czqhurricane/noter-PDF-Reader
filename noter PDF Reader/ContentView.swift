@@ -39,8 +39,9 @@ struct ContentView: View {
     @State private var shouldShowArrow = true
     @State private var selectedFolderSearchText: String? = nil // 跟踪文件夹搜索的高亮文本
     @State private var showPlayerSheet = false
-    @State private var localVideoUrl: URL? = UserDefaults.standard.url(forKey: "RootFolder")
+    @State private var localVideoUrl: URL? = UserDefaults.standard.url(forKey: "LocalVideoUrl")
     @State private var startTime: Double = 0
+    @State private var endTime: Double = 0
 
     @StateObject private var directoryManager = DirectoryAccessManager.shared // 目录访问管理器
     @StateObject var annotationListViewModel = AnnotationListViewModel()
@@ -321,7 +322,7 @@ struct ContentView: View {
 
     @ViewBuilder
     private var videoPlayerSheetContent: some View {
-        VideoPlayerView(videoURL: localVideoUrl!, startTime: startTime)
+        VideoPlayerView(videoURL: localVideoUrl!, startTime: startTime, endTime: endTime)
     }
 
     var body: some View {
@@ -600,41 +601,53 @@ struct ContentView: View {
     }
 
     private func processMetanoteLink(_ link: String) -> Bool {
+        var endTime: Double = 0
+        var endSeconds: Double = 0
+
         // 首先，尝试将其解析为视频链接
         if let videoResult = PathConverter.parseVideoLink(link) {
             // 我们有一个视频链接：在外部打开视频网址
             let videoUrlString = videoResult.videoUrlString
-            if let videoUrl = URL(string: videoUrlString) {
-                UIApplication.shared.open(videoUrl, options: [:], completionHandler: nil)
+            if videoUrlString.hasPrefix("http") {
+                if let videoUrl = URL(string: videoUrlString) {
+                    UIApplication.shared.open(videoUrl, options: [:], completionHandler: nil)
 
-                NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 网络视频链接: \(videoUrl)")
+                    NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 网络视频链接: \(videoUrl)")
+                }
 
                 return true // 关闭当前sheet
             } else if videoUrlString.hasPrefix("/") {
                 let result = PathConverter.convertNoterPagePath(videoUrlString, rootDirectoryURL: directoryManager.rootDirectoryURL)
+                let end = videoResult.end
+                if let endTimeString = end?.trimmingCharacters(in: .whitespacesAndNewlines), let endTimeValue = convertTimeToSeconds(endTimeString) {
+                    endSeconds = Double(endTimeValue)
+                }
 
                 // 解析时间参数
                 if result.contains("?t=") {
                     let components = result.components(separatedBy: "?t=")
-                    if components.count > 1, let timeValue = components.last, let seconds = Double(timeValue) {
+                    if components.count > 1, let startTimeValue = components.last, let startSeconds = Double(startTimeValue) {
                         // 先关闭当前sheet，然后在下一个UI周期显示视频播放器
                         showLinkInputSheet = false
 
                         // 使用 DispatchQueue.main.async 确保在当前 sheet 关闭后再显示视频播放器
-                        DispatchQueue.main.async { startTime = seconds
-                            localVideoUrl = URL(string: components[0]) ?? URL(fileURLWithPath: components[0])
-                            showPlayerSheet = true
+                        DispatchQueue.main.async {
+                            self.startTime = startSeconds
+                            self.endTime = endSeconds
+                            self.localVideoUrl = URL(string: components[0]) ?? URL(fileURLWithPath: components[0])
+                            self.showPlayerSheet = true
                         }
 
-                        NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 本地视频链接: \(components[0])，本地视频 URL: \(localVideoUrl), 开始时间: \(startTime)秒")
+                        NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 本地视频链接: \(components[0])，本地视频 URL: \(localVideoUrl), 开始时间: \(startSeconds)秒，结束时间: \(endSeconds)秒")
 
                         return false // 不在这里关闭sheet，让系统自动处理
                     }
                 } else {
                     showLinkInputSheet = false
 
-                    DispatchQueue.main.async { localVideoUrl = URL(string: result) ?? URL(fileURLWithPath: result)
-                        showPlayerSheet = true
+                    DispatchQueue.main.async {
+                        self.localVideoUrl = URL(string: result) ?? URL(fileURLWithPath: result)
+                        self.showPlayerSheet = true
                     }
 
                     return false // 不在这里关闭sheet，让系统自动处理
@@ -671,6 +684,41 @@ struct ContentView: View {
         openPDF(at: convertedPdfPath, page: result.page!, xRatio: result.x!, yRatio: result.y!, showArrow: true)
 
         return true // 默认关闭当前sheet
+    }
+
+    // 将时间格式（如 0:12:15）转换为秒数
+    private func convertTimeToSeconds(_ timeString: String) -> Int? {
+        let components = timeString.components(separatedBy: ":")
+        var seconds = 0
+
+        if components.count == 3 { // 格式为 h:m:s
+            if let hours = Int(components[0]),
+               let minutes = Int(components[1]),
+               let secs = Int(components[2])
+            {
+                seconds = hours * 3600 + minutes * 60 + secs
+            } else {
+                return nil
+            }
+        } else if components.count == 2 { // 格式为 m:s
+            if let minutes = Int(components[0]),
+               let secs = Int(components[1])
+            {
+                seconds = minutes * 60 + secs
+            } else {
+                return nil
+            }
+        } else if components.count == 1 { // 格式为 s
+            if let secs = Int(components[0]) {
+                seconds = secs
+            } else {
+                return nil
+            }
+        } else {
+            return nil
+        }
+
+        return seconds
     }
 
     // 打开PDF文件的方法
