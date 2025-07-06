@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		0241F9722E19AA080027A6BC /* VideoPlayerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0241F9712E19AA080027A6BC /* VideoPlayerView.swift */; };
 		025107892DDFA95F009BE1EA /* PDFPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025107882DDFA95E009BE1EA /* PDFPicker.swift */; };
 		025FCAAA2DDE6F3D00102A44 /* PDFOutlineViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025FCAA92DDE6F3D00102A44 /* PDFOutlineViewController.swift */; };
 		025FCAAE2DDF174E00102A44 /* PDFSearchResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025FCAAC2DDF174D00102A44 /* PDFSearchResult.swift */; };
@@ -39,6 +40,7 @@
 
 /* Begin PBXFileReference section */
 		022A7C872DD65E8D00CAA334 /* noter PDF Reader.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "noter PDF Reader.entitlements"; sourceTree = "<group>"; };
+		0241F9712E19AA080027A6BC /* VideoPlayerView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VideoPlayerView.swift; sourceTree = "<group>"; };
 		025107882DDFA95E009BE1EA /* PDFPicker.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PDFPicker.swift; sourceTree = "<group>"; };
 		025FCAA92DDE6F3D00102A44 /* PDFOutlineViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PDFOutlineViewController.swift; sourceTree = "<group>"; };
 		025FCAAC2DDF174D00102A44 /* PDFSearchResult.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PDFSearchResult.swift; sourceTree = "<group>"; };
@@ -136,6 +138,7 @@
 		028029742DE08D2700182C02 /* View */ = {
 			isa = PBXGroup;
 			children = (
+				0241F9712E19AA080027A6BC /* VideoPlayerView.swift */,
 				02FFF05E2DEE0DF800470AB9 /* PDFFolderSearchView.swift */,
 				02F073872DE60C5100809345 /* OcclusionView.swift */,
 				02BB0A492DE0999E00E42A91 /* ChatView.swift */,
@@ -277,6 +280,7 @@
 				02C684AF2DD46F8E00576619 /* LinkInputView.swift in Sources */,
 				02C684B22DD487C900576619 /* AnnotationListView.swift in Sources */,
 				025FCAAE2DDF174E00102A44 /* PDFSearchResult.swift in Sources */,
+				0241F9722E19AA080027A6BC /* VideoPlayerView.swift in Sources */,
 				0262EB8F2DCB611400E9CBC8 /* ContentView.swift in Sources */,
 				0262EBA52DCB666800E9CBC8 /* SceneDelegate.swift in Sources */,
 				02DD375E2DD1F8EF004892E9 /* DocumentPicker.swift in Sources */,

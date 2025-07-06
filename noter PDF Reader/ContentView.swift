@@ -10,10 +10,10 @@ struct ContentView: View {
     @State private var currentPage: Int = 1
     @State private var xRatio: Double = 0.0
     @State private var yRatio: Double = 0.0
-    @State private var showAnnotationsSheet = false                           // 显示保存的注释列表视图
+    @State private var showAnnotationsSheet = false // 显示保存的注释列表视图
     @State private var showFolderSearchSheet = false
-    @State private var showOutlines = false                                   // 显示 PDF 目录
-    @State private var showSearchSheet = false                                // 显示 PDF 全文搜索 sheet
+    @State private var showOutlines = false // 显示 PDF 目录
+    @State private var showSearchSheet = false // 显示 PDF 全文搜索 sheet
     @State private var showPDFPicker = false
     @State private var showLinkInputSheet = false
     @State private var showChatSheet = false
@@ -21,23 +21,27 @@ struct ContentView: View {
     @State private var linkText: String = ""
     @State private var rootFolderURL: URL? = UserDefaults.standard.url(forKey: "RootFolder")
     @State private var isPDFLoaded = false
-    @State private var viewPoint: CGPoint = .zero                             // 用于传递箭头图层坐标至 ArrowAnnotationView
+    @State private var viewPoint: CGPoint = .zero // 用于传递箭头图层坐标至 ArrowAnnotationView
     @State private var pdfLoadError: String? = nil
     @State private var originalPathInput: String = UserDefaults.standard.string(forKey: "OriginalPath") ?? ""
-    @State private var annotation: String = ""                                // 存储用户输入的注释
-    @State private var isLocationMode = false                                 // 是否添加注释的状态变量
+    @State private var annotation: String = "" // 存储用户输入的注释
+    @State private var isLocationMode = false // 是否添加注释的状态变量
     @State private var forceRender = true
     @State private var pdfDocument: PDFDocument?
-    @State private var selectedSearchSelection: String? = nil                 // 跟踪当前选中的搜索结果
+    @State private var selectedSearchSelection: String? = nil // 跟踪当前选中的搜索结果
     @State private var textToProcess = ""
     @State private var autoSendMessage = false
-    @State private var occlusionImage: UIImage? = nil                         // State to hold the captured image
+    @State private var occlusionImage: UIImage? = nil // State to hold the captured image
     @State private var occlusionSource: String = ""
-    @State private var pdfViewCoordinator: PDFKitView.Coordinator?            // To call coordinator methods
-    @State private var shouldNavigateToOcclusion = false                      // Occlusion 导航状态
+    @State private var pdfViewCoordinator: PDFKitView.Coordinator? // To call coordinator methods
+    @State private var shouldNavigateToOcclusion = false // Occlusion 导航状态
     @State private var toolbarScrollOffset: CGFloat = 0
     @State private var shouldShowArrow = true
-    @State private var selectedFolderSearchText: String? = nil                // 跟踪文件夹搜索的高亮文本
+    @State private var selectedFolderSearchText: String? = nil // 跟踪文件夹搜索的高亮文本
+    @State private var showPlayerSheet = false
+    @State private var localVideoUrl: URL? = UserDefaults.standard.url(forKey: "RootFolder")
+    @State private var startTime: Double = 0
+
     @StateObject private var directoryManager = DirectoryAccessManager.shared // 目录访问管理器
     @StateObject var annotationListViewModel = AnnotationListViewModel()
 
@@ -122,7 +126,7 @@ struct ContentView: View {
 
     private var anySheetBinding: Binding<Bool> {
         Binding<Bool>(
-            get: { showConfigSheet || showAnnotationsSheet || showFolderSearchSheet || showChatSheet || showSearchSheet || showPDFPicker || showLinkInputSheet },
+            get: { showConfigSheet || showAnnotationsSheet || showFolderSearchSheet || showChatSheet || showSearchSheet || showPDFPicker || showLinkInputSheet || showPlayerSheet },
             set: {
                 if !$0 {
                     showConfigSheet = false
@@ -132,6 +136,7 @@ struct ContentView: View {
                     showSearchSheet = false
                     showPDFPicker = false
                     showLinkInputSheet = false
+                    showPlayerSheet = false
                 }
             }
         )
@@ -309,8 +314,14 @@ struct ContentView: View {
     @ViewBuilder
     private var linkInputSheetContent: some View {
         LinkInputView(linkText: $linkText, onSubmit: {
-            processMetanoteLink(linkText)
+            let shouldDismiss = processMetanoteLink(linkText)
+            return shouldDismiss
         })
+    }
+
+    @ViewBuilder
+    private var videoPlayerSheetContent: some View {
+        VideoPlayerView(videoURL: localVideoUrl!, startTime: startTime)
     }
 
     var body: some View {
@@ -444,6 +455,8 @@ struct ContentView: View {
                         pdfPickerSheetContent
                     } else if showLinkInputSheet {
                         linkInputSheetContent
+                    } else if showPlayerSheet {
+                        videoPlayerSheetContent
                     }
                 }
             }
@@ -586,32 +599,64 @@ struct ContentView: View {
         }
     }
 
-    private func processMetanoteLink(_ link: String) {
+    private func processMetanoteLink(_ link: String) -> Bool {
         // 首先，尝试将其解析为视频链接
         if let videoResult = PathConverter.parseVideoLink(link) {
             // 我们有一个视频链接：在外部打开视频网址
-            let videoUrlString = videoResult.videoUrl
+            let videoUrlString = videoResult.videoUrlString
             if let videoUrl = URL(string: videoUrlString) {
                 UIApplication.shared.open(videoUrl, options: [:], completionHandler: nil)
 
-                NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 视频链接: \(videoUrl)")
+                NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 网络视频链接: \(videoUrl)")
+
+                return true // 关闭当前sheet
+            } else if videoUrlString.hasPrefix("/") {
+                let result = PathConverter.convertNoterPagePath(videoUrlString, rootDirectoryURL: directoryManager.rootDirectoryURL)
+
+                // 解析时间参数
+                if result.contains("?t=") {
+                    let components = result.components(separatedBy: "?t=")
+                    if components.count > 1, let timeValue = components.last, let seconds = Double(timeValue) {
+                        // 先关闭当前sheet，然后在下一个UI周期显示视频播放器
+                        showLinkInputSheet = false
+
+                        // 使用 DispatchQueue.main.async 确保在当前 sheet 关闭后再显示视频播放器
+                        DispatchQueue.main.async { startTime = seconds
+                            localVideoUrl = URL(string: components[0]) ?? URL(fileURLWithPath: components[0])
+                            showPlayerSheet = true
+                        }
+
+                        NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 本地视频链接: \(components[0])，本地视频 URL: \(localVideoUrl), 开始时间: \(startTime)秒")
+
+                        return false // 不在这里关闭sheet，让系统自动处理
+                    }
+                } else {
+                    showLinkInputSheet = false
+
+                    DispatchQueue.main.async { localVideoUrl = URL(string: result) ?? URL(fileURLWithPath: result)
+                        showPlayerSheet = true
+                    }
+
+                    return false // 不在这里关闭sheet，让系统自动处理
+                }
+
             } else {
                 NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 无效的视频链接: \(videoUrlString)")
             }
 
-            return
+            return true
         }
 
         guard let result = PathConverter.parseNoterPageLink(link) else {
             NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 无效的 Metanote 链接")
 
-            return
+            return true
         }
 
         guard !PathConverter.originalPath.isEmpty else {
             pdfLoadError = "请先保存需要替换的 PDF 原始路径"
 
-            return
+            return true
         }
 
         rawPdfPath = result.pdfPath
@@ -624,6 +669,8 @@ struct ContentView: View {
         NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 文件路径: \(String(describing: pdfURL)), 页码: \(currentPage), yRatio: \(yRatio), xRatio: \(xRatio)")
 
         openPDF(at: convertedPdfPath, page: result.page!, xRatio: result.x!, yRatio: result.y!, showArrow: true)
+
+        return true // 默认关闭当前sheet
     }
 
     // 打开PDF文件的方法

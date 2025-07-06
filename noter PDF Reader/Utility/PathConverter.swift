@@ -67,7 +67,7 @@ enum PathConverter {
         return (pdfPath, page, xRatio, yRatio)
     }
 
-    static func parseVideoLink(_ url: String) -> (videoUrl: String, start: String?, end: String?)? {
+    static func parseVideoLink(_ url: String) -> (videoUrlString: String, start: String?, end: String?)? {
         guard url.hasPrefix("video:"),
               let decodedString = url.removingPercentEncoding
         else {
@@ -78,7 +78,7 @@ enum PathConverter {
         let parts = rest.split(separator: "#", maxSplits: 1).map(String.init)
         guard !parts.isEmpty else { return nil }
 
-        var videoUrl = parts[0]
+        var videoUrlString = parts[0]
         var start: String?
         var end: String?
 
@@ -94,20 +94,20 @@ enum PathConverter {
             }
 
             // 将时间戳转换为秒数并添加到 URL 中
-            if let startTime = start, let seconds = convertTimeToSeconds(startTime) {
+            if let startTime = start?.trimmingCharacters(in: .whitespacesAndNewlines), let seconds = convertTimeToSeconds(startTime) {
                 // 检查 URL 是否已经包含参数
-                if videoUrl.contains("?") {
+                if videoUrlString.contains("?") {
                     // 如果 URL 已经包含参数，添加 &t=
-                    videoUrl += "&t=\(seconds)"
+                    videoUrlString += "&t=\(seconds)"
                 } else {
                     // 如果 URL 不包含参数，添加 ?t=
-                    videoUrl += "?t=\(seconds)"
+                    videoUrlString += "?t=\(seconds)"
                 }
             }
         }
 
-        NSLog("✅ PathConverter.swift -> PathConverter.parseVideoLink, 解析结果 - 视频 URL: \(videoUrl), start: \(start), end: \(end)")
-        return (videoUrl, start, end)
+        NSLog("✅ PathConverter.swift -> PathConverter.parseVideoLink, 解析结果 - 视频 URL: \(videoUrlString), start: \(start), end: \(end)")
+        return (videoUrlString, start, end)
     }
 
     // 将时间格式（如 0:12:15）转换为秒数

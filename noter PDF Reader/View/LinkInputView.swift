@@ -2,7 +2,7 @@ import SwiftUI
 
 struct LinkInputView: View {
     @Binding var linkText: String
-    var onSubmit: () -> Void
+    var onSubmit: () -> Bool // 修改为返回Bool类型，表示是否应该关闭视图
     @Environment(\.presentationMode) var presentationMode
 
     var body: some View {
@@ -17,8 +17,10 @@ struct LinkInputView: View {
                     .padding()
 
                 Button("确定") {
-                    onSubmit()
-                    presentationMode.wrappedValue.dismiss()
+                    let shouldDismiss = onSubmit()
+                    if shouldDismiss {
+                        presentationMode.wrappedValue.dismiss()
+                    }
                 }
                 .padding()
                 .background(Color.blue)
@@ -43,7 +45,7 @@ struct LinkInputView: View {
         ) { notification in
             if let url = notification.userInfo?["decodedString"] as? String {
                 self.linkText = url
-                
+
                 NSLog("✅ LinkInputView.swift -> LinkInputView.setupURLNotificationObserver, Updated linkText to: \(url)")
             }
         }

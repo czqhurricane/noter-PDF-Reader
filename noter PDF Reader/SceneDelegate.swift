@@ -51,13 +51,15 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     private func handleIncomingURL(_ url: URL) {
+        var lastSuccessfulRootPath: String? = UserDefaults.standard.string(forKey: "LastSuccessfulRootPath")
+
         if let scheme = url.scheme?.lowercased(), scheme == "video" {
             guard let decodedString = url.absoluteString.removingPercentEncoding else { return }
             let rest = decodedString.dropFirst(6) // Remove "video:" prefix
             let parts = rest.split(separator: "#", maxSplits: 1).map(String.init)
             guard !parts.isEmpty else { return }
 
-            var videoUrl = parts[0]
+            var videoUrlString = parts[0]
             var start: String?
             var end: String?
 
@@ -73,23 +75,53 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                 }
 
                 // 将时间戳转换为秒数并添加到 URL 中
-                if let startTime = start, let seconds = convertTimeToSeconds(startTime) {
+                if let startTime = start?.trimmingCharacters(in: .whitespacesAndNewlines), let seconds = convertTimeToSeconds(startTime) {
                     // 检查 URL 是否已经包含参数
-                    if videoUrl.contains("?") {
+                    if videoUrlString.contains("?") {
                         // 如果 URL 已经包含参数，添加 &t=
-                        videoUrl += "&t=\(seconds)"
+                        videoUrlString += "&t=\(seconds)"
                     } else {
                         // 如果 URL 不包含参数，添加 ?t=
-                        videoUrl += "?t=\(seconds)"
+                        videoUrlString += "?t=\(seconds)"
                     }
                 }
 
-                if let videoURL = URL(string: videoUrl) {
-                    UIApplication.shared.open(videoURL, options: [:], completionHandler: nil)
+                if videoUrlString.hasPrefix("/") {
+                    let result = PathConverter.convertNoterPagePath(videoUrlString, rootDirectoryURL: URL(fileURLWithPath: lastSuccessfulRootPath!))
+                    // 解析时间参数
+                    var startTime: Double = 0
+                    var localVideoUrl: URL
+                    if result.contains("?t=") {
+                        let components = result.components(separatedBy: "?t=")
+                        if components.count > 1, let timeValue = components.last, let seconds = Double(timeValue) {
+                            startTime = seconds
+                            localVideoUrl = URL(string: components[0]) ?? URL(fileURLWithPath: components[0])
+                            // 使用我们的 VideoPlayerView 打开
+                            let videoPlayerView = VideoPlayerView(videoURL: localVideoUrl, startTime: startTime)
+                            let hostingController = UIHostingController(rootView: videoPlayerView)
+                            UIApplication.shared.windows.first?.rootViewController?.present(hostingController, animated: true)
+
+                            NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 本地视频链接: \(components[0])，本地视频 URL: \(localVideoUrl), 开始时间: \(startTime)秒")
+                        }
+                    } else {
+                        localVideoUrl = URL(string: result) ?? URL(fileURLWithPath: result)
+                        // 使用我们的VideoPlayerView打开
+                        let videoPlayerView = VideoPlayerView(videoURL: localVideoUrl, startTime: startTime)
+                        let hostingController = UIHostingController(rootView: videoPlayerView)
+                        UIApplication.shared.windows.first?.rootViewController?.present(hostingController, animated: true)
+                    }
+
+                    return
+                }
+
+                if let videoUrl = URL(string: videoUrlString) {
+                    UIApplication.shared.open(videoUrl, options: [:], completionHandler: nil)
+
+                    NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 网络视频链接: \(videoUrlString), start: \(start), end: \(end)")
+
+                    return
                 }
             }
-
-            NSLog("✅ PathConverter.swift -> SceneDelegate.handleIncomingURL, 解析视频结果 - 视频 URL: \(videoUrl), start: \(start), end: \(end)")
         }
 
         guard let scheme = url.scheme?.lowercased(), scheme == "noterpage" else {
