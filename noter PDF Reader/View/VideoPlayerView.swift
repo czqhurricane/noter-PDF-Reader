@@ -17,7 +17,7 @@ struct VideoPlayerView: View {
         self.startTime = startTime
         self.endTime = endTime
 
-        NSLog("✅ VideoPlayerView.swift -> VideoPlayerView.init, \(videoURL), \(startTime), \(endTime)")
+        NSLog("✅ VideoPlayerView.swift -> VideoPlayerView.init, \(videoURL), \(startTime), \(String(describing: endTime))")
     }
 
     var body: some View {
@@ -119,6 +119,7 @@ struct VideoPlayerView: View {
             if currentTime >= endTime {
                 let targetTime = CMTime(seconds: startTime, preferredTimescale: 1)
                 player.seek(to: targetTime)
+                player.play()
             }
         }
     }
@@ -171,17 +172,35 @@ struct AVPlayerControllerRepresentable: UIViewControllerRepresentable {
 
         // 处理全屏模式变化
         func playerViewController(_ playerViewController: AVPlayerViewController, willBeginFullScreenPresentationWithAnimationCoordinator coordinator: UIViewControllerTransitionCoordinator) {
-            // 全屏模式开始时确保视频继续播放
-            coordinator.animate(alongsideTransition: nil) { _ in
-                playerViewController.player?.play()
-            }
+            // 全屏模式开始前确保播放器状态正确
+            let currentPlayer = playerViewController.player
+
+            // 使用动画协调器确保平滑过渡
+            coordinator.animate(alongsideTransition: { _ in
+                // 在动画过程中保持播放器状态
+                playerViewController.player = currentPlayer
+            }, completion: { _ in
+                // 动画完成后确保视频继续播放
+                currentPlayer?.play()
+            })
         }
 
         func playerViewController(_ playerViewController: AVPlayerViewController, willEndFullScreenPresentationWithAnimationCoordinator coordinator: UIViewControllerTransitionCoordinator) {
-            // 退出全屏模式时确保视频继续播放
-            coordinator.animate(alongsideTransition: nil) { _ in
-                playerViewController.player?.play()
-            }
+            // 退出全屏模式前保存当前播放器状态
+            let currentPlayer = playerViewController.player
+            let currentTime = currentPlayer?.currentTime()
+
+            // 使用动画协调器确保平滑过渡
+            coordinator.animate(alongsideTransition: { _ in
+                // 在动画过程中保持播放器状态
+                playerViewController.player = currentPlayer
+            }, completion: { _ in
+                // 动画完成后确保视频继续播放并保持时间位置
+                if let time = currentTime {
+                    currentPlayer?.seek(to: time)
+                }
+                currentPlayer?.play()
+            })
         }
     }
 }

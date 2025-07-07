@@ -601,7 +601,6 @@ struct ContentView: View {
     }
 
     private func processMetanoteLink(_ link: String) -> Bool {
-        var endTime: Double = 0
         var endSeconds: Double = 0
 
         // 首先，尝试将其解析为视频链接
@@ -638,7 +637,7 @@ struct ContentView: View {
                             self.showPlayerSheet = true
                         }
 
-                        NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 本地视频链接: \(components[0])，本地视频 URL: \(localVideoUrl), 开始时间: \(startSeconds)秒，结束时间: \(endSeconds)秒")
+                        NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 本地视频链接: \(components[0])，本地视频 URL: \(String(describing: localVideoUrl)), 开始时间: \(String(describing: startSeconds))秒，结束时间: \(String(describing: endSeconds))秒")
 
                         return false // 不在这里关闭sheet，让系统自动处理
                     }
