@@ -50,6 +50,7 @@ struct VideoPlayerView: View {
     @State private var playerViewController: AVPlayerViewController?
     @State private var playerObserver: PlayerItemObserver? // 添加观察者对象
     @State private var isRestarting = false // 添加状态变量用于跟踪重启操作
+    @State private var isFullScreen = false // 添加状态以跟踪全屏
 
     init(videoURL: URL, startTime: Double = 0, endTime: Double? = nil) {
         self.videoURL = videoURL
@@ -61,7 +62,7 @@ struct VideoPlayerView: View {
 
     var body: some View {
         VStack {
-            AVPlayerControllerRepresentable(player: player, playerViewControllerCallback: { controller in
+            AVPlayerControllerRepresentable(player: player, isFullScreen: $isFullScreen, playerViewControllerCallback: { controller in
                 self.playerViewController = controller
             })
             .aspectRatio(16 / 9, contentMode: .fit)
@@ -70,11 +71,13 @@ struct VideoPlayerView: View {
                 setupPlayer()
             }
             .onDisappear {
-                // 停止播放并释放资源
-                removePeriodicTimeObserver()
-                player?.pause()
-                player = nil
-                playerObserver = nil // 释放观察者
+                if !isFullScreen {
+                    // 停止播放并释放资源
+                    removePeriodicTimeObserver()
+                    player?.pause()
+                    player = nil
+                    playerObserver = nil // 释放观察者
+                }
             }
 
             HStack {
@@ -182,6 +185,7 @@ struct VideoPlayerView: View {
 // 视频播放器组件
 struct AVPlayerControllerRepresentable: UIViewControllerRepresentable {
     let player: AVPlayer?
+    @Binding var isFullScreen: Bool
     var playerViewControllerCallback: ((AVPlayerViewController) -> Void)?
 
     func makeUIViewController(context: Context) -> AVPlayerViewController {
@@ -221,6 +225,7 @@ struct AVPlayerControllerRepresentable: UIViewControllerRepresentable {
 
         // 处理全屏模式变化
         func playerViewController(_ playerViewController: AVPlayerViewController, willBeginFullScreenPresentationWithAnimationCoordinator coordinator: UIViewControllerTransitionCoordinator) {
+            parent.isFullScreen = true
             // 保存当前播放器和播放状态
             let currentPlayer = playerViewController.player
             wasPlaying = currentPlayer?.rate != 0
@@ -240,6 +245,7 @@ struct AVPlayerControllerRepresentable: UIViewControllerRepresentable {
         }
 
         func playerViewController(_ playerViewController: AVPlayerViewController, willEndFullScreenPresentationWithAnimationCoordinator coordinator: UIViewControllerTransitionCoordinator) {
+            parent.isFullScreen = false
             // 退出全屏模式前保存当前播放器状态
             let currentPlayer = playerViewController.player
             let wasPlayingInFullScreen = currentPlayer?.rate != 0
