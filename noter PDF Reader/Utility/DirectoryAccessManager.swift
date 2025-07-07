@@ -193,7 +193,6 @@ class DirectoryAccessManager: ObservableObject {
 
         // 检查是否存在pdf-annotations.db文件
         let dataBasePath = url.appendingPathComponent("pdf-annotations.db").path
-        let databaseURL = url.appendingPathComponent("pdf-annotations.db")
 
         if FileManager.default.fileExists(atPath: dataBasePath) {
             NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 在目录中找到数据库文件: \(dataBasePath)")
@@ -335,7 +334,7 @@ class DirectoryAccessManager: ObservableObject {
                         // 保存到 UserDefaults
                         UserDefaults.standard.set(serializableBookmarks, forKey: "FileBookmarks")
                         // 保存到数据库（在数据库初始化后）
-                        self.saveBookmarksToDatabase(serializableBookmarks)
+                        _ = self.saveBookmarksToDatabase(serializableBookmarks)
                         self.scanningProgress = 1.0
 
                         NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 目录扫描完成，创建了 \(serializableBookmarks.count) 个书签")

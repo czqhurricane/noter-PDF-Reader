@@ -1180,13 +1180,13 @@ struct PDFKitView: UIViewRepresentable {
                 // 创建防抖定时器，延迟保存
                 self.savePageTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: false) { _ in
                     DispatchQueue.global(qos: .background).async {
-                        do {
-                            // 保存当前页面号到数据库
-                            let _ = DatabaseManager.shared.saveLastVisitedPage(pdfPath: pdfPath, page: currentPageIndex)
+                        // 保存当前页面号到数据库
+                        let result = DatabaseManager.shared.saveLastVisitedPage(pdfPath: pdfPath, page: currentPageIndex)
 
+                        if result {
                             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 已保存当前文件：\(pdfPath)，当前页面号: \(currentPageIndex) 到数据库")
-                        } catch {
-                            NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 保存页面失败: \(error)")
+                        } else {
+                            NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 保存页面失败")
                         }
                     }
                 }

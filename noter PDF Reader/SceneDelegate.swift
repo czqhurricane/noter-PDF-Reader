@@ -51,7 +51,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     private func handleIncomingURL(_ url: URL) {
-        var lastSuccessfulRootPath: String? = UserDefaults.standard.string(forKey: "LastSuccessfulRootPath")
+        let lastSuccessfulRootPath: String? = UserDefaults.standard.string(forKey: "LastSuccessfulRootPath")
 
         if let scheme = url.scheme?.lowercased(), scheme == "video" {
             guard let decodedString = url.absoluteString.removingPercentEncoding else { return }
@@ -119,10 +119,12 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                     return
                 }
 
-                if let videoUrl = URL(string: videoUrlString) {
-                    UIApplication.shared.open(videoUrl, options: [:], completionHandler: nil)
+                if videoUrlString.hasPrefix("http") {
+                    if let videoUrl = URL(string: videoUrlString) {
+                        UIApplication.shared.open(videoUrl, options: [:], completionHandler: nil)
+                    }
 
-                    NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 网络视频链接: \(videoUrlString), start: \(start), end: \(end)")
+                    NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 网络视频链接: \(String(describing: videoUrlString)), start: \(String(describing: start)), end: \(String(describing: end))")
 
                     return
                 }

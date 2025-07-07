@@ -601,22 +601,25 @@ struct ContentView: View {
     }
 
     private func processMetanoteLink(_ link: String) -> Bool {
-        var endTime: Double = 0
+        var endSeconds: Double = 0
+
         // 首先，尝试将其解析为视频链接
         if let videoResult = PathConverter.parseVideoLink(link) {
             // 我们有一个视频链接：在外部打开视频网址
             let videoUrlString = videoResult.videoUrlString
-            if let videoUrl = URL(string: videoUrlString) {
-                UIApplication.shared.open(videoUrl, options: [:], completionHandler: nil)
+            if videoUrlString.hasPrefix("http") {
+                if let videoUrl = URL(string: videoUrlString) {
+                    UIApplication.shared.open(videoUrl, options: [:], completionHandler: nil)
 
-                NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 网络视频链接: \(videoUrl)")
+                    NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 网络视频链接: \(videoUrl)")
+                }
 
                 return true // 关闭当前sheet
             } else if videoUrlString.hasPrefix("/") {
                 let result = PathConverter.convertNoterPagePath(videoUrlString, rootDirectoryURL: directoryManager.rootDirectoryURL)
                 let end = videoResult.end
-                if let endTimeString = end?.trimmingCharacters(in: .whitespacesAndNewlines), let endSeconds = convertTimeToSeconds(endTimeString) {
-                    endTime = Double(endSeconds)
+                if let endTimeString = end?.trimmingCharacters(in: .whitespacesAndNewlines), let endTimeValue = convertTimeToSeconds(endTimeString) {
+                    endSeconds = Double(endTimeValue)
                 }
 
                 // 解析时间参数
@@ -629,12 +632,12 @@ struct ContentView: View {
                         // 使用 DispatchQueue.main.async 确保在当前 sheet 关闭后再显示视频播放器
                         DispatchQueue.main.async {
                             self.startTime = startSeconds
-                            self.endTime = endTime
+                            self.endTime = endSeconds
                             self.localVideoUrl = URL(string: components[0]) ?? URL(fileURLWithPath: components[0])
                             self.showPlayerSheet = true
                         }
 
-                        NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 本地视频链接: \(components[0])，本地视频 URL: \(localVideoUrl), 开始时间: \(startSeconds)秒，结束时间: \(endTime)秒")
+                        NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 本地视频链接: \(components[0])，本地视频 URL: \(String(describing: localVideoUrl)), 开始时间: \(String(describing: startSeconds))秒，结束时间: \(String(describing: endSeconds))秒")
 
                         return false // 不在这里关闭sheet，让系统自动处理
                     }
