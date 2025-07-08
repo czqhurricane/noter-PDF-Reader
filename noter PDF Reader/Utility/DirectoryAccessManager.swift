@@ -5,14 +5,14 @@ import UIKit
 class DirectoryAccessManager: ObservableObject {
     @Published var rootDirectoryURL: URL?
     @Published var isScanning: Bool = false
-    @Published var scanningProgress: Double = 0
+    @Published var scanningProgress: Double = 0.0
     @Published var errorMessage: String?
 
     // 添加单例实例
     static let shared = DirectoryAccessManager()
 
     // 存储所有文件和目录的书签数据
-    private var bookmarks: [String: Data] = [:]
+    var bookmarks: [String: Data] = [:]
 
     // 添加新的方法用于保存和加载根目录书签到文件系统
     private func saveRootBookmarkToFile(_ bookmarkData: Data) -> Bool {
@@ -544,7 +544,7 @@ class DirectoryAccessManager: ObservableObject {
 
             if let allURLs = enumerator?.allObjects as? [URL] {
                 for fileURL in allURLs {
-                    if fileURL.pathExtension.lowercased() == "pdf" {
+                    if fileURL.pathExtension.lowercased() == "pdf" || fileURL.pathExtension.lowercased() == "MP4" {
                         let filePath = fileURL.path
                         let fileName = fileURL.deletingPathExtension().lastPathComponent
                         // 将 filePath 转换为 rawPath

@@ -445,8 +445,8 @@ struct PDFKitView: UIViewRepresentable {
 
         private var isProcessingPageChange = false
         private var arrowTimer: Timer? // 计时器的属性
-        private var lastTapXRatio: Double = 0
-        private var lastTapYRatio: Double = 0
+        private var lastTapXRatio: Double = 0.0
+        private var lastTapYRatio: Double = 0.0
         private var selectedText: String = "" // 存储选中文本的属性
         private var pageText: String = ""
         private var isTranslationMode: Bool = false // 否是翻译模式标识

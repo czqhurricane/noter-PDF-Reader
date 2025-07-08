@@ -40,8 +40,8 @@ struct ContentView: View {
     @State private var selectedFolderSearchText: String? = nil // 跟踪文件夹搜索的高亮文本
     @State private var showPlayerSheet = false
     @State private var localVideoUrl: URL? = UserDefaults.standard.url(forKey: "LocalVideoUrl")
-    @State private var startTime: Double = 0
-    @State private var endTime: Double = 0
+    @State private var startTime: Double = 0.0
+    @State private var endTime: Double = 0.0
 
     @StateObject private var directoryManager = DirectoryAccessManager.shared // 目录访问管理器
     @StateObject var annotationListViewModel = AnnotationListViewModel()
@@ -465,16 +465,28 @@ struct ContentView: View {
                 directoryManager.restoreSavedBookmarks()
                 setupNotifications()
                 // 检查是否有待处理的 PDF 信息
-                if let info = SceneDelegate.pendingPDFInfo {
+                if let pendingPDFInfo = SceneDelegate.pendingPDFInfo {
                     NotificationCenter.default.post(
                         name: NSNotification.Name("OpenPDFNotification"),
                         object: nil,
-                        userInfo: info
+                        userInfo: pendingPDFInfo
                     )
 
                     SceneDelegate.pendingPDFInfo = nil
 
                     NSLog("✅ ContentView.swift -> ContentView.body, 应用初始化完成后发送 OpenPDFNotification 通知")
+                }
+
+                if let pendingVideoInfo = SceneDelegate.pendingVideoInfo {
+                    NotificationCenter.default.post(
+                      name: NSNotification.Name("OpenVideoNotification"),
+                      object: nil,
+                      userInfo: pendingVideoInfo
+                    )
+
+                    SceneDelegate.pendingVideoInfo = nil
+
+                    NSLog("✅ ContentView.swift -> ContentView.body, 应用初始化完成后发送 OpenVideoNotification 通知")
                 }
 
                 // 初始锁定屏幕方向为竖屏
@@ -499,13 +511,16 @@ struct ContentView: View {
         // 使用与 SceneDelegate 和 AnnotationListView 相同的通知名称
         let openPDFNotification = NSNotification.Name("OpenPDFNotification")
         let loadAnnotationsDatabaseNotification = NSNotification.Name("LoadAnnotationsDatabase")
+        let openVideoNotification = NSNotification.Name("OpenVideoNotification")
 
         // 先移除可能存在的旧观察者，避免重复注册
         NotificationCenter.default.removeObserver(self, name: openPDFNotification, object: nil)
         NotificationCenter.default.removeObserver(self, name: loadAnnotationsDatabaseNotification, object: nil)
+        NotificationCenter.default.removeObserver(self, name: openVideoNotification, object: nil)
 
         NSLog("✅ ContentView.swift -> ContentView.setupNotifications, 正在注册通知观察者: \(openPDFNotification)")
         NSLog("✅ ContentView.swift -> ContentView.setupNotifications, 正在注册通知观察者: \(loadAnnotationsDatabaseNotification)")
+        NSLog("✅ ContentView.swift -> ContentView.setupNotifications, 正在注册通知观察者: \(openVideoNotification)")
 
         // 监听 sceneDelegate 和 AnnotationListView 的打开私有协议链接的通知
         NotificationCenter.default.addObserver(
@@ -598,10 +613,52 @@ struct ContentView: View {
 
             openPDF(at: pdfPath, page: lastVisitedPage, xRatio: xRatio, yRatio: yRatio, showArrow: false)
         }
+
+        // 监听 SceneDelegate 的打开 Video 通知
+        NotificationCenter.default.addObserver(
+          forName: Notification.Name("OpenVideoNotification"),
+          object: nil,
+          queue: .main
+        ) { notification in
+            guard let userInfo = notification.userInfo,
+                  let localVideoPath = userInfo["localVideoPath"] as? String,
+                  let startTime = userInfo["startTime"] as? Double,
+                  let endTime = userInfo["endTime"] as? Double
+            else {
+                NSLog("❌ ContentView.swift -> ContentView.setupNotifications, OpenVideoNotification 获取通知参数失败")
+
+                return
+            }
+
+            if let secureURL = directoryManager.startAccessingFile(at: localVideoPath) {
+                self.localVideoUrl = secureURL
+                // 使用我们的 VideoPlayerView 打开
+                let videoPlayerView = VideoPlayerView(videoURL: secureURL, startTime: startTime, endTime: endTime)
+                let hostingController = UIHostingController(rootView: videoPlayerView)
+                UIApplication.shared.windows.first?.rootViewController?.present(hostingController, animated: true)
+
+                NSLog("✅ ContentView.swift -> ContentView.setupNotifications, OpenVideoNotification 观察者, 接收到打开 Video 请求，本地视频 URL: \(localVideoUrl), 开始时间: \(startTime)秒，结束时间：\(endTime)秒")
+
+                // 在处理视频链接时，创建并保存书签
+                do {
+                    let bookmark = try localVideoUrl!.bookmarkData(options: .minimalBookmark,
+                                                                   includingResourceValuesForKeys: nil,
+                                                                   relativeTo: nil)
+                    directoryManager.bookmarks[localVideoUrl!.path] = bookmark
+                    // 可选：保存到数据库或 UserDefaults
+                } catch {
+                    NSLog("❌ ContentView.swift -> ContentView.setupNotifications, OpenVideoNotification, 无法为视频文件创建书签: \(error.localizedDescription)")
+                }
+            } else {
+                // 处理无法获取访问权限的情况
+                NSLog("❌ ContentView.swift -> ContentView.setupNotifications, OpenVideoNotification, 无法获取视频文件的安全访问权限")
+            }
+        }
+
     }
 
     private func processMetanoteLink(_ link: String) -> Bool {
-        var endSeconds: Double = 0
+        var endSeconds: Double = 0.0
 
         // 首先，尝试将其解析为视频链接
         if let videoResult = PathConverter.parseVideoLink(link) {
@@ -614,7 +671,8 @@ struct ContentView: View {
                     NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 网络视频链接: \(videoUrl)")
                 }
 
-                return true // 关闭当前sheet
+                // 关闭当前 sheet
+                return true
             } else if videoUrlString.hasPrefix("/") {
                 let result = PathConverter.convertNoterPagePath(videoUrlString, rootDirectoryURL: directoryManager.rootDirectoryURL)
                 let end = videoResult.end
@@ -633,23 +691,61 @@ struct ContentView: View {
                         DispatchQueue.main.async {
                             self.startTime = startSeconds
                             self.endTime = endSeconds
-                            self.localVideoUrl = URL(string: components[0]) ?? URL(fileURLWithPath: components[0])
-                            self.showPlayerSheet = true
+                            // 在显示视频播放器前，使用 DirectoryAccessManager 获取安全访问权限
+                            if let secureURL = directoryManager.startAccessingFile(at: components[0]) {
+                                self.localVideoUrl = secureURL
+                                self.showPlayerSheet = true
+
+                                // 在处理视频链接时，创建并保存书签
+                                do {
+                                    let bookmark = try localVideoUrl!.bookmarkData(options: .minimalBookmark,
+                                                                                   includingResourceValuesForKeys: nil,
+                                                                                   relativeTo: nil)
+                                    directoryManager.bookmarks[localVideoUrl!.path] = bookmark
+                                    // 可选：保存到数据库或 UserDefaults
+                                } catch {
+                                    NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 无法为视频文件创建书签: \(error.localizedDescription)")
+                                }
+                            } else {
+                                // 处理无法获取访问权限的情况
+                                NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 无法获取视频文件的安全访问权限")
+                            }
+
+                            NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 本地视频 path: \(components[0])，本地视频 URL: \(String(describing: localVideoUrl)), 开始时间: \(String(describing: startSeconds))秒，结束时间: \(String(describing: endSeconds))秒")
                         }
 
-                        NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 本地视频链接: \(components[0])，本地视频 URL: \(String(describing: localVideoUrl)), 开始时间: \(String(describing: startSeconds))秒，结束时间: \(String(describing: endSeconds))秒")
-
-                        return false // 不在这里关闭sheet，让系统自动处理
+                        // 不在这里关闭 sheet，让系统自动处理
+                        return false
                     }
                 } else {
                     showLinkInputSheet = false
 
                     DispatchQueue.main.async {
-                        self.localVideoUrl = URL(string: result) ?? URL(fileURLWithPath: result)
-                        self.showPlayerSheet = true
+                        self.startTime = 0
+                        self.endTime = 0
+                        // 在显示视频播放器前，使用 DirectoryAccessManager 获取安全访问权限
+                        if let secureURL = directoryManager.startAccessingFile(at: result.trimmingCharacters(in: .whitespacesAndNewlines)) {
+                            self.localVideoUrl = secureURL
+                            self.showPlayerSheet = true
+
+                            // 在处理视频链接时，创建并保存书签
+                            do {
+                                let bookmark = try localVideoUrl!.bookmarkData(options: .minimalBookmark,
+                                                                               includingResourceValuesForKeys: nil,
+                                                                               relativeTo: nil)
+                                directoryManager.bookmarks[localVideoUrl!.path] = bookmark
+                                // 可选：保存到数据库或 UserDefaults
+                            } catch {
+                                NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 无法为视频文件创建书签: \(error.localizedDescription)")
+                            }
+                        } else {
+                            // 处理无法获取访问权限的情况
+                            NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 无法获取视频文件的安全访问权限")
+                        }
                     }
 
-                    return false // 不在这里关闭sheet，让系统自动处理
+                    // 不在这里关闭 sheet，让系统自动处理
+                    return false
                 }
 
             } else {

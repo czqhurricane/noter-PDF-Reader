@@ -2,12 +2,13 @@ import AVFoundation
 import AVKit
 import SwiftUI
 
-// 添加一个辅助类来处理KVO
+// 一个辅助类来处理KVO
 class PlayerItemObserver: NSObject {
     private var player: AVPlayer?
     private var startTime: Double
     private var onReadyToPlay: (() -> Void)?
     private var observation: NSKeyValueObservation?
+    private var errorObservation: NSKeyValueObservation?
 
     init(player: AVPlayer?, startTime: Double, onReadyToPlay: @escaping () -> Void) {
         self.player = player
@@ -16,43 +17,76 @@ class PlayerItemObserver: NSObject {
         super.init()
 
         if let playerItem = player?.currentItem {
+            // 监听播放状态
             observation = playerItem.observe(\.status, options: [.new, .old]) { [weak self] item, _ in
                 guard let self = self else { return }
-                if item.status == .readyToPlay {
+
+                switch item.status {
+                case .readyToPlay:
+                    NSLog("✅ VideoPlayerView.swift -> PlayerItemObserver.init, Item ready to play")
+
                     let targetTime = CMTime(seconds: self.startTime, preferredTimescale: 1000)
                     self.player?.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero) { [weak self] finished in
                         if finished {
                             self?.player?.play()
                             self?.onReadyToPlay?()
                         }
-                        // 清理闭包避免循环引用
-                        self?.observation = nil
-                        self?.onReadyToPlay = nil
                     }
+                case .failed:
+                    if let error = item.error {
+                        NSLog("❌ VideoPlayerView.swift -> PlayerItemObserver.init, Item failed with error: \(error.localizedDescription)")
+                    }
+                case .unknown:
+                    NSLog("❌ VideoPlayerView.swift -> PlayerItemObserver.init, Item status unknown")
+                @unknown default:
+                    break
                 }
+            }
+            // 监听加载进度
+            playerItem.addObserver(self, forKeyPath: "loadedTimeRanges", options: .new, context: nil)
+        }
+    }
+
+    override func observeValue(forKeyPath keyPath: String?, of object: Any?, change _: [NSKeyValueChangeKey: Any]?, context _: UnsafeMutableRawPointer?) {
+        if keyPath == "loadedTimeRanges", let playerItem = object as? AVPlayerItem {
+            let loadedTimeRanges = playerItem.loadedTimeRanges
+            if let timeRange = loadedTimeRanges.first?.timeRangeValue {
+                let startTime = CMTimeGetSeconds(timeRange.start)
+                let duration = CMTimeGetSeconds(timeRange.duration)
+                let totalBuffer = startTime + duration
+
+                NSLog("✅ VideoPlayerView.swift -> PlayerItemObserver.observeValue, Buffer progress: \(totalBuffer) seconds")
             }
         }
     }
 
     deinit {
-        // 不再需要手动移除观察者
+        // 移除观察者
+        if let playerItem = player?.currentItem {
+            playerItem.removeObserver(self, forKeyPath: "loadedTimeRanges")
+        }
+
+        NSLog("❌ VideoPlayerView.swift -> PlayerItemObserver.deinit, Observer released")
     }
 }
 
 struct VideoPlayerView: View {
     let videoURL: URL
     let startTime: Double
-    let endTime: Double?
+    let endTime: Double
 
     @State private var player: AVPlayer?
     @State private var isPlaying: Bool = false
     @State private var timeObserverToken: Any?
     @State private var playerViewController: AVPlayerViewController?
-    @State private var playerObserver: PlayerItemObserver? // 添加观察者对象
-    @State private var isRestarting = false // 添加状态变量用于跟踪重启操作
-    @State private var isFullScreen = false // 添加状态以跟踪全屏
+    @State private var playerObserver: PlayerItemObserver?       // 观察者对象
+    @State private var isRestarting = false                      // 状态变量用于跟踪重启操作
+    @State private var isFullScreen = false                      // 状态以跟踪全屏
+    @State private var playbackError: Error? = nil
+    @State private var retryCount: Int = 0
+    @State private var isAccessingSecurityScopedResource = false // 安全作用域资源访问状态
 
-    init(videoURL: URL, startTime: Double = 0, endTime: Double? = nil) {
+    init(videoURL: URL, startTime: Double = 0, endTime: Double = 0) {
         self.videoURL = videoURL
         self.startTime = startTime
         self.endTime = endTime
@@ -65,7 +99,7 @@ struct VideoPlayerView: View {
             AVPlayerControllerRepresentable(player: player, isFullScreen: $isFullScreen, playerViewControllerCallback: { controller in
                 self.playerViewController = controller
             })
-            .aspectRatio(16 / 9, contentMode: .fit)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .onAppear {
                 // 创建播放器并设置起始时间
                 setupPlayer()
@@ -73,10 +107,7 @@ struct VideoPlayerView: View {
             .onDisappear {
                 if !isFullScreen {
                     // 停止播放并释放资源
-                    removePeriodicTimeObserver()
-                    player?.pause()
-                    player = nil
-                    playerObserver = nil // 释放观察者
+                    cleanupPlayer()
                 }
             }
 
@@ -121,11 +152,65 @@ struct VideoPlayerView: View {
     }
 
     private func setupPlayer() {
+        // 开始访问安全作用域资源
+        let accessGranted = videoURL.startAccessingSecurityScopedResource()
+        isAccessingSecurityScopedResource = accessGranted
+
+        NSLog("✅ VideoPlayerView.swift -> VideoPlayerView.setupPlayer, 安全作用域资源访问状态: \(accessGranted)")
+
         // 创建播放器
-        let playerItem = AVPlayerItem(url: videoURL)
+        let asset = AVURLAsset(url: videoURL, options: [AVURLAssetPreferPreciseDurationAndTimingKey: true])
+        let playerItem = AVPlayerItem(asset: asset)
         player = AVPlayer(playerItem: playerItem)
 
-        // 添加时间观察器来监控播放进度
+        if !accessGranted {
+            NSLog("❌ VideoPlayerView.swift -> VideoPlayerView.setupPlayer, 无法获取安全作用域资源访问权限，但仍尝试播放")
+            NSLog("❌ VideoPlayerView.swift -> VideoPlayerView.setupPlayer, URL: \(videoURL.absoluteString)")
+            NSLog("❌ VideoPlayerView.swift -> VideoPlayerView.setupPlayer, URL scheme: \(videoURL.scheme ?? "无")")
+            NSLog("❌ VideoPlayerView.swift -> VideoPlayerView.setupPlayer, URL isFileURL: \(videoURL.isFileURL)")
+        }
+
+        do {
+            let audioSession = AVAudioSession.sharedInstance()
+            try audioSession.setCategory(.playback, mode: .moviePlayback, options: [.allowAirPlay, .allowBluetooth, .allowBluetoothA2DP])
+            try audioSession.setActive(true, options: .notifyOthersOnDeactivation)
+
+            NSLog("✅ VideoPlayerView.swift -> VideoPlayerView.setupPlayer, Audio session configured successfully")
+
+        } catch {
+            NSLog("❌ VideoPlayerView.swift -> VideoPlayerView.setupPlayer, Failed to set audio session category: \(error)")
+
+            playbackError = error
+
+            // 尝试使用默认配置
+            do {
+                try AVAudioSession.sharedInstance().setCategory(.playback)
+                try AVAudioSession.sharedInstance().setActive(true)
+
+                NSLog("✅ VideoPlayerView.swift -> VideoPlayerView.setupPlayer, 使用默认配置激活音频会话成功")
+            } catch {
+                NSLog("❌ VideoPlayerView.swift -> VideoPlayerView.setupPlayer, 使用默认配置激活音频会话失败: \(error)")
+            }
+        }
+
+        // 通知监听播放错误
+        NotificationCenter.default.addObserver(forName: .AVPlayerItemFailedToPlayToEndTime, object: playerItem, queue: .main) { notification in
+            if let error = notification.userInfo?[AVPlayerItemFailedToPlayToEndTimeErrorKey] as? Error {
+                NSLog("❌ VideoPlayerView.swift -> Playback failed with error: \(error.localizedDescription)")
+
+                self.playbackError = error
+
+                // 尝试重试播放（最多3次）
+                if self.retryCount < 3 {
+                    self.retryCount += 1
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.0) {
+                        self.setupPlayer()
+                    }
+                }
+            }
+        }
+
+        // 时间观察器来监控播放进度
         addPeriodicTimeObserver()
 
         // 创建并设置观察者
@@ -134,10 +219,38 @@ struct VideoPlayerView: View {
         }
     }
 
+    private func cleanupPlayer() {
+        // 移除所有通知观察者
+        NotificationCenter.default.removeObserver(self)
+
+        // 停止播放并释放资源
+        removePeriodicTimeObserver()
+        player?.pause()
+        // 释放当前播放项
+        player?.replaceCurrentItem(with: nil)
+        player = nil
+        // 释放观察者
+        playerObserver = nil
+
+        // 停用音频会话 - 错误处理
+        do {
+            try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+            NSLog("✅ VideoPlayerView.swift -> cleanupPlayer, Audio session deactivated successfully")
+        } catch {
+            NSLog("❌ VideoPlayerView.swift -> cleanupPlayer, Failed to deactivate audio session: \(error)")
+        }
+
+        // 停止访问安全作用域资源
+        if isAccessingSecurityScopedResource {
+            videoURL.stopAccessingSecurityScopedResource()
+            isAccessingSecurityScopedResource = false
+            NSLog("✅ VideoPlayerView.swift -> cleanupPlayer, 已停止访问安全作用域资源")
+        }
+    }
+
     private func addPeriodicTimeObserver() {
         guard let player = player else { return }
 
-        // Capture startTime and endTime at this moment
         let startTime = self.startTime
         let endTime = self.endTime
 
@@ -150,21 +263,26 @@ struct VideoPlayerView: View {
 
             let currentTime = time.seconds
 
-            // 如果设置了endTime并且当前时间超过了endTime，则回到startTime
-            if let endTime = self.endTime, currentTime >= endTime {
+            // 如果设置了 endTime 并且当前时间超过了 endTime，则回到 startTime
+            if  endTime > 0 && currentTime >= endTime {
                 self.isRestarting = true
                 let targetTime = CMTime(seconds: self.startTime, preferredTimescale: 1000)
-                NSLog("✅ VideoPlayerView.swift -> VideoPlayerView.addPeriodicTimeObserver, \(targetTime)")
+
+                NSLog("✅ VideoPlayerView.swift -> VideoPlayerView.addPeriodicTimeObserver, 设置了 endTime, \(targetTime)")
+
                 player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
                     player.play()
                     self.isRestarting = false
                 }
             }
             // 如果没有设置endTime，则检查是否接近视频结尾
-            else if self.endTime == nil {
+            else if self.endTime == 0 {
                 if let duration = player.currentItem?.duration.seconds, duration.isFinite, currentTime >= duration - 0.5 {
                     self.isRestarting = true
                     let targetTime = CMTime(seconds: self.startTime, preferredTimescale: 1000)
+
+                    NSLog("✅ VideoPlayerView.swift -> VideoPlayerView.addPeriodicTimeObserver, 没有设置 endTime, \(targetTime)")
+
                     player.seek(to: targetTime, toleranceBefore: .zero, toleranceAfter: .zero) { _ in
                         player.play()
                         self.isRestarting = false
@@ -218,6 +336,7 @@ struct AVPlayerControllerRepresentable: UIViewControllerRepresentable {
         var playerViewController: AVPlayerViewController?
         private var wasPlaying: Bool = false
         private var currentTime: CMTime?
+        private var originalPlayer: AVPlayer?
 
         init(_ parent: AVPlayerControllerRepresentable) {
             self.parent = parent
@@ -228,8 +347,14 @@ struct AVPlayerControllerRepresentable: UIViewControllerRepresentable {
             parent.isFullScreen = true
             // 保存当前播放器和播放状态
             let currentPlayer = playerViewController.player
+            originalPlayer = parent.player
             wasPlaying = currentPlayer?.rate != 0
             currentTime = currentPlayer?.currentTime()
+
+            // 暂停原始播放器，避免双重声音
+            parent.player?.pause()
+            // 确保完全停止
+            parent.player?.rate = 0
 
             // 确保在全屏过程中保持播放器引用
             coordinator.animate(alongsideTransition: nil) { [weak self] _ in
@@ -251,22 +376,27 @@ struct AVPlayerControllerRepresentable: UIViewControllerRepresentable {
             let wasPlayingInFullScreen = currentPlayer?.rate != 0
             let timeInFullScreen = currentPlayer?.currentTime()
 
+            // 暂停全屏播放器
+            currentPlayer?.pause()
+            // 确保完全停止
+            parent.player?.rate = 0
+
             // 使用动画协调器确保平滑过渡
             coordinator.animate(alongsideTransition: nil) { [weak self] _ in
-                // 动画完成后确保视频继续播放并保持时间位置
-                if let time = timeInFullScreen {
-                    currentPlayer?.seek(to: time, completionHandler: { _ in
+                guard let self = self else { return }
+                // 更新父视图中的播放状态
+                if let parentView = self.parent.player, let time = timeInFullScreen {
+                    // 确保原始播放器状态正确
+                    parentView.seek(to: time, completionHandler: { _ in
                         if wasPlayingInFullScreen {
                             currentPlayer?.play()
                         }
                     })
                 }
-                // 更新父视图中的播放状态
-                if let parentView = self?.parent.player, parentView != currentPlayer {
-                    parentView.seek(to: timeInFullScreen ?? .zero)
-                    if wasPlayingInFullScreen {
-                        parentView.play()
-                    }
+
+                // 延迟设置isFullScreen标志，确保资源不会过早释放
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                    self.parent.isFullScreen = false
                 }
             }
         }

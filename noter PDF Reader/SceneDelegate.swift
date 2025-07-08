@@ -3,7 +3,7 @@ import UIKit
 
 class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     static var pendingPDFInfo: [String: Any]? = nil
-    static var decodedStringInfo: [String: Any]? = nil
+    static var pendingVideoInfo: [String: Any]? = nil
 
     var window: UIWindow?
 
@@ -52,18 +52,39 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
     private func handleIncomingURL(_ url: URL) {
         let lastSuccessfulRootPath: String? = UserDefaults.standard.string(forKey: "LastSuccessfulRootPath")
-
         if let scheme = url.scheme?.lowercased(), scheme == "video" {
             guard let decodedString = url.absoluteString.removingPercentEncoding else { return }
-            let rest = decodedString.dropFirst(6) // Remove "video:" prefix
+            // 移除前缀 video
+            let rest = String(decodedString.dropFirst(6))
             let parts = rest.split(separator: "#", maxSplits: 1).map(String.init)
             guard !parts.isEmpty else { return }
 
-            var videoUrlString = parts[0]
-            var start: String?
-            var end: String?
+            if parts.count == 1 {
+                let result = PathConverter.convertNoterPagePath(parts[0], rootDirectoryURL: URL(fileURLWithPath: lastSuccessfulRootPath!))
+                SceneDelegate.pendingVideoInfo = [
+                  "localVideoPath": result.trimmingCharacters(in: .whitespacesAndNewlines),
+                  "startTime": 0.0,
+                  "endTime": 0.0,
+                ]
+
+                NotificationCenter.default.post(
+                  name: NSNotification.Name("OpenVideoNotification"),
+                  object: nil,
+                  userInfo: [
+                    "localVideoPath": result.trimmingCharacters(in: .whitespacesAndNewlines),
+                    "startTime": 0.0,
+                    "endTime": 0.0,
+                  ]
+                )
+
+                return
+            }
 
             if parts.count > 1 {
+                var videoUrlString = parts[0]
+                var start: String?
+                var end: String?
+
                 let fragment = parts[1]
                 let timeParts = fragment.split(separator: "-", maxSplits: 1).map(String.init)
 
@@ -87,8 +108,8 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                 }
 
                 if videoUrlString.hasPrefix("/") {
-                    var startTime: Double = 0
-                    var endTime: Double = 0
+                    var startTime: Double = 0.0
+                    var endTime: Double = 0.0
                     var localVideoUrl: URL
 
                     let result = PathConverter.convertNoterPagePath(videoUrlString, rootDirectoryURL: URL(fileURLWithPath: lastSuccessfulRootPath!))
@@ -100,26 +121,49 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                         let components = result.components(separatedBy: "?t=")
                         if components.count > 1, let startTimeValue = components.last, let startSeconds = Double(startTimeValue) {
                             startTime = startSeconds
-                            localVideoUrl = URL(string: components[0]) ?? URL(fileURLWithPath: components[0])
-                            // 使用我们的 VideoPlayerView 打开
-                            let videoPlayerView = VideoPlayerView(videoURL: localVideoUrl, startTime: startTime, endTime: endTime)
-                            let hostingController = UIHostingController(rootView: videoPlayerView)
-                            UIApplication.shared.windows.first?.rootViewController?.present(hostingController, animated: true)
 
-                            NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 本地视频链接: \(components[0])，本地视频 URL: \(localVideoUrl), 开始时间: \(startTime)秒，结束时间：\(endTime)秒")
+                            SceneDelegate.pendingVideoInfo = [
+                              "localVideoPath": components[0],
+                              "startTime": startTime ?? 0.0,
+                              "endTime": endTime ?? 0.0,
+                            ]
+
+                            NotificationCenter.default.post(
+                                name: NSNotification.Name("OpenVideoNotification"),
+                                object: nil,
+                                userInfo: [
+                                    "localVideoPath": components[0],
+                                    "startTime": startTime ?? 0.0,
+                                    "endTime": endTime ?? 0.0,
+                                ]
+                            )
+
+                            NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 本地视频 path: \(components[0])，开始时间: \(startTime)秒，结束时间：\(endTime)秒")
+
+                            return
                         }
                     } else {
-                        localVideoUrl = URL(string: result) ?? URL(fileURLWithPath: result)
-                        // 使用我们的VideoPlayerView打开
-                        let videoPlayerView = VideoPlayerView(videoURL: localVideoUrl, startTime: startTime)
-                        let hostingController = UIHostingController(rootView: videoPlayerView)
-                        UIApplication.shared.windows.first?.rootViewController?.present(hostingController, animated: true)
+                        SceneDelegate.pendingVideoInfo = [
+                          "localVideoPath": result.trimmingCharacters(in: .whitespacesAndNewlines),
+                          "startTime": 0.0,
+                          "endTime": 0.0,
+                        ]
+
+                        NotificationCenter.default.post(
+                            name: NSNotification.Name("OpenVideoNotification"),
+                            object: nil,
+                            userInfo: [
+                              "localVideoPath": result.trimmingCharacters(in: .whitespacesAndNewlines),
+                              "startTime": 0.0,
+                              "endTime": 0.0,
+                            ]
+                        )
+
+                        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 本地视频 path: \(result)，开始时间: \(startTime)秒，结束时间：\(endTime)秒")
                     }
 
                     return
-                }
-
-                if videoUrlString.hasPrefix("http") {
+                } else if videoUrlString.hasPrefix("http") {
                     if let videoUrl = URL(string: videoUrlString) {
                         UIApplication.shared.open(videoUrl, options: [:], completionHandler: nil)
                     }
@@ -165,7 +209,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             }
         }
 
-        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 解析结果 - 路径: \(pdfPath), 页码: \(page ?? 0), yRatio: \(yRatio ?? 0), xRatio: \(xRatio ?? 0)")
+        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 解析结果，路径: \(pdfPath), 页码: \(page ?? 0), yRatio: \(yRatio ?? 0), xRatio: \(xRatio ?? 0)")
 
         SceneDelegate.pendingPDFInfo = [
             "decodedString": decodedString,
@@ -173,10 +217,6 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             "page": page ?? 1,
             "xRatio": xRatio ?? 0.0,
             "yRatio": yRatio ?? 0.0,
-        ]
-
-        SceneDelegate.decodedStringInfo = [
-            "decodedString": decodedString,
         ]
 
         NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 存储 PDF 信息，等待应用初始化完成")
@@ -195,7 +235,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         )
 
         // 添加额外的日志确认通知已发送
-        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 已发送通知: OpenPDFNotification 带参数 pdfPath=\(pdfPath) page = \(page ?? 0), xRatio = \(xRatio ?? 0) yRatio = \(yRatio ?? 0)")
+        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 已发送通知 OpenPDFNotification 带参数，pdfPath: \(pdfPath), page: \(page ?? 0), xRatio: \(xRatio ?? 0), yRatio: \(yRatio ?? 0)")
     }
 
     // 将时间格式（如 0:12:15）转换为秒数
@@ -203,7 +243,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let components = timeString.components(separatedBy: ":")
         var seconds = 0
 
-        if components.count == 3 { // 格式为 h:m:s
+        if components.count == 3 {        // 格式为 h:m:s
             if let hours = Int(components[0]),
                let minutes = Int(components[1]),
                let secs = Int(components[2])

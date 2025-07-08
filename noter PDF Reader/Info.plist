@@ -120,5 +120,14 @@
 <true/>
 <key>com.apple.security.network.client</key>
 <true/>
+<!-- 媒体库访问权限 -->
+<key>NSAppleMusicUsageDescription</key>
+<string>App 需要访问您的媒体库以播放视频</string>
+<!-- 如果使用网络视频，确保添加以下权限 -->
+<key>NSAppTransportSecurity</key>
+<dict>
+    <key>NSAllowsArbitraryLoads</key>
+    <true/>
+</dict>
 </dict>
 </plist>
