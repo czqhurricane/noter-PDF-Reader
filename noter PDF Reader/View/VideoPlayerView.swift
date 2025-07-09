@@ -75,6 +75,12 @@ struct VideoPlayerView: View {
     let startTime: Double
     let endTime: Double
 
+    private struct PlayerConfig: Equatable {
+        let videoURL: URL
+        let startTime: Double
+        let endTime: Double
+    }
+
     @State private var player: AVPlayer?
     @State private var isPlaying: Bool = false
     @State private var timeObserverToken: Any?
@@ -85,6 +91,7 @@ struct VideoPlayerView: View {
     @State private var playbackError: Error? = nil
     @State private var retryCount: Int = 0
     @State private var isAccessingSecurityScopedResource = false // 安全作用域资源访问状态
+    @State private var lastConfig: PlayerConfig?
 
     init(videoURL: URL, startTime: Double = 0, endTime: Double = 0) {
         self.videoURL = videoURL
@@ -103,7 +110,11 @@ struct VideoPlayerView: View {
             .onAppear {
                 // 创建播放器并设置起始时间
                 setupPlayer()
+                lastConfig = PlayerConfig(videoURL: videoURL, startTime: startTime, endTime: endTime)
             }
+            .onChange(of: videoURL) { _ in checkForConfigChange() }
+            .onChange(of: startTime) { _ in checkForConfigChange() }
+            .onChange(of: endTime) { _ in checkForConfigChange() }
             .onDisappear {
                 if !isFullScreen {
                     // 停止播放并释放资源
@@ -246,6 +257,15 @@ struct VideoPlayerView: View {
             isAccessingSecurityScopedResource = false
             NSLog("✅ VideoPlayerView.swift -> cleanupPlayer, 已停止访问安全作用域资源")
         }
+    }
+
+    private func checkForConfigChange() {
+        let newConfig = PlayerConfig(videoURL: videoURL, startTime: startTime, endTime: endTime)
+        guard newConfig != lastConfig else { return }
+
+        cleanupPlayer()
+        setupPlayer()
+        lastConfig = newConfig
     }
 
     private func addPeriodicTimeObserver() {
