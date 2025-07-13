@@ -62,19 +62,19 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             if parts.count == 1 {
                 let result = PathConverter.convertNoterPagePath(parts[0], rootDirectoryURL: URL(fileURLWithPath: lastSuccessfulRootPath!))
                 SceneDelegate.pendingVideoInfo = [
-                  "localVideoPath": result.trimmingCharacters(in: .whitespacesAndNewlines),
-                  "startTime": 0.0,
-                  "endTime": 0.0,
-                ]
-
-                NotificationCenter.default.post(
-                  name: NSNotification.Name("OpenVideoNotification"),
-                  object: nil,
-                  userInfo: [
                     "localVideoPath": result.trimmingCharacters(in: .whitespacesAndNewlines),
                     "startTime": 0.0,
                     "endTime": 0.0,
-                  ]
+                ]
+
+                NotificationCenter.default.post(
+                    name: NSNotification.Name("OpenVideoNotification"),
+                    object: nil,
+                    userInfo: [
+                        "localVideoPath": result.trimmingCharacters(in: .whitespacesAndNewlines),
+                        "startTime": 0.0,
+                        "endTime": 0.0,
+                    ]
                 )
 
                 return
@@ -99,17 +99,26 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                 if let startTimeString = start?.trimmingCharacters(in: .whitespacesAndNewlines), let startSeconds = convertTimeToSeconds(startTimeString) {
                     // 检查 URL 是否已经包含参数
                     if videoUrlString.contains("?") {
-                        // 如果 URL 已经包含参数，添加 &t=
-                        videoUrlString += "&t=\(startSeconds)"
+                        if videoUrlString.contains("bilibili.com") {
+                            // 如果 URL 已经包含参数，添加 &t=
+                            videoUrlString += "&start_progress=\(startSeconds * 1000)"
+                        } else { // 如果 URL 已经包含参数，添加 &t=
+                            videoUrlString += "&t=\(startSeconds)"
+                        }
                     } else {
-                        // 如果 URL 不包含参数，添加 ?t=
-                        videoUrlString += "?t=\(startSeconds)"
+                        if videoUrlString.contains("bilibili.com") {
+                            // 如果 URL 不包含参数，添加 ?t=
+                            videoUrlString += "?start_progress=\(startSeconds * 1000)"
+                        } else {
+                            // 如果 URL 不包含参数，添加 ?t=
+                            videoUrlString += "?t=\(startSeconds)"
+                        }
                     }
                 }
 
                 if videoUrlString.hasPrefix("/") {
-                    var startTime: Double = 0.0
-                    var endTime: Double = 0.0
+                    var startTime = 0.0
+                    var endTime = 0.0
                     var localVideoUrl: URL
 
                     let result = PathConverter.convertNoterPagePath(videoUrlString, rootDirectoryURL: URL(fileURLWithPath: lastSuccessfulRootPath!))
@@ -123,9 +132,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                             startTime = startSeconds
 
                             SceneDelegate.pendingVideoInfo = [
-                              "localVideoPath": components[0],
-                              "startTime": startTime ?? 0.0,
-                              "endTime": endTime ?? 0.0,
+                                "localVideoPath": components[0],
+                                "startTime": startTime ?? 0.0,
+                                "endTime": endTime ?? 0.0,
                             ]
 
                             NotificationCenter.default.post(
@@ -144,18 +153,18 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                         }
                     } else {
                         SceneDelegate.pendingVideoInfo = [
-                          "localVideoPath": result.trimmingCharacters(in: .whitespacesAndNewlines),
-                          "startTime": 0.0,
-                          "endTime": 0.0,
+                            "localVideoPath": result.trimmingCharacters(in: .whitespacesAndNewlines),
+                            "startTime": 0.0,
+                            "endTime": 0.0,
                         ]
 
                         NotificationCenter.default.post(
                             name: NSNotification.Name("OpenVideoNotification"),
                             object: nil,
                             userInfo: [
-                              "localVideoPath": result.trimmingCharacters(in: .whitespacesAndNewlines),
-                              "startTime": 0.0,
-                              "endTime": 0.0,
+                                "localVideoPath": result.trimmingCharacters(in: .whitespacesAndNewlines),
+                                "startTime": 0.0,
+                                "endTime": 0.0,
                             ]
                         )
 
@@ -243,7 +252,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         let components = timeString.components(separatedBy: ":")
         var seconds = 0
 
-        if components.count == 3 {        // 格式为 h:m:s
+        if components.count == 3 { // 格式为 h:m:s
             if let hours = Int(components[0]),
                let minutes = Int(components[1]),
                let secs = Int(components[2])

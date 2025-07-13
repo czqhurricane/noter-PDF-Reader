@@ -97,11 +97,20 @@ enum PathConverter {
             if let startTimeString = start?.trimmingCharacters(in: .whitespacesAndNewlines), let startSeconds = convertTimeToSeconds(startTimeString) {
                 // 检查 URL 是否已经包含参数
                 if videoUrlString.contains("?") {
-                    // 如果 URL 已经包含参数，添加 &t=
-                    videoUrlString += "&t=\(startSeconds)"
+                    if videoUrlString.contains("bilibili.com") {
+                        // 如果 URL 已经包含参数，添加 &t=
+                        videoUrlString += "&start_progress=\(startSeconds * 1000)"
+                    } else { // 如果 URL 已经包含参数，添加 &t=
+                        videoUrlString += "&t=\(startSeconds)"
+                    }
                 } else {
-                    // 如果 URL 不包含参数，添加 ?t=
-                    videoUrlString += "?t=\(startSeconds)"
+                    if videoUrlString.contains("bilibili.com") {
+                        // 如果 URL 不包含参数，添加 ?t=
+                        videoUrlString += "?start_progress=\(startSeconds * 1000)"
+                    } else {
+                        // 如果 URL 不包含参数，添加 ?t=
+                        videoUrlString += "?t=\(startSeconds)"
+                    }
                 }
             }
         }

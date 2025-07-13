@@ -15,6 +15,19 @@ extension UIResponder {
     }
 }
 
+extension UIView {
+    var parentViewController: UIViewController? {
+        var parentResponder: UIResponder? = self
+        while parentResponder != nil {
+            parentResponder = parentResponder!.next
+            if let viewController = parentResponder as? UIViewController {
+                return viewController
+            }
+        }
+        return nil
+    }
+}
+
 extension CGRect {
     var isValid: Bool {
         return origin.x.isFinite && origin.y.isFinite &&
@@ -205,22 +218,26 @@ struct PDFKitView: UIViewRepresentable {
 
                 // 改进的视图控制器获取逻辑
                 DispatchQueue.main.async {
-                    if let windowScene = UIApplication.shared.connectedScenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-                       let window = windowScene.windows.first(where: { $0.isKeyWindow }),
-                       let rootVC = window.rootViewController
-                    {
+                    // 从 pdfView 自身查找父视图控制器
+                    if let presentingVC = pdfView.parentViewController {
                         // 确保视图控制器仍然有效
-                        guard !rootVC.isBeingDismissed && !rootVC.isBeingPresented else {
-                            NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, 视图控制器正在转换中，跳过 present 操作")
+                        guard !presentingVC.isBeingDismissed && !presentingVC.isBeingPresented && presentingVC.view.window != nil else {
+                            NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, 视图控制器状态无效，跳过 present 操作")
+                            context.coordinator.outlineVC = nil
 
                             return
                         }
 
-                        rootVC.present(outlineVC, animated: true) {
-                            NSLog("✅ PDFKitView.swift -> PDFKitView.updateUIView, 成功显示目录")
+                        // 确保 outlineVC 没有被重复展示
+                        if outlineVC.presentingViewController == nil {
+                            presentingVC.present(outlineVC, animated: true) {
+                                NSLog("✅ PDFKitView.swift -> PDFKitView.updateUIView, 成功显示目录")
+                            }
                         }
                     } else {
                         NSLog("❌ PDFKitView.swift -> PDFKitView.updateUIView, 无法获取有效的根视图控制器")
+
+                        context.coordinator.outlineVC = nil
                     }
                 }
             }
@@ -229,7 +246,10 @@ struct PDFKitView: UIViewRepresentable {
             if let outlineVC = context.coordinator.outlineVC {
                 DispatchQueue.main.async {
                     // 检查视图控制器状态
-                    if outlineVC.presentingViewController != nil && !outlineVC.isBeingDismissed {
+                    if outlineVC.presentingViewController != nil &&
+                        !outlineVC.isBeingDismissed &&
+                        outlineVC.view.window != nil
+                    {
                         outlineVC.dismiss(animated: true) {
                             context.coordinator.outlineVC = nil
 
@@ -571,6 +591,22 @@ struct PDFKitView: UIViewRepresentable {
         }
 
         func updateArrowPosition(pdfView: PDFView) {
+            // 首先检查视图状态
+            guard pdfView.superview != nil && pdfView.window != nil else {
+                NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.updateArrowPosition, PDFView 状态无效")
+
+                return
+            }
+
+            // 检查视图控制器状态
+            guard let parentVC = pdfView.parentViewController,
+                  !parentVC.isBeingPresented && !parentVC.isBeingDismissed
+            else {
+                NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.updateArrowPosition, 视图控制器状态无效")
+
+                return
+            }
+
             guard let position = convertToViewCoordinates(pdfView: pdfView) else {
                 NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.updateArrowPosition, 无法获取位置 position  = convertToViewCoordinates(pdfView: pdfView)")
 
@@ -588,43 +624,46 @@ struct PDFKitView: UIViewRepresentable {
 
             NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.updateArrowPosition, 成功获取位置 position  = convertToViewCoordinates(pdfView: pdfView) = \(position)")
 
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-
-            // 设置位置（注意：由于我们设置了锚点在箭头尖端，所以这里直接使用转换后的位置）
-            arrowLayer.position = position
-
-            // 根据 PDF 缩放比例调整大小
-            let scale = 3 / pdfView.scaleFactor
-            let rotation = CATransform3DMakeRotation(.pi / 2, 0, 0, 1) // Clockwise 90°
-            let scaledRotation = CATransform3DConcat(
-                CATransform3DMakeScale(scale, scale, 1),
-                rotation
-            )
-            arrowLayer.transform = scaledRotation
-
-            // 确保图层可见
-            arrowLayer.isHidden = false
-            arrowLayer.opacity = 1.0 // 添加这一行，确保每次都重置不透明度
-            arrowLayer.zPosition = 999 // 确保在最上层
-
-            CATransaction.commit()
-
-            NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.updateArrowPosition, 箭头位置更新完成")
-
-            // 取消之前的计时器（如果存在）
-            arrowTimer?.invalidate()
-
-            // 创建新的计时器，10秒后隐藏箭头
-            arrowTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
-                guard let self = self else { return }
-
+            // 使用主线程更新UI
+            DispatchQueue.main.async {
                 CATransaction.begin()
-                CATransaction.setAnimationDuration(0.5) // 添加淡出动画
-                self.arrowLayer.opacity = 0
+                CATransaction.setDisableActions(true)
+
+                // 设置位置（注意：由于我们设置了锚点在箭头尖端，所以这里直接使用转换后的位置）
+                self.arrowLayer.position = position
+
+                // 根据 PDF 缩放比例调整大小
+                let scale = 3 / pdfView.scaleFactor
+                let rotation = CATransform3DMakeRotation(.pi / 2, 0, 0, 1) // Clockwise 90°
+                let scaledRotation = CATransform3DConcat(
+                    CATransform3DMakeScale(scale, scale, 1),
+                    rotation
+                )
+                self.arrowLayer.transform = scaledRotation
+
+                // 确保图层可见
+                self.arrowLayer.isHidden = false
+                self.arrowLayer.opacity = 1.0 // 添加这一行，确保每次都重置不透明度
+                self.arrowLayer.zPosition = 999 // 确保在最上层
+
                 CATransaction.commit()
 
-                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.updateArrowPosition, 箭头已在10秒后隐藏")
+                NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.updateArrowPosition, 箭头位置更新完成")
+
+                // 取消之前的计时器（如果存在）
+                self.arrowTimer?.invalidate()
+
+                // 创建新的计时器，10秒后隐藏箭头
+                self.arrowTimer = Timer.scheduledTimer(withTimeInterval: 10.0, repeats: false) { [weak self] _ in
+                    guard let self = self else { return }
+
+                    CATransaction.begin()
+                    CATransaction.setAnimationDuration(0.5) // 添加淡出动画
+                    self.arrowLayer.opacity = 0
+                    CATransaction.commit()
+
+                    NSLog("✅ PDFKitView.swift -> PDFKitView.Coordinator.updateArrowPosition, 箭头已在10秒后隐藏")
+                }
             }
         }
 
@@ -1121,21 +1160,23 @@ struct PDFKitView: UIViewRepresentable {
                 // 修复：更安全的视图控制器检查
                 var isTransitioning = false
 
-                if let windowScene = window.windowScene,
-                   let keyWindow = windowScene.windows.first(where: { $0.isKeyWindow }),
-                   let rootVC = keyWindow.rootViewController {
+                // 使用更安全的方式获取视图控制器
+                if let parentVC = pdfView.parentViewController {
+                    isTransitioning = parentVC.isBeingPresented || parentVC.isBeingDismissed || parentVC.isMovingToParent || parentVC.isMovingFromParent
+                } else {
+                    // 如果无法获取视图控制器，视为不安全状态
+                    isProcessingPageChange = false
 
-                    var currentVC = rootVC
-                    while let presented = currentVC.presentedViewController {
-                        currentVC = presented
-                    }
+                    NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 无法获取父视图控制器")
 
-                    isTransitioning = currentVC.isBeingPresented || currentVC.isBeingDismissed
+                    return
                 }
 
                 if isTransitioning {
                     isProcessingPageChange = false
+
                     NSLog("❌ PDFKitView.swift -> PDFKitView.Coordinator.pageDidChange, 视图控制器正在转换中")
+
                     return
                 }
             }
@@ -1275,7 +1316,19 @@ class CustomPDFView: PDFView {
 
             return
         }
-        super.goToNextPage(sender)
+
+        if let parentVC = parentViewController {
+            // 确保视图控制器处于稳定状态
+            if parentVC.isBeingPresented || parentVC.isBeingDismissed {
+                NSLog("❌ PDFKitView.swift -> CustomPDFView.goToNextPage, 视图控制器正在转换中，跳过操作")
+                return
+            }
+        }
+
+        // 使用延迟执行，确保 UI 线程不被阻塞
+        DispatchQueue.main.async {
+            super.goToNextPage(sender)
+        }
     }
 
     override func goToPreviousPage(_ sender: Any?) {
@@ -1284,7 +1337,20 @@ class CustomPDFView: PDFView {
 
             return
         }
-        super.goToPreviousPage(sender)
+
+        if let parentVC = parentViewController {
+            // 确保视图控制器处于稳定状态
+            if parentVC.isBeingPresented || parentVC.isBeingDismissed {
+                NSLog("❌ PDFKitView.swift -> CustomPDFView.goToPreviousPage, 视图控制器正在转换中，跳过操作")
+
+                return
+            }
+        }
+
+        // 使用延迟执行，确保UI线程不被阻塞
+        DispatchQueue.main.async {
+            super.goToPreviousPage(sender)
+        }
     }
 
     override func go(to page: PDFPage) {
@@ -1293,7 +1359,25 @@ class CustomPDFView: PDFView {
 
             return
         }
-        super.go(to: page)
+
+        // 添加额外的安全检查
+        guard let parentVC = parentViewController else {
+            NSLog("❌ PDFKitView.swift -> CustomPDFView.go(to:), 无法获取父视图控制器，跳过操作")
+
+            return
+        }
+
+        // 确保视图控制器处于稳定状态
+        guard !parentVC.isBeingPresented && !parentVC.isBeingDismissed else {
+            NSLog("❌ PDFKitView.swift -> CustomPDFView.go(to:), 视图控制器正在转换中，跳过操作")
+
+            return
+        }
+
+        // 使用延迟执行，确保UI线程不被阻塞
+        DispatchQueue.main.async {
+            super.go(to: page)
+        }
     }
 
     override var canBecomeFirstResponder: Bool { true }
