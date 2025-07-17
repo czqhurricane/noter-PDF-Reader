@@ -22,7 +22,7 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     // 场景被丢弃时的清理工作
     func application(_: UIApplication, didDiscardSceneSessions _: Set<UISceneSession>) {
-        NSLog("✅ AppDelegate.swift -> AppDelegate.application, 配置新场景 - configurationForConnecting")
+        NSLog("✅ AppDelegate.swift -> AppDelegate.application, 废弃的场景会话 - didDiscardSceneSessions")
     }
 
     // 处理自定义URL方案

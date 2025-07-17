@@ -6,12 +6,27 @@ struct ConfigView: View {
     @Binding var originalPathInput: String
     @State private var deepSeekApiKey: String = UserDefaults.standard.string(forKey: "DeepSeekApiKey") ?? ""
     @State private var showDirectoryPicker = false
+    @State private var showOrgRoamDirectoryPicker = false
     @State private var isSharePresented: Bool = false
     @State private var logFileURL: URL? = nil
     @State private var isRebuildingIndex = false
 
     // 目录访问管理器
     @ObservedObject var directoryManager: DirectoryAccessManager
+
+    private var anySheetBinding: Binding<Bool> {
+        Binding<Bool>(
+            get: {
+                showDirectoryPicker || showOrgRoamDirectoryPicker
+            },
+            set: {
+                if !$0 {
+                    showDirectoryPicker = false
+                    showOrgRoamDirectoryPicker = false
+                }
+            }
+        )
+    }
 
     var body: some View {
         NavigationView {
@@ -20,7 +35,7 @@ struct ConfigView: View {
                     // 显示根文件夹信息
                     if let rootURL = directoryManager.rootDirectoryURL {
                         HStack {
-                            Text("当前根文件夹")
+                            Text("当前 PDF 根文件夹")
                             Spacer()
                             Text(rootURL.lastPathComponent)
                                 .foregroundColor(.gray)
@@ -36,12 +51,36 @@ struct ConfigView: View {
                         }
                     }
 
-                    // 显示扫描进度
-                    ScanningProgressView(accessManager: directoryManager)
+                    ScanningRootDirectoryProgressView(accessManager: directoryManager)
                 }
 
-                Section(header: Text("路径设置")) {
-                    TextField("请输入原始路径", text: $originalPathInput)
+                if let rootURL = directoryManager.rootDirectoryURL != nil && directoryManager.scanningRootDirectoryProgress == 1.0 {
+                    Section(header: Text("Org 文件设置")) {
+                        // 显示根文件夹信息
+                        if let rootURL = directoryManager.orgRoamDirectoryURL {
+                            HStack {
+                                Text("当前 Org Roam 文件夹")
+                                Spacer()
+                                Text(rootURL.lastPathComponent)
+                                    .foregroundColor(.gray)
+                            }
+                        }
+
+                        Button(action: {
+                            showOrgRoamDirectoryPicker = true
+                        }) {
+                            HStack {
+                                Image(systemName: "folder")
+                                Text("选择 Org Roam 根文件夹")
+                            }
+                        }
+
+                        ScanningOrgRoamDirectoryProgressView(accessManager: directoryManager)
+                    }
+                }
+
+                Section(header: Text("PDF 路径设置")) {
+                    TextField("请输入 PDF 原始路径", text: $originalPathInput)
 
                     Button(action: {
                         PathConverter.originalPath = originalPathInput
@@ -121,13 +160,17 @@ struct ConfigView: View {
                 }
             }
             .navigationBarTitle("设置", displayMode: .inline)
-            .sheet(isPresented: $showDirectoryPicker) {
-                DocumentPicker(accessManager: directoryManager)
-            }
             // 使用 SwiftUI 的方式集成 UIActivityViewController
             .background(
                 ActivityViewController(isPresented: $isSharePresented, activityItems: [logFileURL].compactMap { $0 })
             )
+            .sheet(isPresented: anySheetBinding) {
+                if showDirectoryPicker {
+                    DocumentPicker(accessManager: directoryManager, forOrgRoam: false)
+                } else if showOrgRoamDirectoryPicker {
+                    DocumentPicker(accessManager: directoryManager, forOrgRoam: true)
+                }
+            }
         }
     }
 
@@ -200,7 +243,7 @@ struct ConfigView: View {
                 return
             }
 
-            // 获取LastSelectedDirectory
+            // 获取 LastSelectedDirectory
             guard let lastSelectedDirectoryString = UserDefaults.standard.string(forKey: "LastSelectedDirectory"),
                   let lastSelectedDirectoryURL = URL(string: lastSelectedDirectoryString)
             else {

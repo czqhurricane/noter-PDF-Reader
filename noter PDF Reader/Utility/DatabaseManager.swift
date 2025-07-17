@@ -485,7 +485,7 @@ class DatabaseManager {
         return lastPage
     }
 
-    // 根据文件标题获取文件路径
+    // 根据 PDF 文件标题获取 PDF 文件路径
     func getFilePathByTitle(_ title: String) -> String? {
         var filePath: String?
 
@@ -499,6 +499,42 @@ class DatabaseManager {
             }
         }
 
+        return filePath
+    }
+
+    // 根据ID查询org-roam.db中的文件路径
+    func getFilePathByNodeId(_ nodeId: String, orgRoamDBPath: String) -> String? {
+        NSLog("✅ DatabaseManager.swift -> DatabaseManager.getFilePathByNodeId, 尝试查询节点ID: \(nodeId)")
+
+        // 关闭之前可能打开的数据库
+        closeDatabase()
+
+        // 打开org-roam.db数据库
+        guard let queue = FMDatabaseQueue(path: orgRoamDBPath) else {
+            NSLog("❌ DatabaseManager.swift -> DatabaseManager.getFilePathByNodeId, 无法打开数据库: \(orgRoamDBPath)")
+
+            return nil
+        }
+
+        var filePath: String?
+
+        queue.inDatabase { db in
+            let sql = "SELECT file FROM nodes WHERE id = ? LIMIT 1"
+            if let resultSet = db.executeQuery(sql, withArgumentsIn: [nodeId]) {
+                if resultSet.next() {
+                    filePath = resultSet.string(forColumn: "file")
+
+                    NSLog("✅ DatabaseManager.swift -> DatabaseManager.getFilePathByNodeId, 找到文件路径: \(filePath ?? "nil")")
+                } else {
+                    NSLog("❌ DatabaseManager.swift -> DatabaseManager.getFilePathByNodeId, 未找到ID对应的文件: \(nodeId)")
+                }
+                resultSet.close()
+            } else {
+                NSLog("❌ DatabaseManager.swift -> DatabaseManager.getFilePathByNodeId, 查询失败: \(db.lastErrorMessage())")
+            }
+        }
+
+        queue.close()
         return filePath
     }
 }

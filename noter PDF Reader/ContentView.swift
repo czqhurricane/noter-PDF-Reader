@@ -81,7 +81,7 @@ struct ContentView: View {
                 .onChange(of: isPDFLoaded) { loaded in
                     DispatchQueue.main.async {
                         if !loaded {
-                            self.pdfLoadError = "无法加载PDF文件，请检查文件路径和权限"
+                            self.pdfLoadError = "PDFKitView 无法加载 PDF 文件，请检查文件路径和权限"
                         }
                     }
                 }
@@ -463,6 +463,7 @@ struct ContentView: View {
             }
             .onAppear {
                 directoryManager.restoreSavedBookmarks()
+
                 setupNotifications()
                 // 检查是否有待处理的 PDF 信息
                 if let pendingPDFInfo = SceneDelegate.pendingPDFInfo {
@@ -479,9 +480,9 @@ struct ContentView: View {
 
                 if let pendingVideoInfo = SceneDelegate.pendingVideoInfo {
                     NotificationCenter.default.post(
-                      name: NSNotification.Name("OpenVideoNotification"),
-                      object: nil,
-                      userInfo: pendingVideoInfo
+                        name: NSNotification.Name("OpenVideoNotification"),
+                        object: nil,
+                        userInfo: pendingVideoInfo
                     )
 
                     SceneDelegate.pendingVideoInfo = nil
@@ -616,9 +617,9 @@ struct ContentView: View {
 
         // 监听 SceneDelegate 的打开 Video 通知
         NotificationCenter.default.addObserver(
-          forName: Notification.Name("OpenVideoNotification"),
-          object: nil,
-          queue: .main
+            forName: Notification.Name("OpenVideoNotification"),
+            object: nil,
+            queue: .main
         ) { notification in
             guard let userInfo = notification.userInfo,
                   let localVideoPath = userInfo["localVideoPath"] as? String,
@@ -654,11 +655,69 @@ struct ContentView: View {
                 NSLog("❌ ContentView.swift -> ContentView.setupNotifications, OpenVideoNotification, 无法获取视频文件的安全访问权限")
             }
         }
-
     }
 
     private func processMetanoteLink(_ link: String) -> Bool {
         var endSeconds: Double = 0.0
+
+        if let idResult = PathConverter.parseIdLink(link) {
+            // 获取 org-roam 目录
+            guard let orgRoamDirectoryURL = directoryManager.orgRoamDirectoryURL else {
+                NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, org-roam 目录未设置")
+
+                return false
+            }
+
+            // 构建 org-roam.db 路径
+            let orgRoamDBPath = orgRoamDirectoryURL.appendingPathComponent("org-roam.db").path
+
+            // 检查数据库文件是否存在
+            guard FileManager.default.fileExists(atPath: orgRoamDBPath) else {
+                NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, org-roam.db 数据库文件不存在: \(orgRoamDBPath)")
+
+                return false
+            }
+
+            // 查询文件路径
+            guard let filePath = DatabaseManager.shared.getFilePathByNodeId("\"\(idResult)\"", orgRoamDBPath: orgRoamDBPath) else {
+                NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 未找到节点对应的文件路径: \(idResult)")
+
+                return false
+            }
+
+            // 从文件路径中提取文件名（去除双引号）
+            let cleanedFilePath = filePath.trimmingCharacters(in: .init(charactersIn: "\""))
+            let fileName = URL(fileURLWithPath: cleanedFilePath).lastPathComponent
+
+            NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 提取到文件名: \(fileName)")
+
+            // 在 orgRoamDirectoryURL 中递归搜索文件
+            guard let fileURL = directoryManager.findFileInDirectory(fileName: fileName, directory: orgRoamDirectoryURL) else {
+                NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 在目录中未找到文件: \(fileName)")
+
+                return false
+            }
+
+            if let secureURL = directoryManager.startAccessingFile(at: fileURL.path) {
+                // 使用 iOS 系统推荐的方式打开文件
+                DispatchQueue.main.async {
+                    UIApplication.shared.open(fileURL, options: [:]) { success in
+                        if success {
+                            NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 成功打开文件: \(fileURL.path)")
+                        } else {
+                            NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 无法打开文件: \(fileURL.path)")
+                        }
+                    }
+                }
+
+                return true
+            } else {
+                // 处理无法获取访问权限的情况
+                NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 无法获取 org 文件的安全访问权限")
+
+                return false
+            }
+        }
 
         // 首先，尝试将其解析为视频链接
         if let videoResult = PathConverter.parseVideoLink(link) {
@@ -833,7 +892,7 @@ struct ContentView: View {
             NSLog("✅ ContentView.swift -> ContentView.openPDF, 即将打开 PDF 文件: \(convertedPdfPath)")
         } else {
             pdfURL = nil
-            pdfLoadError = "无法访问文件，请重新选择目录"
+            pdfLoadError = "无法访问文件，请在“设置 -> PDF 文件设置”中选择 PDF 根文件夹"
 
             NSLog("❌ ContentView.swift -> ContentView.openPDF, 无法访问文件: \(convertedPdfPath)")
         }

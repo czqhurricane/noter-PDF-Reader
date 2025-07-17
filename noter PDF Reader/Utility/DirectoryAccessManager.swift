@@ -4,33 +4,61 @@ import UIKit
 
 class DirectoryAccessManager: ObservableObject {
     @Published var rootDirectoryURL: URL?
-    @Published var isScanning: Bool = false
-    @Published var scanningProgress: Double = 0.0
-    @Published var errorMessage: String?
+    @Published var orgRoamDirectoryURL: URL?
+    @Published var isScanningRootDirectory: Bool = false
+    @Published var isScanningOrgRoamDirectory: Bool = false
+    @Published var scanningRootDirectoryProgress: Double = 0.0
+    @Published var scanningOrgRoamDirectoryProgress: Double = 0.0
+    @Published var errorMessageForRootDirectory: String?
+    @Published var errorMessageForOrgRoamDirectory: String?
 
     // 添加单例实例
     static let shared = DirectoryAccessManager()
 
     // 存储所有文件和目录的书签数据
     var bookmarks: [String: Data] = [:]
+    var pdfBookmarks: [String: Data] = [:]
+    var orgBookmarks: [String: Data] = [:]
 
-    // 添加新的方法用于保存和加载根目录书签到文件系统
-    private func saveRootBookmarkToFile(_ bookmarkData: Data) -> Bool {
+    // 保存和加载 PDF 根目录书签到文件系统
+    private func saveRootDirectoryBookmarkToFile(_ bookmarkData: Data) -> Bool {
         do {
             let fileManager = FileManager.default
             let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
             let bookmarkFile = documentsDirectory.appendingPathComponent("RootDirectoryBookmark.data")
 
             try bookmarkData.write(to: bookmarkFile)
-            NSLog("✅ DirectoryAccessManager.swift -> saveRootBookmarkToFile, 成功保存根目录书签到文件")
+
+            NSLog("✅ DirectoryAccessManager.swift -> saveRootDirectoryBookmarkToFile, 成功保存 PDF 根目录书签到 RootDirectoryBookmark.data 文件")
+
             return true
         } catch {
-            NSLog("❌ DirectoryAccessManager.swift -> saveRootBookmarkToFile, 保存根目录书签到文件失败: \(error.localizedDescription)")
+            NSLog("❌ DirectoryAccessManager.swift -> saveRootDirectoryBookmarkToFile, 保存 PDF 根目录书签到 RootDirectoryBookmark.data 文件失败: \(error.localizedDescription)")
+
             return false
         }
     }
 
-    private func loadRootBookmarkFromFile() -> Data? {
+    // 保存和加载 org 根目录书签到文件系统
+    private func saveOrgRoamDirectoryBookmarkToFile(_ bookmarkData: Data) -> Bool {
+        do {
+            let fileManager = FileManager.default
+            let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+            let bookmarkFile = documentsDirectory.appendingPathComponent("OrgRoamDirectoryBookmark.data")
+
+            try bookmarkData.write(to: bookmarkFile)
+
+            NSLog("✅ DirectoryAccessManager.swift -> saveOrgRoamDirectoryBookmarkToFile, 成功保存 org 根目录书签到 OrgRoamDirectoryBookmark.data 文件")
+
+            return true
+        } catch {
+            NSLog("❌ DirectoryAccessManager.swift -> saveOrgRoamDirectoryBookmarkToFile, 保存 org 根目录书签到 OrgRoamDirectoryBookmark.data 文件失败: \(error.localizedDescription)")
+
+            return false
+        }
+    }
+
+    private func loadRootDirectoryBookmarkFromFile() -> Data? {
         do {
             let fileManager = FileManager.default
             let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
@@ -38,23 +66,52 @@ class DirectoryAccessManager: ObservableObject {
 
             if fileManager.fileExists(atPath: bookmarkFile.path) {
                 let bookmarkData = try Data(contentsOf: bookmarkFile)
-                NSLog("✅ DirectoryAccessManager.swift -> loadRootBookmarkFromFile, 成功从文件加载根目录书签")
+
+                NSLog("✅ DirectoryAccessManager.swift -> loadRootDirectoryBookmarkFromFile, 成功从 RootDirectoryBookmark.data 文件加载 PDF 根目录书签")
+
                 return bookmarkData
             } else {
-                NSLog("❌ DirectoryAccessManager.swift -> loadRootBookmarkFromFile, 根目录书签文件不存在")
+                NSLog("❌ DirectoryAccessManager.swift -> loadRootDirectoryBookmarkFromFile, RootDirectoryBookmark.data 根目录书签文件不存在")
+
                 return nil
             }
         } catch {
-            NSLog("❌ DirectoryAccessManager.swift -> loadRootBookmarkFromFile, 从文件加载根目录书签失败: \(error.localizedDescription)")
+            NSLog("❌ DirectoryAccessManager.swift -> loadRootDirectoryBookmarkFromFile, 从 RootDirectoryBookmark.data 文件加载 PDF 根目录书签失败: \(error.localizedDescription)")
+
             return nil
         }
     }
 
-    // 保存书签到数据库
-    private func saveBookmarksToDatabase(_ bookmarks: [String: Data]) -> Bool {
+    private func loadOrgRoamDirectoryBookmarkFromFile() -> Data? {
+        do {
+            let fileManager = FileManager.default
+            let documentsDirectory = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!
+            let bookmarkFile = documentsDirectory.appendingPathComponent("OrgRoamDirectoryBookmark.data")
+
+            if fileManager.fileExists(atPath: bookmarkFile.path) {
+                let bookmarkData = try Data(contentsOf: bookmarkFile)
+
+                NSLog("✅ DirectoryAccessManager.swift -> loadOrgRoamDirectoryBookmarkFromFile, 成功从 OrgRoamDirectoryBookmark.data 文件加载 org 根目录书签")
+
+                return bookmarkData
+            } else {
+                NSLog("❌ DirectoryAccessManager.swift -> loadOrgRoamDirectoryBookmarkFromFile, OrgRoamDirectoryBookmark.data 根目录书签文件不存在")
+
+                return nil
+            }
+        } catch {
+            NSLog("❌ DirectoryAccessManager.swift -> loadOrgRoamDirectoryBookmarkFromFile, 从 OrgRoamDirectoryBookmark.data 文件加载根 org 目录书签失败: \(error.localizedDescription)")
+
+            return nil
+        }
+    }
+
+    // 保存 PDF 书签到数据库
+    private func savePDFBookmarksToDatabase(_ bookmarks: [String: Data]) -> Bool {
         // 确保数据库已初始化
         guard let rootURL = rootDirectoryURL else {
-            NSLog("❌ DirectoryAccessManager.swift -> saveBookmarksToDatabase, 根目录URL未设置")
+            NSLog("❌ DirectoryAccessManager.swift -> savePDFBookmarksToDatabase, PDF 根目录 URL 未设置")
+
             return false
         }
 
@@ -62,21 +119,23 @@ class DirectoryAccessManager: ObservableObject {
 
         // 检查数据库是否存在
         guard FileManager.default.fileExists(atPath: dataBasePath) else {
-            NSLog("❌ DirectoryAccessManager.swift -> saveBookmarksToDatabase, 数据库文件不存在: \(dataBasePath)")
+            NSLog("❌ DirectoryAccessManager.swift -> savePDFBookmarksToDatabase, pdf-annotations.db 数据库文件不存在: \(dataBasePath)")
+
             return false
         }
 
         guard let dbQueue = FMDatabaseQueue(path: dataBasePath) else {
-            NSLog("❌ DirectoryAccessManager.swift -> saveBookmarksToDatabase, 无法打开数据库")
+            NSLog("❌ DirectoryAccessManager.swift -> savePDFBookmarksToDatabase, 无法打开 pdf-annotations.db 数据库")
+
             return false
         }
 
         var success = true
 
         dbQueue.inDatabase { db in
-            // 创建书签表（如果不存在）
+            // 创建 pdf_file_bookmarks 书签表（如果不存在）
             let createTableSQL = """
-            CREATE TABLE IF NOT EXISTS file_bookmarks (
+            CREATE TABLE IF NOT EXISTS pdf_file_bookmarks (
                 path TEXT PRIMARY KEY,
                 bookmark_data BLOB NOT NULL,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -84,7 +143,8 @@ class DirectoryAccessManager: ObservableObject {
             """
 
             if !db.executeStatements(createTableSQL) {
-                NSLog("❌ DirectoryAccessManager.swift -> saveBookmarksToDatabase, 创建书签表失败")
+                NSLog("❌ DirectoryAccessManager.swift -> savePDFBookmarksToDatabase, 创建 pdf_file_bookmarks 书签表失败")
+
                 success = false
                 return
             }
@@ -93,8 +153,9 @@ class DirectoryAccessManager: ObservableObject {
             db.beginTransaction()
 
             // 清空现有书签
-            if !db.executeUpdate("DELETE FROM file_bookmarks", withArgumentsIn: []) {
-                NSLog("❌ DirectoryAccessManager.swift -> saveBookmarksToDatabase, 清空书签表失败")
+            if !db.executeUpdate("DELETE FROM pdf_file_bookmarks", withArgumentsIn: []) {
+                NSLog("❌ DirectoryAccessManager.swift -> savePDFBookmarksToDatabase, 清空 pdf_file_bookmarks 书签表失败")
+
                 db.rollback()
                 success = false
                 return
@@ -102,9 +163,10 @@ class DirectoryAccessManager: ObservableObject {
 
             // 插入新书签
             for (path, bookmarkData) in bookmarks {
-                let insertSQL = "INSERT INTO file_bookmarks (path, bookmark_data) VALUES (?, ?)"
+                let insertSQL = "INSERT INTO pdf_file_bookmarks (path, bookmark_data) VALUES (?, ?)"
                 if !db.executeUpdate(insertSQL, withArgumentsIn: [path, bookmarkData]) {
-                    NSLog("❌ DirectoryAccessManager.swift -> saveBookmarksToDatabase, 插入书签失败: \(path)")
+                    NSLog("❌ DirectoryAccessManager.swift -> savePDFBookmarksToDatabase, pdf_file_bookmarks 书签表插入书签失败: \(path)")
+
                     success = false
                     break
                 }
@@ -113,14 +175,99 @@ class DirectoryAccessManager: ObservableObject {
             // 提交或回滚事务
             if success {
                 db.commit()
-                NSLog("✅ DirectoryAccessManager.swift -> saveBookmarksToDatabase, 成功保存 \(bookmarks.count) 个书签到数据库")
+
+                NSLog("✅ DirectoryAccessManager.swift -> savePDFBookmarksToDatabase, 成功保存 \(bookmarks.count) 个书签到 pdf-annotations.db 数据库 pdf_file_bookmarks 书签表")
             } else {
                 db.rollback()
-                NSLog("❌ DirectoryAccessManager.swift -> saveBookmarksToDatabase, 保存书签到数据库失败，已回滚")
+
+                NSLog("❌ DirectoryAccessManager.swift -> savePDFBookmarksToDatabase, 保存书签到 pdf-annotations.db 数据库失败，已回滚")
             }
         }
 
         dbQueue.close()
+
+        return success
+    }
+
+    // 保存 org 书签到数据库
+    private func saveOrgBookmarksToDatabase(_ bookmarks: [String: Data]) -> Bool {
+        // 确保数据库已初始化
+        guard let rootURL = rootDirectoryURL else {
+            NSLog("❌ DirectoryAccessManager.swift -> saveOrgBookmarksToDatabase, PDF 根目录 URL 未设置")
+
+            return false
+        }
+
+        let dataBasePath = rootURL.appendingPathComponent("pdf-annotations.db").path
+
+        // 检查数据库是否存在
+        guard FileManager.default.fileExists(atPath: dataBasePath) else {
+            NSLog("❌ DirectoryAccessManager.swift -> saveOrgBookmarksToDatabase, pdf-annotations.db 数据库文件不存在: \(dataBasePath)")
+
+            return false
+        }
+
+        guard let dbQueue = FMDatabaseQueue(path: dataBasePath) else {
+            NSLog("❌ DirectoryAccessManager.swift -> saveOrgBookmarksToDatabase, 无法打开 pdf-annotations.db 数据库")
+
+            return false
+        }
+
+        var success = true
+
+        dbQueue.inDatabase { db in
+            // 创建 org_file_bookmarks 书签表（如果不存在）
+            let createTableSQL = """
+            CREATE TABLE IF NOT EXISTS org_file_bookmarks (
+                path TEXT PRIMARY KEY,
+                bookmark_data BLOB NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """
+
+            if !db.executeStatements(createTableSQL) {
+                NSLog("❌ DirectoryAccessManager.swift -> saveOrgBookmarksToDatabase, 创建 org_file_bookmarks 书签表失败")
+
+                success = false
+                return
+            }
+
+            // 开始事务
+            db.beginTransaction()
+
+            // 清空现有书签
+            if !db.executeUpdate("DELETE FROM org_file_bookmarks", withArgumentsIn: []) {
+                NSLog("❌ DirectoryAccessManager.swift -> saveOrgBookmarksToDatabase, 清空 org_file_bookmarks 书签表失败")
+
+                db.rollback()
+                success = false
+                return
+            }
+
+            // 插入新书签
+            for (path, bookmarkData) in bookmarks {
+                let insertSQL = "INSERT INTO org_file_bookmarks (path, bookmark_data) VALUES (?, ?)"
+                if !db.executeUpdate(insertSQL, withArgumentsIn: [path, bookmarkData]) {
+                    NSLog("❌ DirectoryAccessManager.swift -> saveOrgBookmarksToDatabase, org_file_bookmarks 书签表插入书签失败: \(path)")
+
+                    success = false
+                    break
+                }
+            }
+
+            // 提交或回滚事务
+            if success {
+                db.commit()
+
+                NSLog("✅ DirectoryAccessManager.swift -> saveOrgBookmarksToDatabase, 成功保存 \(bookmarks.count) 个书签到 pdf-annotations.db 数据库 org_file_bookmarks 书签表")
+            } else {
+                db.rollback()
+                NSLog("❌ DirectoryAccessManager.swift -> saveOrgBookmarksToDatabase, 保存书签到 pdf-annotations.db 数据库失败，已回滚")
+            }
+        }
+
+        dbQueue.close()
+
         return success
     }
 
@@ -128,7 +275,8 @@ class DirectoryAccessManager: ObservableObject {
     private func loadBookmarksFromDatabase() -> [String: Data]? {
         // 确保根目录URL已设置
         guard let rootURL = rootDirectoryURL else {
-            NSLog("❌ DirectoryAccessManager.swift -> loadBookmarksFromDatabase, 根目录URL未设置")
+            NSLog("❌ DirectoryAccessManager.swift -> loadBookmarksFromDatabase, PDF 根目录 URL 未设置")
+
             return nil
         }
 
@@ -136,28 +284,31 @@ class DirectoryAccessManager: ObservableObject {
 
         // 检查数据库是否存在
         guard FileManager.default.fileExists(atPath: dataBasePath) else {
-            NSLog("❌ DirectoryAccessManager.swift -> loadBookmarksFromDatabase, 数据库文件不存在: \(dataBasePath)")
+            NSLog("❌ DirectoryAccessManager.swift -> loadBookmarksFromDatabase, pdf-annotations.db 数据库文件不存在: \(dataBasePath)")
+
             return nil
         }
 
         guard let dbQueue = FMDatabaseQueue(path: dataBasePath) else {
-            NSLog("❌ DirectoryAccessManager.swift -> loadBookmarksFromDatabase, 无法打开数据库")
+            NSLog("❌ DirectoryAccessManager.swift -> loadBookmarksFromDatabase, 无法打开 pdf-annotations.db 数据库")
+
             return nil
         }
 
         var loadedBookmarks: [String: Data] = [:]
         var success = false
+        var loadedPDFBookmarksCount = 0
 
         dbQueue.inDatabase { db in
-            // 检查表是否存在
-            let tableExistsQuery = "SELECT name FROM sqlite_master WHERE type='table' AND name='file_bookmarks'"
-            if let result = db.executeQuery(tableExistsQuery, withArgumentsIn: []) {
-                let tableExists = result.next()
+            // 检查 pdf_file_bookmarks 书签表是否存在
+            let pdfTableExistsQuery = "SELECT name FROM sqlite_master WHERE type='table' AND name='pdf_file_bookmarks'"
+            if let result = db.executeQuery(pdfTableExistsQuery, withArgumentsIn: []) {
+                let pdfTableExists = result.next()
                 result.close()
 
-                if tableExists {
+                if pdfTableExists {
                     // 查询所有书签
-                    let querySQL = "SELECT path, bookmark_data FROM file_bookmarks"
+                    let querySQL = "SELECT path, bookmark_data FROM pdf_file_bookmarks"
                     if let queryResult = db.executeQuery(querySQL, withArgumentsIn: []) {
                         while queryResult.next() {
                             if let path = queryResult.string(forColumn: "path"),
@@ -168,25 +319,59 @@ class DirectoryAccessManager: ObservableObject {
                         }
                         queryResult.close()
                         success = true
-                        NSLog("✅ DirectoryAccessManager.swift -> loadBookmarksFromDatabase, 成功从数据库加载 \(loadedBookmarks.count) 个书签")
+                        loadedPDFBookmarksCount = loadedBookmarks.count
+
+                        NSLog("✅ DirectoryAccessManager.swift -> loadBookmarksFromDatabase, 成功从数据库加载 \(loadedBookmarks.count) 个 PDF 书签")
                     } else {
-                        NSLog("❌ DirectoryAccessManager.swift -> loadBookmarksFromDatabase, 查询书签失败: \(db.lastErrorMessage())")
+                        NSLog("❌ DirectoryAccessManager.swift -> loadBookmarksFromDatabase, 查询 PDF 书签失败: \(db.lastErrorMessage())")
                     }
                 } else {
-                    NSLog("❌ DirectoryAccessManager.swift -> loadBookmarksFromDatabase, file_bookmarks表不存在")
+                    NSLog("❌ DirectoryAccessManager.swift -> loadBookmarksFromDatabase, pdf_file_bookmarks 表不存在")
+                }
+            }
+        }
+
+        dbQueue.inDatabase { db in
+            // 检查 org_file_bookmarks 书签表是否存在
+            let orgTableExistsQuery = "SELECT name FROM sqlite_master WHERE type='table' AND name='org_file_bookmarks'"
+            if let result = db.executeQuery(orgTableExistsQuery, withArgumentsIn: []) {
+                let orgTableExists = result.next()
+                result.close()
+
+                if orgTableExists {
+                    // 查询所有书签
+                    let querySQL = "SELECT path, bookmark_data FROM org_file_bookmarks"
+                    if let queryResult = db.executeQuery(querySQL, withArgumentsIn: []) {
+                        while queryResult.next() {
+                            if let path = queryResult.string(forColumn: "path"),
+                               let bookmarkData = queryResult.data(forColumn: "bookmark_data")
+                            {
+                                loadedBookmarks[path] = bookmarkData
+                            }
+                        }
+                        queryResult.close()
+                        success = true
+
+                        NSLog("✅ DirectoryAccessManager.swift -> loadBookmarksFromDatabase, 成功从数据库加载 \(loadedBookmarks.count - loadedPDFBookmarksCount) 个 org 书签")
+                    } else {
+                        NSLog("❌ DirectoryAccessManager.swift -> loadBookmarksFromDatabase, 查询 org 书签失败: \(db.lastErrorMessage())")
+                    }
+                } else {
+                    NSLog("❌ DirectoryAccessManager.swift -> loadBookmarksFromDatabase, org_file_bookmarks 表不存在")
                 }
             }
         }
 
         dbQueue.close()
+
         return success ? loadedBookmarks : nil
     }
 
     // 扫描目录并创建书签
     func scanDirectory(at url: URL, completion: @escaping () -> Void) {
-        isScanning = true
-        scanningProgress = 0
-        errorMessage = nil
+        isScanningRootDirectory = true
+        scanningRootDirectoryProgress = 0
+        errorMessageForRootDirectory = nil
 
         // 保存当前目录路径到UserDefaults
         UserDefaults.standard.set(url.absoluteString, forKey: "LastSelectedDirectory")
@@ -247,7 +432,7 @@ class DirectoryAccessManager: ObservableObject {
                         )
                     } else {
                         DispatchQueue.main.async {
-                            self.errorMessage = "创建数据库失败，请重试"
+                            self.errorMessageForRootDirectory = "创建数据库失败，请重试"
                         }
                     }
                 }
@@ -262,19 +447,18 @@ class DirectoryAccessManager: ObservableObject {
             guard let self = self else { return }
 
             do {
-                // 创建根目录的书签
-                let rootBookmark = try url.bookmarkData(options: .minimalBookmark,
-                                                        includingResourceValuesForKeys: nil,
-                                                        relativeTo: nil)
+                // 创建 PDF 根目录的书签
+                let rootDirectoryBookmark = try url.bookmarkData(options: .minimalBookmark,
+                                                                 includingResourceValuesForKeys: nil,
+                                                                 relativeTo: nil)
 
                 DispatchQueue.main.async {
                     self.rootDirectoryURL = url
-                    self.bookmarks[url.path] = rootBookmark
+                    self.pdfBookmarks[url.path] = rootDirectoryBookmark
 
                     // 同时保存到 UserDefaults 和文件系统
-
-                    UserDefaults.standard.set(rootBookmark, forKey: "RootDirectoryBookmark")
-                    _ = self.saveRootBookmarkToFile(rootBookmark)
+                    UserDefaults.standard.set(rootDirectoryBookmark, forKey: "RootDirectoryBookmark")
+                    _ = self.saveRootDirectoryBookmarkToFile(rootDirectoryBookmark)
 
                     NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 成功创建根目录书签: \(url.path)")
                 }
@@ -307,7 +491,7 @@ class DirectoryAccessManager: ObservableObject {
                                                                         relativeTo: nil)
 
                                 DispatchQueue.main.async {
-                                    self.bookmarks[fileURL.path] = bookmark
+                                    self.pdfBookmarks[fileURL.path] = bookmark
                                 }
 
                                 // 更新进度
@@ -315,7 +499,7 @@ class DirectoryAccessManager: ObservableObject {
                                 let progress = Double(processedCount) / Double(totalCount)
 
                                 DispatchQueue.main.async {
-                                    self.scanningProgress = progress
+                                    self.scanningRootDirectoryProgress = progress
                                 }
                             } catch {
                                 NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 无法为文件创建书签: \(fileURL.path), 错误: \(error.localizedDescription)")
@@ -327,23 +511,23 @@ class DirectoryAccessManager: ObservableObject {
                     DispatchQueue.main.async {
                         // 将书签字典转换为可序列化的格式
                         var serializableBookmarks: [String: Data] = [:]
-                        for (path, bookmarkData) in self.bookmarks {
+                        for (path, bookmarkData) in self.pdfBookmarks {
                             serializableBookmarks[path] = bookmarkData
                         }
 
                         // 保存到 UserDefaults
-                        UserDefaults.standard.set(serializableBookmarks, forKey: "FileBookmarks")
+                        UserDefaults.standard.set(serializableBookmarks, forKey: "PDFFileBookmarks")
                         // 保存到数据库（在数据库初始化后）
-                        _ = self.saveBookmarksToDatabase(serializableBookmarks)
-                        self.scanningProgress = 1.0
+                        _ = self.savePDFBookmarksToDatabase(serializableBookmarks)
+                        self.scanningRootDirectoryProgress = 1.0
 
                         NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 目录扫描完成，创建了 \(serializableBookmarks.count) 个书签")
                     }
                 }
             } catch {
                 DispatchQueue.main.async {
-                    self.errorMessage = "扫描目录失败: \(error.localizedDescription)"
-                    self.isScanning = false
+                    self.errorMessageForRootDirectory = "扫描目录失败: \(error.localizedDescription)"
+                    self.isScanningRootDirectory = false
 
                     NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.scanDirectory, 扫描目录失败: \(error.localizedDescription)")
                 }
@@ -355,8 +539,136 @@ class DirectoryAccessManager: ObservableObject {
             }
 
             DispatchQueue.main.async {
-                self.isScanning = false
+                self.isScanningRootDirectory = false
+                self.bookmarks = self.bookmarks
+                    .merging(self.pdfBookmarks, uniquingKeysWith: { current, _ in current })
+                    .merging(self.orgBookmarks, uniquingKeysWith: { current, _ in current })
                 completion()
+            }
+        }
+    }
+
+    // 扫描目录并创建书签
+    func scanOrgRoamDirectory(at url: URL, completion: @escaping () -> Void) {
+        isScanningOrgRoamDirectory = true
+        scanningOrgRoamDirectoryProgress = 0
+        errorMessageForOrgRoamDirectory = nil
+
+        // 保存当前目录路径到UserDefaults
+        UserDefaults.standard.set(url.absoluteString, forKey: "LastSelectedOrgRoamDirectory")
+
+        // 检查是否存在pdf-annotations.db文件
+        let dataBasePath = url.appendingPathComponent("org-roam.db").path
+
+        if FileManager.default.fileExists(atPath: dataBasePath) {
+            NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanOrgRoamDirectory, 在目录中找到数据库文件: \(dataBasePath)")
+        }
+
+        // 获取永久访问权限
+        let shouldStopAccessing = url.startAccessingSecurityScopedResource()
+
+        // 在后台线程执行扫描
+        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+            guard let self = self else { return }
+
+            do {
+                // 创建 Org 根目录的书签
+                let rootBookmark = try url.bookmarkData(options: .minimalBookmark,
+                                                        includingResourceValuesForKeys: nil,
+                                                        relativeTo: nil)
+
+                DispatchQueue.main.async {
+                    self.orgRoamDirectoryURL = url
+                    self.orgBookmarks[url.path] = rootBookmark
+
+                    // 同时保存到 UserDefaults 和文件系统
+                    UserDefaults.standard.set(rootBookmark, forKey: "OrgRoamDirectoryBookmark")
+                    _ = self.saveOrgRoamDirectoryBookmarkToFile(rootBookmark)
+
+                    NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanOrgRoamDirectory, 成功创建 Org 根目录书签: \(url.path)")
+                }
+
+                // 递归扫描目录
+                var allFiles: [URL] = []
+                var processedCount = 0
+
+                // 获取所有文件和目录
+                let fileManager = FileManager.default
+                let enumerator = fileManager.enumerator(at: url,
+                                                        includingPropertiesForKeys: [.isDirectoryKey],
+                                                        options: [.skipsHiddenFiles],
+                                                        errorHandler: nil)
+
+                if let allURLs = enumerator?.allObjects as? [URL] {
+                    allFiles = allURLs
+
+                    // 计算总文件数用于进度显示
+                    let totalCount = allFiles.count
+
+                    NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanOrgRoamDirectory, 找到 \(totalCount) 个文件和目录")
+
+                    for fileURL in allFiles {
+                        autoreleasepool {
+                            do {
+                                // 为每个文件创建书签
+                                let bookmark = try fileURL.bookmarkData(options: .minimalBookmark,
+                                                                        includingResourceValuesForKeys: nil,
+                                                                        relativeTo: nil)
+
+                                DispatchQueue.main.async {
+                                    self.orgBookmarks[fileURL.path] = bookmark
+                                }
+
+                                // 更新进度
+                                processedCount += 1
+                                let progress = Double(processedCount) / Double(totalCount)
+
+                                DispatchQueue.main.async {
+                                    self.scanningOrgRoamDirectoryProgress = progress
+                                }
+                            } catch {
+                                NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.scanOrgRoamDirectory, 无法为文件创建书签: \(fileURL.path), 错误: \(error.localizedDescription)")
+                            }
+                        }
+                    }
+
+                    // 保存所有书签到 UserDefaults 和数据库
+                    DispatchQueue.main.async {
+                        // 将书签字典转换为可序列化的格式
+                        var serializableBookmarks: [String: Data] = [:]
+                        for (path, bookmarkData) in self.orgBookmarks {
+                            serializableBookmarks[path] = bookmarkData
+                        }
+
+                        // 保存到 UserDefaults
+                        UserDefaults.standard.set(serializableBookmarks, forKey: "OrgFileBookmarks")
+                        // 保存到数据库（在数据库初始化后）
+                        _ = self.saveOrgBookmarksToDatabase(serializableBookmarks)
+                        self.scanningOrgRoamDirectoryProgress = 1.0
+
+                        NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.scanOrgRoamDirectory, 目录扫描完成，创建了 \(serializableBookmarks.count) 个书签")
+                    }
+                }
+            } catch {
+                DispatchQueue.main.async {
+                    self.errorMessageForOrgRoamDirectory = "扫描目录失败: \(error.localizedDescription)"
+                    self.isScanningOrgRoamDirectory = false
+
+                    NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.scanOrgRoamDirectory, 扫描目录失败: \(error.localizedDescription)")
+                }
+            }
+
+            // 停止访问资源
+            if shouldStopAccessing {
+                url.stopAccessingSecurityScopedResource()
+            }
+
+            DispatchQueue.main.async {
+                self.isScanningOrgRoamDirectory = false
+                completion()
+                self.bookmarks = self.bookmarks
+                    .merging(self.pdfBookmarks, uniquingKeysWith: { current, _ in current })
+                    .merging(self.orgBookmarks, uniquingKeysWith: { current, _ in current })
             }
         }
     }
@@ -416,35 +728,57 @@ class DirectoryAccessManager: ObservableObject {
 
     // 恢复之前保存的书签
     func restoreSavedBookmarks() {
-        // 首先尝试从文件加载根目录书签
-        if let rootBookmark = loadRootBookmarkFromFile() {
+        // 尝试从文件加载 org 根目录书签
+        if let orgRoamDirectoryBookmark = loadOrgRoamDirectoryBookmarkFromFile() {
             do {
                 var isStale = false
-                let url = try URL(resolvingBookmarkData: rootBookmark,
+                let url = try URL(resolvingBookmarkData: orgRoamDirectoryBookmark,
+                                  options: [],
+                                  relativeTo: nil,
+                                  bookmarkDataIsStale: &isStale)
+
+                if !isStale {
+                    orgRoamDirectoryURL = url
+
+                    NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 已从 OrgRoamDirectoryBookmark.data 文件恢复根目录书签")
+                }
+            } catch {
+                NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 无法从 OrgRoamDirectoryBookmark.data 文件恢复根目录书签: \(error.localizedDescription)")
+            }
+        }
+
+        // 尝试从文件加载 PDF 根目录书签
+        if let rootDirectoryBookmark = loadRootDirectoryBookmarkFromFile() {
+            do {
+                var isStale = false
+                let url = try URL(resolvingBookmarkData: rootDirectoryBookmark,
                                   options: [],
                                   relativeTo: nil,
                                   bookmarkDataIsStale: &isStale)
 
                 if !isStale {
                     rootDirectoryURL = url
-                    NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 已从文件恢复根目录书签")
 
-                    // 尝试从数据库加载所有书签
+                    NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 已从 RootDirectoryBookmark.data 文件恢复 PDF 根目录书签")
+
+                    // 尝试从数据库加载所有书签，包括 PDF，org 文件
                     if let savedBookmarks = loadBookmarksFromDatabase() {
                         bookmarks = savedBookmarks
-                        NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 已从数据库恢复 \(savedBookmarks.count) 个文件书签")
+
+                        NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 已从 pdf-annotations.db 数据库恢复 \(savedBookmarks.count) 个文件书签")
+
                         return
                     }
                 }
             } catch {
-                NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 无法从文件恢复根目录书签: \(error.localizedDescription)")
+                NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 无法从 RootDirectoryBookmark.data 文件恢复 PDF 根目录书签: \(error.localizedDescription)")
             }
         }
 
-        if let rootBookmark = UserDefaults.standard.data(forKey: "RootDirectoryBookmark") {
+        if let rootDirectoryBookmark = UserDefaults.standard.data(forKey: "RootDirectoryBookmark") {
             do {
                 var isStale = false
-                let url = try URL(resolvingBookmarkData: rootBookmark,
+                let url = try URL(resolvingBookmarkData: rootDirectoryBookmark,
                                   options: [],
                                   relativeTo: nil,
                                   bookmarkDataIsStale: &isStale)
@@ -452,19 +786,46 @@ class DirectoryAccessManager: ObservableObject {
                 if !isStale {
                     rootDirectoryURL = url
 
-                    NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 已恢复根目录书签")
+                    NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 已恢复 PDF 根目录书签")
 
                     // 恢复所有文件书签
-                    if let savedBookmarks = UserDefaults.standard.dictionary(forKey: "FileBookmarks") as? [String: Data] {
+                    if let savedBookmarks = UserDefaults.standard.dictionary(forKey: "PDFFileBookmarks") as? [String: Data] {
                         bookmarks = savedBookmarks
 
-                        NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 已恢复 \(savedBookmarks.count) 个文件书签")
+                        NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 已恢复 \(savedBookmarks.count) 个 PDF 文件书签")
                     }
                 } else {
-                    NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 根目录书签已过期")
+                    NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, UserDefaults.standard.data 中 PDF 根目录书签已过期")
                 }
             } catch {
-                NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 无法恢复根目录书签: \(error.localizedDescription)")
+                NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 无法从 UserDefaults.standard.dictionary 恢复 PDF 根目录书签: \(error.localizedDescription)")
+            }
+        }
+
+        if let orgRoamDirectoryBookmark = UserDefaults.standard.data(forKey: "OrgRoamDirectoryBookmark") {
+            do {
+                var isStale = false
+                let url = try URL(resolvingBookmarkData: orgRoamDirectoryBookmark,
+                                  options: [],
+                                  relativeTo: nil,
+                                  bookmarkDataIsStale: &isStale)
+
+                if !isStale {
+                    orgRoamDirectoryURL = url
+
+                    NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 已恢复 org 根目录书签")
+
+                    // 恢复所有文件书签
+                    if let savedBookmarks = UserDefaults.standard.dictionary(forKey: "OrgFileBookmarks") as? [String: Data] {
+                        bookmarks = bookmarks.merging(savedBookmarks) { $1 }
+
+                        NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 已恢复 \(savedBookmarks.count) 个 org 文件书签")
+                    }
+                } else {
+                    NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, UserDefaults.standard.data 中 org 根目录书签已过期")
+                }
+            } catch {
+                NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.restoreSavedBookmarks, 无法从 UserDefaults.standard.dictionary 恢复 org 根目录书签: \(error.localizedDescription)")
             }
         }
     }
@@ -508,7 +869,7 @@ class DirectoryAccessManager: ObservableObject {
     // 更新数据库中的files表
     private func updateFilesTable(at dbPath: String, rootURL: URL) {
         guard let dbQueue = FMDatabaseQueue(path: dbPath) else {
-            NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.updateFilesTable, 无法打开数据库")
+            NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.updateFilesTable, 无法打开数据库：\(dbPath)")
 
             return
         }
@@ -535,7 +896,7 @@ class DirectoryAccessManager: ObservableObject {
                 return
             }
 
-            // 遍历所有PDF文件并插入到files表
+            // 遍历所有 PDF 文件并插入到files表
             let fileManager = FileManager.default
             let enumerator = fileManager.enumerator(at: rootURL,
                                                     includingPropertiesForKeys: [.isRegularFileKey],
@@ -584,5 +945,42 @@ class DirectoryAccessManager: ObservableObject {
 
         // 执行反向替换
         return path.replacingOccurrences(of: rootPath, with: processedOriginalPath)
+    }
+
+    // 递归搜索文件
+    func findFileInDirectory(fileName: String, directory: URL) -> URL? {
+        NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.findFileInDirectory, 开始在目录中搜索文件: \(fileName), 目录: \(directory.path)")
+
+        let fileManager = FileManager.default
+
+        do {
+            // 获取目录中的所有内容
+            let contents = try fileManager.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
+
+            // 首先在当前目录中查找
+            for url in contents {
+                if url.lastPathComponent == fileName {
+                    NSLog("✅ DirectoryAccessManager.swift -> DirectoryAccessManager.findFileInDirectory, 找到文件: \(url.path)")
+
+                    return url
+                }
+            }
+
+            // 然后递归搜索子目录
+            for url in contents {
+                var isDir: ObjCBool = false
+                if fileManager.fileExists(atPath: url.path, isDirectory: &isDir), isDir.boolValue {
+                    if let found = findFileInDirectory(fileName: fileName, directory: url) {
+                        return found
+                    }
+                }
+            }
+        } catch {
+            NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.findFileInDirectory, 搜索目录失败: \(error.localizedDescription)")
+        }
+
+        NSLog("❌ DirectoryAccessManager.swift -> DirectoryAccessManager.findFileInDirectory, 未找到文件: \(fileName)")
+
+        return nil
     }
 }

@@ -154,4 +154,24 @@ enum PathConverter {
 
         return seconds
     }
+
+    static func parseIdLink(_ url: String) -> String? {
+        guard url.hasPrefix("id:"),
+              let decodedString = url.removingPercentEncoding
+        else {
+            return nil
+        }
+
+        // 提取 ID 部分
+        let idComponents = decodedString.components(separatedBy: ":")
+        guard idComponents.count > 1 else {
+            NSLog("❌ PathConverter.swift -> PathConverter.parseIdLink, ID 格式不正确: \(decodedString)")
+
+            return nil
+        }
+
+        let nodeId = idComponents[1].trimmingCharacters(in: .whitespacesAndNewlines)
+
+        return nodeId
+    }
 }

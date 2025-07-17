@@ -51,8 +51,74 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
     }
 
     private func handleIncomingURL(_ url: URL) {
-        let lastSuccessfulRootPath: String? = UserDefaults.standard.string(forKey: "LastSuccessfulRootPath")
-        if let scheme = url.scheme?.lowercased(), scheme == "video" {
+        let lastSuccessfulRootPath: String? = UserDefaults.standard.string(forKey: "LastSuccessfulRootPath") ?? DirectoryAccessManager.shared.rootDirectoryURL?.path
+
+        // 处理 id scheme
+        if let scheme = url.scheme?.lowercased(), scheme == "id" {
+            guard let decodedString = url.absoluteString.removingPercentEncoding else { return }
+
+            // 提取 ID 部分
+            let idComponents = decodedString.components(separatedBy: ":")
+            guard idComponents.count > 1 else {
+                NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, ID 格式不正确: \(decodedString)")
+
+                return
+            }
+
+            let nodeId = idComponents[1].trimmingCharacters(in: .whitespacesAndNewlines)
+
+            NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 提取到节点 ID: \(nodeId)")
+
+            // 获取 org-roam 目录
+            guard let orgRoamDirectoryURL = DirectoryAccessManager.shared.orgRoamDirectoryURL else {
+                NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, org-roam 目录未设置")
+
+                return
+            }
+
+            // 构建 org-roam.db 路径
+            let orgRoamDBPath = orgRoamDirectoryURL.appendingPathComponent("org-roam.db").path
+
+            // 检查数据库文件是否存在
+            guard FileManager.default.fileExists(atPath: orgRoamDBPath) else {
+                NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, org-roam.db 数据库文件不存在: \(orgRoamDBPath)")
+
+                return
+            }
+
+            // 查询文件路径
+            guard let filePath = DatabaseManager.shared.getFilePathByNodeId("\"\(nodeId)\"", orgRoamDBPath: orgRoamDBPath) else {
+                NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 未找到节点对应的文件路径: \(nodeId)")
+
+                return
+            }
+
+            // 从文件路径中提取文件名（去除双引号）
+            let cleanedFilePath = filePath.trimmingCharacters(in: .init(charactersIn: "\""))
+            let fileName = URL(fileURLWithPath: cleanedFilePath).lastPathComponent
+
+            NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 提取到文件名: \(fileName)")
+
+            // 在 orgRoamDirectoryURL 中递归搜索文件
+            guard let fileURL = DirectoryAccessManager.shared.findFileInDirectory(fileName: fileName, directory: orgRoamDirectoryURL) else {
+                NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 在目录中未找到文件: \(fileName)")
+
+                return
+            }
+
+            // 使用 iOS 系统推荐的方式打开文件
+            DispatchQueue.main.async {
+                UIApplication.shared.open(fileURL, options: [:]) { success in
+                    if success {
+                        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 成功打开文件: \(fileURL.path)")
+                    } else {
+                        NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 无法打开文件: \(fileURL.path)")
+                    }
+                }
+            }
+
+            return
+        } else if let scheme = url.scheme?.lowercased(), scheme == "video" {
             guard let decodedString = url.absoluteString.removingPercentEncoding else { return }
             // 移除前缀 video
             let rest = String(decodedString.dropFirst(6))
