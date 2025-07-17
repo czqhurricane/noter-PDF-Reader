@@ -12,6 +12,9 @@
 		025FCAAA2DDE6F3D00102A44 /* PDFOutlineViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025FCAA92DDE6F3D00102A44 /* PDFOutlineViewController.swift */; };
 		025FCAAE2DDF174E00102A44 /* PDFSearchResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025FCAAC2DDF174D00102A44 /* PDFSearchResult.swift */; };
 		025FCAAF2DDF174E00102A44 /* PDFSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 025FCAAD2DDF174E00102A44 /* PDFSearchView.swift */; };
+		026147C32E29634200D6218C /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 026147C22E29634200D6218C /* ShareViewController.swift */; };
+		026147C62E29634200D6218C /* MainInterface.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 026147C42E29634200D6218C /* MainInterface.storyboard */; };
+		026147CA2E29634200D6218C /* noter PDF Reader Share.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 026147C02E29634100D6218C /* noter PDF Reader Share.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		0262EB8F2DCB611400E9CBC8 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EB8E2DCB611400E9CBC8 /* ContentView.swift */; };
 		0262EB942DCB611800E9CBC8 /* Preview Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 0262EB932DCB611800E9CBC8 /* Preview Assets.xcassets */; };
 		0262EBA22DCB662C00E9CBC8 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0262EBA12DCB662C00E9CBC8 /* AppDelegate.swift */; };
@@ -38,6 +41,30 @@
 		02FFF05F2DEE0DF800470AB9 /* PDFFolderSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02FFF05E2DEE0DF800470AB9 /* PDFFolderSearchView.swift */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		026147C82E29634200D6218C /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 0262EB812DCB611400E9CBC8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 026147BF2E29634100D6218C;
+			remoteInfo = "noter PDF Reader Share";
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		026147CB2E29634200D6218C /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				026147CA2E29634200D6218C /* noter PDF Reader Share.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		022A7C872DD65E8D00CAA334 /* noter PDF Reader.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "noter PDF Reader.entitlements"; sourceTree = "<group>"; };
 		0241F9712E19AA080027A6BC /* VideoPlayerView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = VideoPlayerView.swift; sourceTree = "<group>"; };
@@ -45,6 +72,10 @@
 		025FCAA92DDE6F3D00102A44 /* PDFOutlineViewController.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PDFOutlineViewController.swift; sourceTree = "<group>"; };
 		025FCAAC2DDF174D00102A44 /* PDFSearchResult.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PDFSearchResult.swift; sourceTree = "<group>"; };
 		025FCAAD2DDF174E00102A44 /* PDFSearchView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = PDFSearchView.swift; sourceTree = "<group>"; };
+		026147C02E29634100D6218C /* noter PDF Reader Share.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = "noter PDF Reader Share.appex"; sourceTree = BUILT_PRODUCTS_DIR; };
+		026147C22E29634200D6218C /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		026147C52E29634200D6218C /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/MainInterface.storyboard; sourceTree = "<group>"; };
+		026147C72E29634200D6218C /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		0262EB892DCB611400E9CBC8 /* noter PDF Reader.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "noter PDF Reader.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		0262EB8E2DCB611400E9CBC8 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		0262EB932DCB611800E9CBC8 /* Preview Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Preview Assets.xcassets"; sourceTree = "<group>"; };
@@ -73,6 +104,13 @@
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		026147BD2E29634100D6218C /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		0262EB862DCB611400E9CBC8 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -91,10 +129,21 @@
 			name = Frameworks;
 			sourceTree = "<group>";
 		};
+		026147C12E29634200D6218C /* noter PDF Reader Share */ = {
+			isa = PBXGroup;
+			children = (
+				026147C22E29634200D6218C /* ShareViewController.swift */,
+				026147C42E29634200D6218C /* MainInterface.storyboard */,
+				026147C72E29634200D6218C /* Info.plist */,
+			);
+			path = "noter PDF Reader Share";
+			sourceTree = "<group>";
+		};
 		0262EB802DCB611400E9CBC8 = {
 			isa = PBXGroup;
 			children = (
 				0262EB8B2DCB611400E9CBC8 /* noter PDF Reader */,
+				026147C12E29634200D6218C /* noter PDF Reader Share */,
 				0262EB8A2DCB611400E9CBC8 /* Products */,
 				022A7C9B2DD68E2300CAA334 /* Frameworks */,
 			);
@@ -104,6 +153,7 @@
 			isa = PBXGroup;
 			children = (
 				0262EB892DCB611400E9CBC8 /* noter PDF Reader.app */,
+				026147C02E29634100D6218C /* noter PDF Reader Share.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -188,6 +238,23 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
+		026147BF2E29634100D6218C /* noter PDF Reader Share */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 026147CE2E29634200D6218C /* Build configuration list for PBXNativeTarget "noter PDF Reader Share" */;
+			buildPhases = (
+				026147BC2E29634100D6218C /* Sources */,
+				026147BD2E29634100D6218C /* Frameworks */,
+				026147BE2E29634100D6218C /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "noter PDF Reader Share";
+			productName = "noter PDF Reader Share";
+			productReference = 026147C02E29634100D6218C /* noter PDF Reader Share.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		0262EB882DCB611400E9CBC8 /* noter PDF Reader */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 0262EB982DCB611800E9CBC8 /* Build configuration list for PBXNativeTarget "noter PDF Reader" */;
@@ -195,10 +262,12 @@
 				0262EB852DCB611400E9CBC8 /* Sources */,
 				0262EB862DCB611400E9CBC8 /* Frameworks */,
 				0262EB872DCB611400E9CBC8 /* Resources */,
+				026147CB2E29634200D6218C /* Embed App Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				026147C92E29634200D6218C /* PBXTargetDependency */,
 			);
 			name = "noter PDF Reader";
 			packageProductDependencies = (
@@ -217,6 +286,9 @@
 				LastSwiftUpdateCheck = 1240;
 				LastUpgradeCheck = 1240;
 				TargetAttributes = {
+					026147BF2E29634100D6218C = {
+						CreatedOnToolsVersion = 12.4;
+					};
 					0262EB882DCB611400E9CBC8 = {
 						CreatedOnToolsVersion = 12.4;
 					};
@@ -239,11 +311,20 @@
 			projectRoot = "";
 			targets = (
 				0262EB882DCB611400E9CBC8 /* noter PDF Reader */,
+				026147BF2E29634100D6218C /* noter PDF Reader Share */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		026147BE2E29634100D6218C /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				026147C62E29634200D6218C /* MainInterface.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		0262EB872DCB611400E9CBC8 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -257,6 +338,14 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		026147BC2E29634100D6218C /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				026147C32E29634200D6218C /* ShareViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		0262EB852DCB611400E9CBC8 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -291,7 +380,66 @@
 		};
 /* End PBXSourcesBuildPhase section */
 
+/* Begin PBXTargetDependency section */
+		026147C92E29634200D6218C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 026147BF2E29634100D6218C /* noter PDF Reader Share */;
+			targetProxy = 026147C82E29634200D6218C /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		026147C42E29634200D6218C /* MainInterface.storyboard */ = {
+			isa = PBXVariantGroup;
+			children = (
+				026147C52E29634200D6218C /* Base */,
+			);
+			name = MainInterface.storyboard;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
 /* Begin XCBuildConfiguration section */
+		026147CC2E29634200D6218C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 59CRWBXQ6X;
+				INFOPLIST_FILE = "noter PDF Reader Share/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.czqhurricane.noter-PDF-Reader.noter-PDF-Reader-Share";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		026147CD2E29634200D6218C /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 59CRWBXQ6X;
+				INFOPLIST_FILE = "noter PDF Reader Share/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.czqhurricane.noter-PDF-Reader.noter-PDF-Reader-Share";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				PROVISIONING_PROFILE_SPECIFIER = "";
+				SKIP_INSTALL = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		0262EB962DCB611800E9CBC8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -411,6 +559,7 @@
 		0262EB992DCB611800E9CBC8 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "noter PDF Reader/noter PDF Reader.entitlements";
@@ -435,6 +584,7 @@
 		0262EB9A2DCB611800E9CBC8 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				CODE_SIGN_ENTITLEMENTS = "noter PDF Reader/noter PDF Reader.entitlements";
@@ -459,6 +609,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		026147CE2E29634200D6218C /* Build configuration list for PBXNativeTarget "noter PDF Reader Share" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				026147CC2E29634200D6218C /* Debug */,
+				026147CD2E29634200D6218C /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		0262EB842DCB611400E9CBC8 /* Build configuration list for PBXProject "noter PDF Reader" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
