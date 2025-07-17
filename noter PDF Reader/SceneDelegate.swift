@@ -57,17 +57,17 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         if let scheme = url.scheme?.lowercased(), scheme == "id" {
             guard let decodedString = url.absoluteString.removingPercentEncoding else { return }
 
-            // 提取 ID 部分
+            // 提取 id 部分
             let idComponents = decodedString.components(separatedBy: ":")
             guard idComponents.count > 1 else {
-                NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, ID 格式不正确: \(decodedString)")
+                NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, id 格式不正确: \(decodedString)")
 
                 return
             }
 
             let nodeId = idComponents[1].trimmingCharacters(in: .whitespacesAndNewlines)
 
-            NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 提取到节点 ID: \(nodeId)")
+            NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 提取到节点 id: \(nodeId)")
 
             // 获取 org-roam 目录
             guard let orgRoamDirectoryURL = DirectoryAccessManager.shared.orgRoamDirectoryURL else {
@@ -81,14 +81,14 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
 
             // 检查数据库文件是否存在
             guard FileManager.default.fileExists(atPath: orgRoamDBPath) else {
-                NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, org-roam.db 数据库文件不存在: \(orgRoamDBPath)")
+                NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, org-roam.db 数据库文件路径不存在: \(orgRoamDBPath)")
 
                 return
             }
 
-            // 查询文件路径
+            // 查询 org 文件路径
             guard let filePath = DatabaseManager.shared.getFilePathByNodeId("\"\(nodeId)\"", orgRoamDBPath: orgRoamDBPath) else {
-                NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 未找到节点对应的文件路径: \(nodeId)")
+                NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 未找到 id 节点对应的 org 文件路径: \(nodeId)")
 
                 return
             }
@@ -97,11 +97,11 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             let cleanedFilePath = filePath.trimmingCharacters(in: .init(charactersIn: "\""))
             let fileName = URL(fileURLWithPath: cleanedFilePath).lastPathComponent
 
-            NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 提取到文件名: \(fileName)")
+            NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 提取到 org 文件名: \(fileName)")
 
             // 在 orgRoamDirectoryURL 中递归搜索文件
             guard let fileURL = DirectoryAccessManager.shared.findFileInDirectory(fileName: fileName, directory: orgRoamDirectoryURL) else {
-                NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 在目录中未找到文件: \(fileName)")
+                NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 在 org roam 目录中未找到 org 文件: \(fileName)")
 
                 return
             }
@@ -110,9 +110,9 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             DispatchQueue.main.async {
                 UIApplication.shared.open(fileURL, options: [:]) { success in
                     if success {
-                        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 成功打开文件: \(fileURL.path)")
+                        NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 成功打开 org 文件: \(fileURL.path)")
                     } else {
-                        NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 无法打开文件: \(fileURL.path)")
+                        NSLog("❌ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 无法打开 org 文件: \(fileURL.path)")
                     }
                 }
             }
@@ -126,28 +126,38 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
             guard !parts.isEmpty else { return }
 
             if parts.count == 1 {
-                let result = PathConverter.convertNoterPagePath(parts[0], rootDirectoryURL: URL(fileURLWithPath: lastSuccessfulRootPath!))
-                SceneDelegate.pendingVideoInfo = [
-                    "localVideoPath": result.trimmingCharacters(in: .whitespacesAndNewlines),
-                    "startTime": 0.0,
-                    "endTime": 0.0,
-                ]
-
-                NotificationCenter.default.post(
-                    name: NSNotification.Name("OpenVideoNotification"),
-                    object: nil,
-                    userInfo: [
+                if rest.hasPrefix("/") {
+                    let result = PathConverter.convertNoterPagePath(parts[0], rootDirectoryURL: URL(fileURLWithPath: lastSuccessfulRootPath!))
+                    SceneDelegate.pendingVideoInfo = [
                         "localVideoPath": result.trimmingCharacters(in: .whitespacesAndNewlines),
                         "startTime": 0.0,
                         "endTime": 0.0,
                     ]
-                )
 
-                return
+                    NotificationCenter.default.post(
+                        name: NSNotification.Name("OpenVideoNotification"),
+                        object: nil,
+                        userInfo: [
+                            "localVideoPath": result.trimmingCharacters(in: .whitespacesAndNewlines),
+                            "startTime": 0.0,
+                            "endTime": 0.0,
+                        ]
+                    )
+
+                    return
+                } else if rest.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("http") || rest.trimmingCharacters(in: .whitespacesAndNewlines).hasPrefix("https") {
+                    if let videoUrl = URL(string: rest) {
+                        UIApplication.shared.open(videoUrl, options: [:], completionHandler: nil)
+                    }
+
+                    NSLog("✅ SceneDelegate.swift -> SceneDelegate.handleIncomingURL, 网络视频链接: \(String(describing: rest))")
+
+                    return
+                }
             }
 
             if parts.count > 1 {
-                var videoUrlString = parts[0]
+                var videoUrlString = parts[0].trimmingCharacters(in: .whitespacesAndNewlines)
                 var start: String?
                 var end: String?
 
@@ -166,7 +176,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                     // 检查 URL 是否已经包含参数
                     if videoUrlString.contains("?") {
                         if videoUrlString.contains("bilibili.com") {
-                            // 如果 URL 已经包含参数，添加 &t=
+                            // 如果 URL 已经包含参数，添加 &start_progress=
                             videoUrlString += "&start_progress=\(startSeconds * 1000)"
                         } else { // 如果 URL 已经包含参数，添加 &t=
                             videoUrlString += "&t=\(startSeconds)"
@@ -238,7 +248,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
                     }
 
                     return
-                } else if videoUrlString.hasPrefix("http") {
+                } else if videoUrlString.hasPrefix("http") || videoUrlString.hasPrefix("https") {
                     if let videoUrl = URL(string: videoUrlString) {
                         UIApplication.shared.open(videoUrl, options: [:], completionHandler: nil)
                     }

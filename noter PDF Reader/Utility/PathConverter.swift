@@ -115,7 +115,7 @@ enum PathConverter {
             }
         }
 
-        NSLog("✅ PathConverter.swift -> PathConverter.parseVideoLink, 解析结果 - 视频 URL: \(String(describing: videoUrlString)), start: \(String(describing: start)), end: \(String(describing: end))")
+        NSLog("✅ PathConverter.swift -> PathConverter.parseVideoLink, 解析结果 - 视频链接: \(String(describing: videoUrlString)), start: \(String(describing: start)), end: \(String(describing: end))")
 
         return (videoUrlString, start, end)
     }

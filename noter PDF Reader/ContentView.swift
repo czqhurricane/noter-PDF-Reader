@@ -673,14 +673,14 @@ struct ContentView: View {
 
             // 检查数据库文件是否存在
             guard FileManager.default.fileExists(atPath: orgRoamDBPath) else {
-                NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, org-roam.db 数据库文件不存在: \(orgRoamDBPath)")
+                NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, org-roam.db 数据库文件路径不存在: \(orgRoamDBPath)")
 
                 return false
             }
 
             // 查询文件路径
             guard let filePath = DatabaseManager.shared.getFilePathByNodeId("\"\(idResult)\"", orgRoamDBPath: orgRoamDBPath) else {
-                NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 未找到节点对应的文件路径: \(idResult)")
+                NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 未找到节点对应的 org 文件路径: \(idResult)")
 
                 return false
             }
@@ -689,11 +689,11 @@ struct ContentView: View {
             let cleanedFilePath = filePath.trimmingCharacters(in: .init(charactersIn: "\""))
             let fileName = URL(fileURLWithPath: cleanedFilePath).lastPathComponent
 
-            NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 提取到文件名: \(fileName)")
+            NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 提取到 org 文件名: \(fileName)")
 
             // 在 orgRoamDirectoryURL 中递归搜索文件
             guard let fileURL = directoryManager.findFileInDirectory(fileName: fileName, directory: orgRoamDirectoryURL) else {
-                NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 在目录中未找到文件: \(fileName)")
+                NSLog("❌ ContentView.swift -> ContentView.processMetanoteLink, 在目录中未找到 org 文件: \(fileName)")
 
                 return false
             }
@@ -722,12 +722,13 @@ struct ContentView: View {
         // 首先，尝试将其解析为视频链接
         if let videoResult = PathConverter.parseVideoLink(link) {
             // 我们有一个视频链接：在外部打开视频网址
-            let videoUrlString = videoResult.videoUrlString
-            if videoUrlString.hasPrefix("http") {
+            let videoUrlString = videoResult.videoUrlString.trimmingCharacters(in: .whitespacesAndNewlines)
+
+            if videoUrlString.hasPrefix("http") || videoUrlString.hasPrefix("https") {
                 if let videoUrl = URL(string: videoUrlString) {
                     UIApplication.shared.open(videoUrl, options: [:], completionHandler: nil)
 
-                    NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 网络视频链接: \(videoUrl)")
+                    NSLog("✅ ContentView.swift -> ContentView.processMetanoteLink, 网络视频 URL: \(videoUrl)")
                 }
 
                 // 关闭当前 sheet
